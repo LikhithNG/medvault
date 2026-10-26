@@ -467,13 +467,21 @@ def screen_signin():
                     st.rerun()
 
     else:
+        # Order matters here, and the first version got it wrong. It ran
+        # Email -> Password -> Name, and a plain text field sitting directly below a
+        # password field reads as "confirm password" - that is where every other signup
+        # form in the world puts one. The first person to use it typed their password into
+        # the name box, and their account is still called it.
+        #
+        # Identity first, credentials last, and nothing at all after the password.
         role = st.radio("This account is for", ["patient", "clinician"], horizontal=True,
                         format_func=lambda r: "A patient" if r == "patient" else "A clinician",
                         key="su_role")
-        email2 = st.text_input("Email", key="su_email")
-        pw2 = st.text_input("Password", type="password", key="su_pw",
-                            help="At least 8 characters.")
-        name2 = st.text_input("Name", key="su_name")
+
+        st.markdown(ui.section("Who you are"), unsafe_allow_html=True)
+        name2 = st.text_input("Your full name", key="su_name",
+                              placeholder="Priya Sharma",
+                              help="Shown on your health card.")
 
         record = None
         if role == "clinician":
@@ -498,6 +506,11 @@ def screen_signin():
                     f"<div class='who'>Licence {record['license'] or '—'} "
                     f"{record['license_state'] or ''} · {record['city']}, {record['state']}"
                     f"</div></div>", unsafe_allow_html=True)
+
+        st.markdown(ui.section("How you will sign in"), unsafe_allow_html=True)
+        email2 = st.text_input("Email", key="su_email", placeholder="you@example.com")
+        pw2 = st.text_input("Password", type="password", key="su_pw",
+                            help="At least 8 characters. Nothing follows this field.")
 
         if st.button("Create account", type="primary", use_container_width=True):
             acct, problem = accounts.create(con, email=email2, password=pw2, role=role,
