@@ -3,9 +3,9 @@ Patient Financial Services    Account 88211904
 *** SYNTHETIC SAMPLE - NOT A REAL STATEMENT ***
 (An unclassified drug code that declines to say what was given.)
 
-CODE    DESCRIPTION                        QTY       AMOUNT
-70450   CT HEAD/BRAIN W/O CONTRAST           1     1,619.00
-J3490   UNCLASSIFIED DRUG                    1     4,200.00
-A9270   NON-COVERED ITEM                     1       860.00
+DATE        CODE    DESCRIPTION                      QTY       AMOUNT
+2026-03-14  70450   CT HEAD/BRAIN W/O CONTRAST         1     1,619.00
+2026-06-02  J3490   UNCLASSIFIED DRUG                  1     4,200.00
+2026-06-02  A9270   NON-COVERED ITEM                   1       860.00
 
-                                     TOTAL DUE     6,679.00
+                                                TOTAL DUE     6,679.00

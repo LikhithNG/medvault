@@ -28,10 +28,14 @@ def posted():
 P = posted()
 
 
-def at(code, mult=1.0, units=1):
-    """A line at a multiple of the hospital's own published price."""
+MATCHED_DAY = "2026-03-14"      # the demo vault has records on this date
+OTHER_DAY = "2026-06-02"        # nothing filed anywhere near this one
+
+
+def at(code, mult=1.0, units=1, day=MATCHED_DAY):
+    """A line at a multiple of the hospital's own published price, on a given date."""
     price, desc = P[code]
-    return (code, desc[:30], units, round(price * mult * units, 2))
+    return (code, desc[:30], units, round(price * mult * units, 2), day)
 
 
 BILLS = [
@@ -42,13 +46,14 @@ BILLS = [
     ("03_quantity", "A visit-level code billed ten times over.",
      lambda: [at("99282", 1.0, 10), at("80048"), at("71046")]),
     ("04_unspecified", "An unclassified drug code that declines to say what was given.",
-     lambda: [at("70450"), ("J3490", "UNCLASSIFIED DRUG", 1, 4200.00),
-              ("A9270", "NON-COVERED ITEM", 1, 860.00)]),
+     lambda: [at("70450"), ("J3490", "UNCLASSIFIED DRUG", 1, 4200.00, OTHER_DAY),
+              ("A9270", "NON-COVERED ITEM", 1, 860.00, OTHER_DAY)]),
     ("05_ambulance", "Includes a ground ambulance line - the federal carve-out.",
-     lambda: [("A0427", "ALS AMBULANCE EMERGENCY", 1, 1890.00), at("99285", 1.4),
-              at("70450")]),
+     lambda: [("A0427", "ALS AMBULANCE EMERGENCY", 1, 1890.00, OTHER_DAY),
+              at("99285", 1.4, day=OTHER_DAY), at("70450", day=OTHER_DAY)]),
     ("06_summary_not_itemised", "A summary with no billing codes - should be rejected.",
-     lambda: [("", "HOSPITAL SERVICES", 1, 8420.00), ("", "PHARMACY", 1, 1180.00)]),
+     lambda: [("", "HOSPITAL SERVICES", 1, 8420.00, MATCHED_DAY),
+              ("", "PHARMACY", 1, 1180.00, MATCHED_DAY)]),
     ("07_clean", "Every line exactly at the published price - nothing should flag.",
      lambda: [at("70450"), at("71046"), at("80048"), at("76700")]),
 ]
@@ -60,10 +65,10 @@ def as_text(note, lines):
            "Patient Financial Services    Account 88211904",
            "*** SYNTHETIC SAMPLE - NOT A REAL STATEMENT ***",
            f"({note})", "",
-           f"{'CODE':<8}{'DESCRIPTION':<34}{'QTY':>4}{'AMOUNT':>13}"]
-    for code, desc, units, amt in lines:
-        out.append(f"{code:<8}{desc:<34}{units:>4}{amt:>13,.2f}")
-    out += ["", f"{'TOTAL DUE':>46}{total:>13,.2f}"]
+           f"{'DATE':<12}{'CODE':<8}{'DESCRIPTION':<32}{'QTY':>4}{'AMOUNT':>13}"]
+    for code, desc, units, amt, day in lines:
+        out.append(f"{day:<12}{code:<8}{desc:<32}{units:>4}{amt:>13,.2f}")
+    out += ["", f"{'TOTAL DUE':>57}{total:>13,.2f}"]
     return "\n".join(out)
 
 
@@ -90,11 +95,11 @@ def as_image(lines, path):
     d.text((70, y), "SYNTHETIC SAMPLE - NOT A REAL STATEMENT",
            font=font(18, True), fill=(165, 60, 60)); y += 40
     d.line([(70, y), (W - 70, y)], fill=(140, 140, 140), width=2); y += 32
-    d.text((70, y), f"{'CODE':<9}{'DESCRIPTION':<34}{'QTY':>5}{'AMOUNT':>16}",
-           font=font(21), fill=(40, 40, 40)); y += 34
-    for code, desc, units, amt in lines:
-        d.text((70, y), f"{code or '--':<9}{desc:<34}{units:>5}{amt:>16,.2f}",
-               font=font(21), fill=(25, 25, 25)); y += 34
+    d.text((70, y), f"{'DATE':<13}{'CODE':<9}{'DESCRIPTION':<30}{'QTY':>5}{'AMOUNT':>16}",
+           font=font(20), fill=(40, 40, 40)); y += 34
+    for code, desc, units, amt, day in lines:
+        d.text((70, y), f"{day:<13}{code or '--':<9}{desc:<30}{units:>5}{amt:>16,.2f}",
+               font=font(20), fill=(25, 25, 25)); y += 34
     y += 12
     d.line([(70, y), (W - 70, y)], fill=(60, 60, 60), width=2); y += 28
     total = sum(l[3] for l in lines)

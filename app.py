@@ -650,14 +650,25 @@ def screen_check():
 
         flagged_lines = [l for l in priced["lines"] if l["verdict"] != "VERIFIED"]
         if flagged_lines:
-            st.markdown(ui.section(f"Above the published price · {len(flagged_lines)}"),
+            # "Above the published price" was wrong as a heading: this section also
+            # carries duplicates, suspect quantities and codes with no published price.
+            st.markdown(ui.section(f"Checked against the published prices · "
+                                   f"{len(flagged_lines)} flagged"),
                         unsafe_allow_html=True)
             for l in sorted(flagged_lines, key=lambda x: -(x.get("charged") or 0)):
                 label, tone = VERDICTS.get(l["verdict"], ("Checked", "warn"))
                 over = (f" · <b>{_m(l['amount_over'])} above</b>"
                         if l.get("amount_over") else "")
-                posted = (f"They publish {_m(l['posted_price'])} for this code"
-                          if l.get("posted_price") else
+                # The Checker leaves posted_price empty on a duplicate row - the price
+                # is on the first instance of that code. Saying "no published price"
+                # because this particular row lacks one told the reader the hospital
+                # publishes nothing for 99284 while the row above it showed $1,605.00.
+                price = l.get("posted_price")
+                if price is None and l.get("code"):
+                    price = next((o.get("posted_price") for o in priced["lines"]
+                                  if o.get("code") == l["code"] and o.get("posted_price")),
+                                 None)
+                posted = (f"They publish {_m(price)} for this code" if price else
                           "No published price for this code — worth asking about")
                 st.markdown(
                     f"<div class='hit {tone}'><span class='amt'>{_m(l['charged'])}</span>"
@@ -672,14 +683,32 @@ def screen_check():
     st.session_state["findings"] = {"priced": st.session_state.get("priced"),
                                     "rights": protections, "face": [f for _, f in face],
                                     "crosschecked": checked}
-    st.markdown(ui.section(f"{summary['unsupported']} of {summary['lines']} lines "
-                           "have nothing behind them"), unsafe_allow_html=True)
-    for r in checked:
-        label, tone = crosscheck.VERDICTS[r["verdict"]]
-        amt = (f"<span class='amt'>${r['charged']:,.2f}</span>"
-               if r.get("charged") else "")
-        st.markdown(f"<div class='hit {tone}'>{amt}<div class='h'>{label}</div>"
-                    f"<div class='b'>{r['ask']}</div></div>", unsafe_allow_html=True)
+
+    # A bill with no dates on it produced one identical "no date to check against" card per
+    # line, under a heading that said nothing was found - four cards saying the same thing
+    # beneath "0 of 4". When nothing is dated, that is one fact about the bill, not N.
+    undated = [r for r in checked if r["verdict"] == "UNDATED"]
+    if len(undated) == len(checked) and checked:
+        st.markdown(ui.section("Against your records"), unsafe_allow_html=True)
+        st.markdown(
+            "<div class='hit warn'><div class='h'>No dates on this bill to check against"
+            "</div><div class='b'>None of these lines carries a service date, so none of "
+            "them can be matched to your records. Ask the billing office for a statement "
+            "with dates — it is the single thing that makes the rest of this checkable."
+            "</div></div>", unsafe_allow_html=True)
+    else:
+        worth_showing = [r for r in checked if r["verdict"] != "UNDATED"]
+        st.markdown(ui.section(f"{summary['unsupported']} of {summary['lines']} lines "
+                               "have nothing behind them"), unsafe_allow_html=True)
+        if undated:
+            st.caption(f"{len(undated)} line(s) carry no date and could not be checked "
+                       f"either.")
+        for r in worth_showing:
+            label, tone = crosscheck.VERDICTS[r["verdict"]]
+            amt = (f"<span class='amt'>${r['charged']:,.2f}</span>"
+                   if r.get("charged") else "")
+            st.markdown(f"<div class='hit {tone}'>{amt}<div class='h'>{label}</div>"
+                        f"<div class='b'>{r['ask']}</div></div>", unsafe_allow_html=True)
     st.markdown(f"<div class='note'>{summary['caveat']}</div>", unsafe_allow_html=True)
 
     # ---- the letter --------------------------------------------------------
