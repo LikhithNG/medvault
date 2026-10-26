@@ -1,0 +1,16 @@
+# Pinned light. A health record is read at a hospital desk, often on someone else's screen,
+# and the card has to look the same every time. Inheriting the viewer's dark-mode preference
+# turned the paste box black and the captions invisible.
+[theme]
+base = "light"
+primaryColor = "#0F6FDE"
+backgroundColor = "#F7F9FC"
+secondaryBackgroundColor = "#FFFFFF"
+textColor = "#10151C"
+font = "sans serif"
+
+[client]
+toolbarMode = "minimal"
+
+[server]
+maxUploadSize = 25

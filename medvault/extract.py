@@ -1,0 +1,207 @@
+#!/usr/bin/env python3
+"""Read an uploaded document and turn it into a record the vault can hold.
+
+Two channels, same contract: a photograph goes to a vision model, a PDF with a text layer is
+read locally first and only its text is sent. A PDF that yields no text is treated as a
+photograph, because a scan is a photograph that happens to be in a PDF.
+
+What this module will not do is guess. Every field it cannot read comes back null, and the
+interface shows the gap rather than filling it. A vault that invents a dosage is worse than
+a shoebox of paper, because paper does not sound confident.
+"""
+import base64, io as _io, json, os, re
+
+from schema import KIND_ORDER, RECORD_FIELDS, MED_FIELDS
+
+# A phone camera produces 3-5 MB per shot. None of that resolution helps a model read
+# printed text, and all of it is carried in the request body as base64, which is a third
+# bigger again. The first test photograph here was 147 KB and still ran past a 60-second
+# timeout; an un-resized phone photo would never have returned at all.
+MAX_EDGE = int(os.environ.get("MEDVAULT_MAX_EDGE", "1400"))
+JPEG_QUALITY = 82
+
+
+def shrink(mime, data):
+    """Downscale an uploaded image for the reader.
+
+    Takes and returns (mime_type, bytes) - the same order the image pair travels in
+    everywhere else in this codebase, so it can be called as shrink(*image).
+
+    Falls back to the original bytes if Pillow is unavailable or the file is not an image
+    it can open - a document that reads slowly is better than one that cannot be read.
+    """
+    try:
+        from PIL import Image
+    except ImportError:
+        return mime, data
+    try:
+        im = Image.open(_io.BytesIO(data))
+        im.load()
+    except Exception:
+        return mime, data
+    if max(im.size) <= MAX_EDGE and len(data) < 400_000:
+        return mime, data
+    if im.mode not in ("RGB", "L"):
+        im = im.convert("RGB")
+    im.thumbnail((MAX_EDGE, MAX_EDGE))
+    buf = _io.BytesIO()
+    im.save(buf, "JPEG", quality=JPEG_QUALITY, optimize=True)
+    return "image/jpeg", buf.getvalue()
+
+SCHEMA = {
+    'type': 'object',
+    'properties': {
+        'kind':         {'type': 'string', 'enum': KIND_ORDER},
+        'service_date': {'type': 'string'},
+        'provider':     {'type': 'string'},
+        'title':        {'type': 'string'},
+        'summary':      {'type': 'string'},
+        'medications': {
+            'type': 'array',
+            'items': {
+                'type': 'object',
+                'properties': {k: {'type': 'string'} for k in MED_FIELDS},
+                'required': ['name'],
+            },
+        },
+    },
+    # 'medications' is required so the model has to answer the question rather than
+    # omit the key. An empty list is the right answer for a lab report; silence is
+    # not the right answer for a prescription, and silence is what optional produced.
+    'required': ['kind', 'title', 'summary', 'medications'],
+}
+
+_FIELDS = "\n".join(f"- {k}: {v}" for k, v in RECORD_FIELDS.items())
+_MEDS = "\n".join(f"  - {k}: {v}" for k, v in MED_FIELDS.items())
+
+PROMPT = f"""You are reading one page of a patient's own medical paperwork so it can be
+filed in their personal records. Report only what is printed on it.
+
+Fill these fields:
+{_FIELDS}
+
+If the document prescribes, dispenses or lists medicines, you must list EVERY one of
+them under "medications" - one entry per medicine, even if there are several. If the
+document prescribes no medicines at all, return an empty list. For each medicine:
+{_MEDS}
+
+Rules, in order of importance:
+1. Never invent a date, a dose, a provider or a diagnosis. If it is not printed, use null.
+   A missing field is correct. A plausible guess is a safety problem.
+2. Do not interpret results. "Haemoglobin 11.2 g/dL" is what it says; whether that is low is
+   not yours to decide and the patient has a doctor for it.
+3. "summary" is for the patient, not a clinician. Plain words, one or two sentences, no
+   abbreviations the page did not already use.
+4. "title" is short enough to read in a list - under about six words.
+"""
+
+
+def _as_text_prompt(text):
+    return PROMPT + "\n\nThe document's text follows.\n\n" + text[:18000]
+
+
+def _clean(value):
+    """Empty strings and the model's various ways of saying nothing all become None."""
+    if value is None:
+        return None
+    v = str(value).strip()
+    if not v or v.lower() in {"null", "none", "n/a", "na", "unknown", "not printed", "-"}:
+        return None
+    return v
+
+
+DATE = re.compile(r"(\d{4})-(\d{2})-(\d{2})")
+
+
+def _clean_date(value):
+    """The first real calendar date anywhere in the value, or None.
+
+    This used to require the whole field to be exactly YYYY-MM-DD. A model under a
+    structured-output schema returned "2026-09-18 Whittled down: 2026-09-18 -> ..." - it had
+    leaked its own reasoning into the string - and the strict match threw away a date that
+    was plainly there, three times over. Reading the date out of the noise is both more
+    forgiving and no less safe: the calendar check below still rejects anything impossible.
+    """
+    v = _clean(value)
+    if not v:
+        return None
+    m = DATE.search(v)
+    if not m:
+        return None
+    y, mo, d = (int(g) for g in m.groups())
+    try:
+        import datetime
+        return datetime.date(y, mo, d).isoformat()
+    except ValueError:
+        return None          # 2026-13-45 and friends
+
+
+def _shape(raw):
+    """One model answer in, one record dict out, with nothing trusted on the way through."""
+    meds = []
+    for m in (raw.get("medications") or []):
+        name = _clean(m.get("name"))
+        if not name:
+            continue                     # a dose with no medicine attached helps nobody
+        meds.append({k: _clean(m.get(k)) for k in MED_FIELDS} | {"name": name})
+
+    kind = _clean(raw.get("kind"))
+    return {
+        "kind":         kind if kind in KIND_ORDER else "other",
+        "service_date": _clean_date(raw.get("service_date")),
+        "provider":     _clean(raw.get("provider")),
+        "title":        _clean(raw.get("title")) or "Untitled record",
+        "summary":      _clean(raw.get("summary")),
+        "medications":  meds,
+    }
+
+
+def read_document(*, text=None, image=None):
+    """Extract a record. `image` is an (mime_type, raw_bytes) pair.
+
+    Returns (record_or_None, meta). meta always says what happened, so the interface can
+    tell a missing key apart from an unreadable page - the distinction that cost Itemized
+    four separate defects to get right.
+    """
+    import gemini
+
+    if not text and not image:
+        return None, {"ok": False, "error": "nothing to read"}
+
+    if image:
+        mime, data = shrink(*image)
+        payload = (mime, base64.b64encode(data).decode())
+        r = gemini.generate(PROMPT, schema=SCHEMA, image=payload)
+    else:
+        r = gemini.generate(_as_text_prompt(text), schema=SCHEMA)
+
+    if not r.get("ok"):
+        return None, {"ok": False, "error": r.get("error"), "model": r.get("model"),
+                      "pool_exhausted": r.get("pool_exhausted", False)}
+
+    raw = r.get("json")
+    if raw is None:
+        try:
+            raw = json.loads(r.get("text") or "")
+        except (json.JSONDecodeError, TypeError):
+            return None, {"ok": False, "error": "the reader did not return a record",
+                          "model": r.get("model")}
+
+    return _shape(raw), {"ok": True, "model": r.get("model")}
+
+
+def pdf_text(upload):
+    """Text out of a PDF's text layer. (text, note) or (None, reason)."""
+    try:
+        from pypdf import PdfReader
+    except ImportError:
+        return None, "pdf support is not installed on this server"
+    try:
+        reader = PdfReader(upload)
+        pages = [(pg.extract_text() or "") for pg in reader.pages]
+    except Exception as e:
+        return None, f"this file could not be opened as a PDF ({str(e)[:80]})"
+    text = "\n".join(pages).strip()
+    if len(text) < 40:
+        return None, "scanned"           # no text layer: it is a photograph in a PDF wrapper
+    return text, f"{len(reader.pages)} page(s)"
