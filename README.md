@@ -73,6 +73,12 @@ self-filed rather than deleting it.
 | **Check a bill** | A hospital bill against your own records. |
 | **Review** | Clinicians only. The queue of patient-filed records waiting to be confirmed. |
 
+Navigation is a fixed bar at the bottom of the screen with an icon above each label — where
+a thumb already is on a phone, and the clearest signal that this is an app rather than a web
+page. Which icons are drawn is inferred in CSS from how many tabs the signed-in role
+produced, five for a patient and two for a clinician, because Streamlit strips `<script>`
+from markdown so a class set from Python never arrives.
+
 ## Where your data lives
 
 In one SQLite file next to the app (`vault.db`, git-ignored). Uploaded originals are stored

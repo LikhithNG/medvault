@@ -347,9 +347,14 @@ def screen_signin():
     st.markdown(ui.brand("your records<br>stay on this device"), unsafe_allow_html=True)
     st.markdown(ui.section("Sign in"), unsafe_allow_html=True)
 
-    tab_in, tab_new = st.tabs(["I have an account", "Create one"])
+    # Deliberately a radio rather than st.tabs. The navigation bar is styled by selecting
+    # every tab-list on the page, so a second group of tabs anywhere would be dragged to the
+    # bottom of the screen wearing the wrong icons - which is exactly what happened here.
+    # One tab group per app, and it is the navigation.
+    mode = st.radio("", ["I have an account", "Create one"], horizontal=True,
+                    label_visibility="collapsed", key="auth_mode")
 
-    with tab_in:
+    if mode == "I have an account":
         # st.form, not loose inputs: inside one, Enter submits. A sign-in screen where the
         # return key does nothing is the kind of thing nobody reports and everybody feels.
         with st.form("signin", border=False):
@@ -363,7 +368,7 @@ def screen_signin():
                     st.session_state["account"] = acct
                     st.rerun()
 
-    with tab_new:
+    else:
         role = st.radio("This account is for", ["patient", "clinician"], horizontal=True,
                         format_func=lambda r: "A patient" if r == "patient" else "A clinician",
                         key="su_role")
@@ -449,6 +454,15 @@ def screen_review(account):
             db.unverify_record(con, r["id"], note="Clinician did not recognise this record")
             st.rerun()
 
+
+
+def sign_out():
+    """At the foot of a screen, not in the navigation - leaving is not a place to go."""
+    st.markdown("<div style='height:.6rem'></div>", unsafe_allow_html=True)
+    if st.button("Sign out", use_container_width=True, key=f"out{id(st.session_state)}"):
+        st.session_state.pop("account", None)
+        st.rerun()
+
 # ------------------------------------------------------------------ shell ----
 
 account = st.session_state.get("account")
@@ -461,25 +475,27 @@ st.markdown(ui.brand(f"{total} record{'' if total == 1 else 's'}<br>on this devi
             unsafe_allow_html=True)
 st.markdown(ui.signed_in_strip(account), unsafe_allow_html=True)
 
+# Signing out is not a destination, so it is not a navigation item. It lives at the foot of
+# the first screen of each role, which also keeps the bar at five icons and two - the counts
+# the stylesheet reads to decide which icons to draw.
 if accounts.is_verified_clinician(account):
     # A clinician's job here is reviewing, not keeping a vault, so they get that screen
     # first rather than someone else's emergency card.
-    tabs = st.tabs(["Review", "Records", "Sign out"])
-    with tabs[0]: screen_review(account)
-    with tabs[1]: screen_records()
-    with tabs[2]:
-        if st.button("Sign out", use_container_width=True):
-            st.session_state.pop("account", None); st.rerun()
+    tabs = st.tabs(["Review", "Records"])
+    with tabs[0]:
+        screen_review(account)
+        sign_out()
+    with tabs[1]:
+        screen_records()
 else:
-    tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Check a bill", "·"])
-    with tabs[0]: screen_card()
+    tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Bill"])
+    with tabs[0]:
+        screen_card()
+        sign_out()
     with tabs[1]: screen_add()
     with tabs[2]: screen_records()
     with tabs[3]: screen_medicines()
     with tabs[4]: screen_check()
-    with tabs[5]:
-        if st.button("Sign out", use_container_width=True):
-            st.session_state.pop("account", None); st.rerun()
 
 if st.query_params.get("diag"):
     st.divider()
