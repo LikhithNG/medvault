@@ -16,7 +16,8 @@ sys.path.insert(0, str(HERE / "medvault"))
 st.set_page_config(page_title="MedVault", page_icon="🩺", layout="centered",
                    initial_sidebar_state="collapsed")
 
-SECRET_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_POOL", "MEDVAULT_DB")
+SECRET_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_POOL",
+               "GROQ_API_KEY", "GROQ_MODEL", "GROQ_POOL", "MEDVAULT_DB")
 CRED_TRACE = []
 
 
@@ -50,6 +51,13 @@ def _load_credentials():
                 os.environ.setdefault(k.strip(), v.strip().strip("\"'"))
     else:
         CRED_TRACE.append(".env absent (expected on a server)")
+
+
+    # Groq serves open models. This key cannot reach llama-3.3-70b, which groq.py would
+    # otherwise fall back to and collect a 404 from, so the pool is set to what it serves.
+    os.environ.setdefault("GROQ_MODEL", "openai/gpt-oss-120b")
+    os.environ.setdefault("GROQ_POOL",
+                          "openai/gpt-oss-120b,openai/gpt-oss-20b,qwen/qwen3.8-27b")
 
 
 _load_credentials()
@@ -520,10 +528,11 @@ def screen_check():
                      "the hospital for the itemised version.")
             return
         read_total = sum(l["charged"] for l in lines)
+        who = f" · read by {meta['provider']}" if meta.get("provider") else ""
         if meta.get("reconciled") is True:
             st.success(f"Read **{len(lines)} charge(s)** totalling **${read_total:,.2f}**"
                        + (f" from {meta['hospital']}" if meta.get("hospital") else "")
-                       + " — and they add up to the total printed on the bill.")
+                       + f" — and they add up to the total printed on the bill.{who}")
         else:
             # Never show a number from an unverified read without saying so. A truncated
             # read looks exactly like a short bill.

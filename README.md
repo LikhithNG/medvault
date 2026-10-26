@@ -117,7 +117,8 @@ Reading a photograph needs a model. Nothing else here does.
 
 | Step | How |
 |---|---|
-| Turn a photo or PDF into line items | Vision model, one call, reconciled against the bill's printed total |
+| Turn a **PDF** into line items | **Groq — open-source models** (gpt-oss, Qwen), free tier |
+| Turn a **photograph** into line items | Vision model, one call — see below |
 | Duplicate codes | `checker.py` — pure Python |
 | Charged above the published price | `checker.py` — pure Python |
 | Quantity billed many times over | `checker.py` — pure Python |
@@ -127,6 +128,21 @@ Reading a photograph needs a model. Nothing else here does.
 | Whether your records support a line | `crosscheck.py` — pure Python |
 | The dispute letter | `dispute.py` — a template over the Checker's figures |
 | Answering questions about the bill | `explain.py` — reads the findings, generates nothing |
+
+### Open models where they work
+
+A PDF from a patient portal has a text layer, so reading it needs no vision at all — those
+go to **Groq's free tier, running open-source models**, and come back in about a second.
+A photograph does need vision, and Groq's key reaches no vision model, so that path still
+uses Gemini. The interface says which one answered.
+
+Two things that cost a measurement to find. Groq's JSON mode refuses a prompt that does not
+contain the word "json", while Gemini copies a worked JSON example straight into its answer
+when one is present — so the requirement is added per provider rather than compromising the
+shared prompt. And Groq's JSON mode does not enforce a schema, only valid JSON, so the model
+named the rows `"charges"` instead of `"line_items"` and every line was silently dropped;
+the parser now accepts the obvious synonyms, because losing a whole bill to a key name is a
+worse failure than a slightly loose parser.
 
 **The explainer is not a chatbot, and that is the design.** Asked "why is this charge
 wrong?", a language model produces a fluent paragraph whether or not it knows — and on a

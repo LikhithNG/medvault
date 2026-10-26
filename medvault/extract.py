@@ -280,11 +280,47 @@ Do not judge, correct, re-price or comment on anything.
 """
 
 
+# Gemini enforces the response schema; Groq's JSON mode only asks for valid JSON, so the
+# model names the keys itself - it returned the rows under "charges" rather than
+# "line_items" and every line was silently dropped. The prompt now names the key, and this
+# accepts the obvious synonyms as well, because a reader that loses a whole bill over a
+# key name is a worse failure than a slightly loose parser.
+ITEM_KEYS = ("line_items", "charges", "lines", "items", "line_item", "charge_lines")
+
+
+def _as_money(value):
+    """A number, or a string like "3,100.00" or "$3,100.00". None when it is neither.
+
+    Only Gemini's schema guarantees a number here; a provider without schema enforcement
+    returns whatever the model felt like, and a comma should not cost a line.
+    """
+    if isinstance(value, (int, float)):
+        return round(float(value), 2)
+    if not isinstance(value, str):
+        return None
+    cleaned = re.sub(r"[^\d.\-]", "", value)
+    try:
+        return round(float(cleaned), 2)
+    except ValueError:
+        return None
+
+
+def _line_items(raw):
+    for key in ITEM_KEYS:
+        v = raw.get(key)
+        if isinstance(v, list) and v:
+            return v
+    # Last resort: the first list of objects anywhere in the answer.
+    for v in raw.values():
+        if isinstance(v, list) and v and isinstance(v[0], dict):
+            return v
+    return []
+
+
 def _clean_line(raw):
     code = (_clean(raw.get("code")) or "").upper().replace(" ", "")
-    try:
-        charged = float(raw.get("charged"))
-    except (TypeError, ValueError):
+    charged = _as_money(raw.get("charged"))
+    if charged is None:
         return None                      # a line with no amount is not a charge
     try:
         units = int(raw.get("units") or 1)
@@ -298,23 +334,54 @@ def _clean_line(raw):
             "service_date": _clean_date(raw.get("service_date"))}
 
 
-def read_bill(*, text=None, image=None):
-    """Extract a bill's line items. Returns (lines, meta)."""
-    import gemini
+# Groq serves open-source models on a free tier - gpt-oss, Qwen - and its key reaches none
+# with vision. So the two halves of reading a bill go to different places, and the split is
+# useful rather than a compromise: most bills arrive as a PDF from a patient portal, which
+# has a text layer and needs no vision at all. Those run entirely on open models.
+#
+# Groq's JSON mode additionally refuses a prompt that does not contain the word "json",
+# while Gemini copied a worked JSON example straight into its answer when one was present.
+# The requirement is therefore added per provider instead of compromising the shared prompt.
+JSON_NUDGE = ("\n\nReturn json with the charge rows in a key named exactly "
+              "\"line_items\", plus hospital_name_on_bill, date_of_service and "
+              "total_printed.")
 
+
+def read_bill(*, text=None, image=None, prefer_open=True):
+    """Extract a bill's line items. Returns (lines, meta).
+
+    Text goes to Groq's open models when a key is there; a photograph needs vision and so
+    goes to Gemini. meta['provider'] says which answered.
+    """
     if not text and not image:
         return [], {"ok": False, "error": "nothing to read"}
 
+    provider = None
     if image:
+        import gemini
         mime, data = shrink(*image)
         payload = (mime, base64.b64encode(data).decode())
         r = gemini.generate(BILL_PROMPT, schema=BILL_SCHEMA, image=payload)
+        provider = "gemini (vision)"
     else:
-        r = gemini.generate(BILL_PROMPT + "\n\nThe bill's text follows.\n\n" + text[:18000],
-                            schema=BILL_SCHEMA)
+        body = BILL_PROMPT + "\n\nThe bill's text follows.\n\n" + text[:18000]
+        r = None
+        if prefer_open and os.environ.get("GROQ_API_KEY", "").strip():
+            import groq
+            r = groq.generate(BILL_PROMPT + JSON_NUDGE
+                              + "\n\nThe bill's text follows.\n\n" + text[:18000],
+                              schema=BILL_SCHEMA)
+            provider = "groq (open models)"
+            if not r.get("ok"):
+                r = None                 # fall through to the other provider
+        if r is None:
+            import gemini
+            r = gemini.generate(body, schema=BILL_SCHEMA)
+            provider = "gemini"
 
     if not r.get("ok"):
-        return [], {"ok": False, "error": r.get("error"), "model": r.get("model")}
+        return [], {"ok": False, "error": r.get("error"), "model": r.get("model"),
+                    "provider": provider}
 
     raw = r.get("json")
     if raw is None:
@@ -322,14 +389,14 @@ def read_bill(*, text=None, image=None):
             raw = json.loads(r.get("text") or "")
         except (json.JSONDecodeError, TypeError):
             return [], {"ok": False, "error": "the reader did not return a bill",
-                        "model": r.get("model")}
+                        "model": r.get("model"), "provider": provider}
 
-    lines = [c for c in (_clean_line(l) for l in (raw.get("line_items") or [])) if c]
+    lines = [c for c in (_clean_line(l) for l in _line_items(raw)) if c]
     try:
         printed = round(float(raw["total_printed"]), 2) if raw.get("total_printed") else None
     except (TypeError, ValueError):
         printed = None
-    return lines, {"ok": True, "model": r.get("model"),
+    return lines, {"ok": True, "model": r.get("model"), "provider": provider,
                    "hospital": _clean(raw.get("hospital_name_on_bill")),
                    "date_of_service": _clean_date(raw.get("date_of_service")),
                    "total_printed": printed}
