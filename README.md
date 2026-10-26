@@ -31,6 +31,43 @@ is never everything, so "no record found" means *you have nothing on file suppor
 never *this did not happen*. Every verdict is phrased as a question to ask the billing
 office. There are tests in `tests/test_crosscheck.py` whose only job is to keep it that way.
 
+## Is this the right amount?
+
+Two comparisons, because neither alone is enough.
+
+**What this hospital publishes.** Every hospital must post its standard charges under
+45 CFR 180. The 262 rows in `data/a3_reference_table.csv` are nine of those files, collected
+by hand. This is the stronger comparison where it applies — a hospital charging more than
+the price it published itself is a question with a document behind it.
+
+**What Medicare allows.** The table covers nine hospitals, and that was the weakest thing
+about this project: a bill from anywhere else got the rights checks, the arithmetic and the
+records cross-check, and silence under "is this the right amount". `medicare.py` fills that
+with a national benchmark covering **any CPT code**, which also carries the thing a bill
+never does — a plain-English name:
+
+| The bill says | The benchmark says | Billed | Medicare allows |
+|---|---|---|---|
+| `72148 MRI LUMBAR WITHOUT` | MRI of the Lower Back without Contrast | $9,374.04 | $191.72 · **49×** |
+| `70450 CT HEAD/BRAIN W/O CONTRAST` | CT Scan of the Head without Contrast | $3,076.10 | $106.55 · **29×** |
+| `80048 LAB BASIC METABOLIC PANEL` | Basic Metabolic Panel (BMP) | $241.00 | $8.46 · **29×** |
+
+Two things stated in the interface, not just here. **A Medicare rate is not a price cap** —
+a hospital may charge a commercial patient more and usually does, so a multiple is context
+for a conversation and not evidence of an overcharge. And the endpoint is a third party
+republishing the CMS Physician Fee Schedule rather than CMS itself; the figures carry CMS's
+own dataset name and effective year, which is checkable, but a republisher can be wrong in a
+way data.cms.gov cannot.
+
+Coverage is CPT. HCPCS Level II — J-codes for drugs, G- and A-codes — is outside the
+dataset, and the screen says which codes it could not benchmark rather than leaving them out
+silently. Lookups are cached to disk, so a demo does not depend on a network and nobody
+re-reads the same code off a free service.
+
+This also settles **Change 9** from the Itemized user testing, where a tester asked for
+`HCHG CT ABD & PELVIS W/CON` to be translated and the answer was no, because a plain-English
+description was the one thing on the card that would have been invented. It is sourced now.
+
 ## Who can say a record is real
 
 The obvious answer is "only let doctors upload". It is the wrong one: it empties the vault

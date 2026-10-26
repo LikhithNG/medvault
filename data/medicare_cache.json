@@ -1,0 +1,80 @@
+{
+ "36415": {
+  "_at": 1793014277.4855602,
+  "category": "Pathology/Laboratory",
+  "code": "36415",
+  "commercial_high": 23.35,
+  "commercial_low": 14.01,
+  "dataset": "CMS_CLFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 9.34,
+  "name": "Blood Draw (Venipuncture)",
+  "plain": "Venipuncture (standard blood draw from a vein)."
+ },
+ "70450": {
+  "_at": 1793014276.402178,
+  "category": "Radiology",
+  "code": "70450",
+  "commercial_high": 266.38,
+  "commercial_low": 159.82,
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 106.55,
+  "name": "CT Scan of the Head without Contrast",
+  "plain": "A CT scan of your head without contrast dye, creating detailed cross-sectional images of your brain and skull."
+ },
+ "71046": {
+  "_at": 1793014276.9155352,
+  "category": "Radiology",
+  "code": "71046",
+  "commercial_high": 82.68,
+  "commercial_low": 49.61,
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 33.07,
+  "name": "Chest X-ray (2 Views)",
+  "plain": "A chest X-ray taken from both the front and the side (two views) for more complete evaluation."
+ },
+ "72148": {
+  "_at": 1793014276.666594,
+  "category": "Radiology",
+  "code": "72148",
+  "commercial_high": 479.3,
+  "commercial_low": 287.58,
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 191.72,
+  "name": "MRI of the Lower Back (Lumbar Spine) without Contrast",
+  "plain": "An MRI of your lumbar spine (lower back) without contrast, showing detailed images of discs, nerves, and spinal cord."
+ },
+ "80048": {
+  "_at": 1793014277.2393012,
+  "category": "Pathology/Laboratory",
+  "code": "80048",
+  "commercial_high": 21.15,
+  "commercial_low": 12.69,
+  "dataset": "CMS_CLFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 8.46,
+  "name": "Basic Metabolic Panel (BMP)",
+  "plain": "A basic metabolic panel (BMP) blood test measuring 8 substances including blood sugar, calcium, and kidney function markers."
+ },
+ "99284": {
+  "_at": 1793014277.744063,
+  "category": "Evaluation & Management",
+  "code": "99284",
+  "commercial_high": 295.6,
+  "commercial_low": 177.36,
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 118.24,
+  "name": "Emergency Room Visit - High Complexity",
+  "plain": "A serious emergency room visit for conditions that need urgent and detailed evaluation, often involving multiple tests."
+ }
+}

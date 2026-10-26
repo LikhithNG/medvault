@@ -478,8 +478,8 @@ def screen_check():
         "Which hospital issued this bill?", ["— not listed —"] + known,
         format_func=lambda h: h if h.startswith("—") else pretty[h], key="bill_hosp")
     st.caption("Nine hospitals have published price files collected for this project. "
-               "Pick yours to compare amounts; leave it unset and everything except the "
-               "price comparison still runs.")
+               "If yours is not one of them, leave it unset — every line is still checked "
+               "against the national Medicare allowance, which covers any CPT code.")
 
     ready = bool(pasted.strip()) or upload is not None
     if not st.button("Check it", type="primary", use_container_width=True) or not ready:
@@ -643,7 +643,53 @@ def screen_check():
                         f"<div class='b'>{f['detail']}<br><br><b>Ask:</b> {f['ask']}</div>"
                         f"</div>", unsafe_allow_html=True)
 
-    # ---- what the hospital publishes for these codes ---------------------------
+    # ---- the national benchmark, which works for any CPT code ------------------
+    # The 262-row table covers nine hospitals. This covers every CPT code there is, so a
+    # bill from anywhere gets an answer to "is this the right amount" rather than silence.
+    import medicare
+    bench = medicare.lookup_many([l.get("code") for l in lines])
+    named = {c: b for c, b in bench.items() if b.get("found")}
+
+    if named:
+        st.markdown(ui.section("Against the national Medicare allowance"),
+                    unsafe_allow_html=True)
+        st.caption("What the federal programme allows for the same code. **A Medicare rate "
+                   "is not a price cap** — a hospital may charge a commercial patient more, "
+                   "and usually does. This is context for the conversation, not evidence of "
+                   "an overcharge.")
+        rows = []
+        for l in lines:
+            b = named.get((l.get("code") or "").upper())
+            if not b or not b.get("medicare_rate"):
+                continue
+            mult = medicare.multiple_of_medicare(l.get("charged"), l.get("units"),
+                                                 b["medicare_rate"])
+            rows.append((mult or 0, l, b, mult))
+        for _, l, b, mult in sorted(rows, key=lambda t: -t[0]):
+            tone = "bad" if (mult or 0) >= 10 else "warn" if (mult or 0) >= 3 else "ok"
+            times = (f"<b>{mult:g}× the Medicare allowance</b>" if mult
+                     else "could not be compared")
+            st.markdown(
+                f"<div class='hit {tone}'><span class='amt'>{_m(l.get('charged'))}</span>"
+                f"<div class='h'>{b['name']}</div><div class='b'>"
+                f"<b>{l.get('code')}</b> · billed as “{(l.get('description') or '')[:40]}”"
+                f"{f' · qty {l["units"]}' if (l.get('units') or 1) > 1 else ''}<br>"
+                f"Medicare allows {_m(b['medicare_rate'])}"
+                f"{f' per unit' if (l.get('units') or 1) > 1 else ''} — {times}."
+                + (f" Commercial plans typically pay "
+                   f"{_m(b['commercial_low'])}–{_m(b['commercial_high'])}."
+                   if b.get("commercial_low") else "")
+                + f"<br><span style='opacity:.65'>CMS {b.get('dataset','')} "
+                  f"{b.get('effective_year','')}</span></div></div>",
+                unsafe_allow_html=True)
+
+        missing = [c for c, b in bench.items() if not b.get("found")]
+        if missing:
+            st.caption(f"{len(missing)} code(s) are not in the national fee schedule and "
+                       f"could not be benchmarked: {', '.join(sorted(missing))}. It covers "
+                       f"CPT; HCPCS codes such as J- and A-codes are outside it.")
+
+    # ---- what this particular hospital publishes -------------------------------
     if hospital != "— not listed —":
         # The table is keyed on a lowercased name; the letter must not be addressed to it.
         priced = checker.check_bill(
