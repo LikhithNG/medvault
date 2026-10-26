@@ -62,6 +62,38 @@ confirmed it and when, so a badge can always be traced back to a checked NPI, an
 clinician who confirmed the wrong record can withdraw it — which demotes the record to
 self-filed rather than deleting it.
 
+## What the law may already give you
+
+Checking prices is the smaller half. A rate difference of a few hundred dollars is real; a
+right you did not know you had can be worth the whole bill — and none of it needs a price
+file, only a few questions about your situation.
+
+| If | Then |
+|---|---|
+| You are uninsured or self-pay | You were owed a written **Good Faith Estimate** before scheduled care. Billed $400+ above it, you can use federal dispute resolution instead of negotiating alone. |
+| The hospital is non-profit | It **must** have a financial assistance policy and cap what it charges people who qualify — and is not required to tell you that you do. |
+| It was emergency care | Balance billing above in-network cost sharing is generally **prohibited**, not negotiable. |
+| The facility was in network | An out-of-network anaesthetist or radiologist at it generally cannot balance-bill you either. |
+| The bill includes a ground ambulance | Federally **un**protected — a deliberate carve-out. ~22 states fill the gap; this tool does not know which and will not guess. |
+
+Anything you leave as *"Not sure"* is treated as unknown and the check is skipped, and the
+screen says which questions went unanswered. Filling those gaps with plausible negatives
+would make a tidier result and would eventually tell someone they have no protection that
+they in fact have.
+
+Three more checks need nothing but the bill: **lines that do not multiply out**
+(units × price ≠ charge), **unspecified codes** like `J3490` that decline to say what was
+provided, and exact duplicates.
+
+This idea — and the discipline around it — is owed to
+[DAVANO Innovation Lab's `itemize`](https://github.com/DAVANO-INNOVATION-LAB/itemize),
+whose README makes the point plainly: a patient's rights are usually worth more than any
+coding error.
+
+> **Read [CAVEATS.md](CAVEATS.md) before relying on anything this says.** It is
+> information, not advice; "no record found" does not mean a service did not happen; and
+> an unanswered question is never a no.
+
 ## Screens
 
 | | |

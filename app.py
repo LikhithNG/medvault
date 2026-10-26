@@ -409,6 +409,24 @@ def screen_check():
         placeholder="2026-03-14  70450  CT HEAD/BRAIN WO CONTRAST   1   3,100.00")
     st.caption("One line per charge: a date, a description and an amount.")
 
+    # A few questions about the patient's situation unlock protections worth far more than
+    # any rate difference on the bill - and none of them need a price file to answer.
+    with st.expander("Four questions that may be worth more than the prices"):
+        st.caption("Federal law gives patients rights that depend on the situation, not on "
+                   "the amounts. Leave anything blank that you are not sure of — unanswered "
+                   "is treated as unknown, never as no.")
+        cov = st.radio("Were you insured for this care?",
+                       ["Not sure", "I have insurance", "Uninsured or self-pay"],
+                       key="rt_cov")
+        c1, c2 = st.columns(2)
+        emg = c1.selectbox("Was it emergency care?", ["Not sure", "Yes", "No"], key="rt_emg")
+        npf = c2.selectbox("Is the hospital non-profit?", ["Not sure", "Yes", "No"],
+                           key="rt_npf")
+        inn = st.selectbox("Was the hospital itself in your network?",
+                           ["Not sure", "Yes", "No"], key="rt_inn")
+        gfe_raw = st.text_input("If you were given a written estimate, what did it say?",
+                                placeholder="e.g. 1200.00", key="rt_gfe")
+
     if not st.button("Check it", type="primary", use_container_width=True) or not pasted.strip():
         return
 
@@ -421,8 +439,50 @@ def screen_check():
             continue
         d = _re.search(r"\d{4}-\d{2}-\d{2}", raw)
         amt = _re.findall(r"([\d,]+\.\d{2})", raw)
+        from codes import find_code
         lines.append({"description": raw, "service_date": d.group(0) if d else None,
+                      "code": find_code(raw),
                       "charged": float(amt[-1].replace(",", "")) if amt else None})
+
+    # ---- what the law may already give you, before any price is compared -------
+    import rights, billchecks
+    tri = {"Not sure": None, "Yes": True, "No": False}
+    try:
+        gfe_val = float((gfe_raw or "").replace("$", "").replace(",", "").strip() or 0) or None
+    except ValueError:
+        gfe_val = None
+    ctx = rights.context(
+        coverage={"I have insurance": "insured",
+                  "Uninsured or self-pay": "self_pay"}.get(cov, rights.UNKNOWN),
+        emergency=tri[emg], nonprofit_hospital=tri[npf], in_network_facility=tri[inn],
+        gfe_amount=gfe_val)
+    bill_total = round(sum(float(l.get("charged") or 0) for l in lines), 2)
+    protections = rights.evaluate(lines, bill_total, ctx)
+
+    if protections:
+        st.markdown(ui.section(f"What the law may already give you · {len(protections)}"),
+                    unsafe_allow_html=True)
+        for f in protections:
+            tone = "bad" if f["severity"] == "high" else "warn"
+            st.markdown(f"<div class='hit {tone}'><div class='h'>{f['title']}</div>"
+                        f"<div class='b'>{f['means']}<br><br><b>What to do:</b> {f['todo']}"
+                        f"<br><span style='opacity:.7'>{f['source']}</span></div></div>",
+                        unsafe_allow_html=True)
+
+    still_open = rights.unanswered(ctx)
+    if still_open:
+        st.caption("Not checked, because you have not said: " + ", ".join(still_open)
+                   + ". That is not the same as having no protection.")
+
+    # ---- things wrong with the bill on its own face ----------------------------
+    face = billchecks.run(lines)
+    if face:
+        st.markdown(ui.section(f"Wrong on the bill's own face · {len(face)}"),
+                    unsafe_allow_html=True)
+        for _, f in face:
+            st.markdown(f"<div class='hit warn'><div class='h'>{f['title']}</div>"
+                        f"<div class='b'>{f['detail']}<br><br><b>Ask:</b> {f['ask']}</div>"
+                        f"</div>", unsafe_allow_html=True)
 
     checked, summary = crosscheck.check_bill(lines, records)
     st.markdown(ui.section(f"{summary['unsupported']} of {summary['lines']} lines "

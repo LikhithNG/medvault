@@ -1,0 +1,83 @@
+#!/usr/bin/env python3
+"""Checks that need nothing but the bill itself.
+
+Borrowed from DAVANO's `itemize`, which lists these under "needs nothing but the bill" -
+the useful observation being that a surprising amount can be found without any price file
+at all. No reference data, no network, no model.
+"""
+import re
+
+# HCPCS Level II codes that exist specifically to mean "not otherwise classified". They are
+# legitimate - a new drug needs somewhere to go - but on a patient's bill they are a line
+# that declines to say what was provided, and they are worth asking about every time.
+UNSPECIFIED = {
+    "J3490": "Unclassified drug",
+    "J3590": "Unclassified biologic",
+    "J9999": "Unclassified chemotherapy drug",
+    "A9270": "Non-covered item or service",
+    "A9699": "Unclassified radiopharmaceutical",
+    "E1399": "Miscellaneous durable medical equipment",
+    "J7999": "Compounded drug, not otherwise classified",
+    "L9999": "Unclassified orthotic or prosthetic",
+    "Q9977": "Unclassified drug or biological",
+    "99199": "Unlisted special service or procedure",
+}
+
+# A charge that is a round multiple of the unit price is the normal case; anything off by
+# more than a cent is either a discount, a surcharge or a mistake, and the patient is
+# entitled to know which.
+TOLERANCE = 0.01
+
+
+def arithmetic(line):
+    """units x unit price should equal the charge. When it does not, say by how much."""
+    units = line.get("units")
+    unit_price = line.get("unit_price") or line.get("posted_price")
+    charged = line.get("charged")
+    if not (isinstance(units, (int, float)) and units > 0
+            and isinstance(unit_price, (int, float)) and unit_price > 0
+            and isinstance(charged, (int, float))):
+        return None
+
+    expected = round(units * unit_price, 2)
+    gap = round(charged - expected, 2)
+    if abs(gap) <= TOLERANCE:
+        return None
+    return {
+        "rule": "arithmetic",
+        "title": "The line does not multiply out",
+        "detail": (f"{units:g} at ${unit_price:,.2f} each is ${expected:,.2f}, "
+                   f"but the line is billed ${charged:,.2f} — "
+                   f"{'over' if gap > 0 else 'under'} by ${abs(gap):,.2f}."),
+        "ask": "Ask the billing office to explain how this line was calculated.",
+    }
+
+
+def unspecified(line):
+    """A code that declines to say what was provided."""
+    code = (line.get("code") or "").strip().upper()
+    if code not in UNSPECIFIED:
+        return None
+    return {
+        "rule": "unspecified_code",
+        "title": f"Code {code} does not say what this was",
+        "detail": (f"{code} means “{UNSPECIFIED[code]}”. It is a real billing code, but it "
+                   "identifies nothing specific, so there is no published price to compare "
+                   "it against and no way to tell whether the amount is reasonable."),
+        "ask": f"Ask what was actually provided under code {code}, and for the price of "
+               "the specific item or drug.",
+    }
+
+
+CHECKS = (arithmetic, unspecified)
+
+
+def run(lines):
+    """Every bill-only check against every line. Returns (line_index, finding) pairs."""
+    out = []
+    for i, line in enumerate(lines):
+        for check in CHECKS:
+            found = check(line)
+            if found:
+                out.append((i, found))
+    return out
