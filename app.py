@@ -716,22 +716,40 @@ def screen_check():
         if undated:
             st.caption(f"{len(undated)} line(s) carry no date and could not be checked "
                        f"either.")
+        # Grouped by verdict and date. "You have records from 14 Mar 2026 (Basic metabolic
+        # panel, Chest X-ray) and none of them mentions it" is a fact about that day, not
+        # about each line - printed per card it filled the screen with four copies of the
+        # same sentence and buried the one thing that differed, which is the line itself.
+        groups = {}
         for r in worth_showing:
-            label, tone = crosscheck.VERDICTS[r["verdict"]]
-            amt = (f"<span class='amt'>${r['charged']:,.2f}</span>"
-                   if r.get("charged") else "")
-            # Which line this is about. Three cards reading "You have records that day,
-            # but none mention this" differed only by amount, and on a bill with the same
-            # code twice at the same price there was no way to tell them apart at all.
-            which = " · ".join(filter(None, [
-                f"<b>{r['code']}</b>" if r.get("code") else None,
-                (r.get("description") or "")[:46] or None,
-                r.get("service_date") or None]))
-            st.markdown(f"<div class='hit {tone}'>{amt}<div class='h'>{label}</div>"
-                        f"<div class='b'>{which}<br>{r['ask']}</div></div>"
-                        if which else
-                        f"<div class='hit {tone}'>{amt}<div class='h'>{label}</div>"
-                        f"<div class='b'>{r['ask']}</div></div>",
+            groups.setdefault((r["verdict"], r.get("service_date")), []).append(r)
+
+        for (verdict, when_), rows in groups.items():
+            label, tone = crosscheck.VERDICTS[verdict]
+            head = f"{label}{f' · {when_}' if when_ else ''}"
+            if verdict == "DATE_NO_MATCH" and rows[0].get("matches"):
+                held = ", ".join(f"“{m['title']}”" for m in rows[0]["matches"][:3])
+                why = (f"You have {len(rows[0]['matches'])} record(s) from that day "
+                       f"({held}) and none of them covers the charge"
+                       f"{'s' if len(rows) > 1 else ''} below.")
+            elif verdict == "NO_RECORD":
+                gap = rows[0].get("nearest_days")
+                why = ("You have filed nothing from that date"
+                       + (f" — your closest record is {gap} days away" if gap else "")
+                       + ". That may simply be paperwork you never received.")
+            else:
+                why = rows[0]["ask"]
+
+            body = "".join(
+                f"<div class='b' style='margin-top:.45rem'>"
+                f"<span class='amt'>${r['charged']:,.2f}</span>"
+                + " · ".join(filter(None, [
+                    f"<b>{r['code']}</b>" if r.get("code") else None,
+                    (r.get("description") or "")[:46] or None]))
+                + "</div>" for r in rows)
+
+            st.markdown(f"<div class='hit {tone}'><div class='h'>{head}</div>"
+                        f"<div class='b'>{why}</div>{body}</div>",
                         unsafe_allow_html=True)
     st.markdown(f"<div class='note'>{summary['caveat']}</div>", unsafe_allow_html=True)
 
