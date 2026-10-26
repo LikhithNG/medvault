@@ -28,7 +28,8 @@ def money(v):
     return f"${v:,.2f}" if isinstance(v, (int, float)) else "—"
 
 
-def letter(reviewed, patient_name=None, rights_findings=None, account=None):
+def letter(reviewed, patient_name=None, rights_findings=None, account=None,
+           record_gaps=None):
     """A dispute letter. Returns plain text."""
     hospital = reviewed.get("hospital_name") or "the billing office"
     today = datetime.date.today().strftime("%d %B %Y")
@@ -58,6 +59,18 @@ def letter(reviewed, patient_name=None, rights_findings=None, account=None):
             code=l.get("code") or "—", desc=(l.get("description") or "")[:56],
             charged=money(l.get("charged")), posted=money(l.get("posted_price")),
             over=money(l.get("amount_over")), units=l.get("units", 1)))
+        out.append("")
+
+    if record_gaps:
+        out += ["Charges I have no record of",
+                "---------------------------",
+                "I keep my own copies of the paperwork from my care. The lines below do",
+                "not correspond to anything I hold. That may simply be paperwork I was",
+                "never given, which is why I am asking rather than disputing.", ""]
+        for g in record_gaps:
+            who = " ".join(filter(None, [g.get("code"), (g.get("description") or "")[:40]]))
+            out.append(f"{who or 'Line'} — {money(g.get('charged'))}"
+                       + (f", {g['service_date']}" if g.get("service_date") else ""))
         out.append("")
 
     if rights_findings:

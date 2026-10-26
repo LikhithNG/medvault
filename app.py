@@ -579,13 +579,25 @@ def screen_check():
             # The description is what is left once the date, the code and the money have
             # been taken out. Keeping the whole row printed "72148 2026-03-14 72148 MRI
             # LUMBAR" on the card - the code twice and a date nobody needed there.
+            # The quantity column, which this parser used to ignore entirely and set to 1.
+            # A blood draw billed 2 at a published $50 is $100 and correct; read as one
+            # unit it looked like $50 over, and the letter said so in writing. The quantity
+            # is the bare integer sitting between the description and the amount.
+            qty = _re.search(r"(?:^|\s)(\d{1,3})\s+[\d,]+\.\d{2}\s*$", raw)
+            units = int(qty.group(1)) if qty else 1
+
             desc = raw
             for part in filter(None, [d.group(0) if d else None, code] + amt):
                 desc = desc.replace(part, " ")
             desc = _re.sub(r"\s{2,}", " ", desc).strip(" \t|,-")
+            if qty:
+                # Strip the quantity off the end of what is left. Slicing by the match's
+                # own offsets does not work: those index the original row, and the amounts
+                # and the code have already been removed from this string.
+                desc = _re.sub(rf"\s*\b{qty.group(1)}\b\s*$", "", desc).strip()
             lines.append({"description": desc or (code or raw),
                           "service_date": d.group(0) if d else None,
-                          "code": code, "units": 1,
+                          "code": code, "units": units,
                           "charged": float(amt[-1].replace(",", "")) if amt else None})
 
     if reject_if_not_itemised(lines):
@@ -633,8 +645,9 @@ def screen_check():
 
     # ---- what the hospital publishes for these codes ---------------------------
     if hospital != "— not listed —":
+        # The table is keyed on a lowercased name; the letter must not be addressed to it.
         priced = checker.check_bill(
-            {"hospital_name": hospital,
+            {"hospital_name": pretty.get(hospital, hospital),
              "line_items": [{"code": l.get("code") or "", "description": l["description"],
                              "units": l.get("units") or 1, "charged": l["charged"]}
                             for l in lines]},
@@ -728,7 +741,9 @@ def screen_check():
         import dispute
         prof = db.get_profile(con, my_id())
         text = dispute.letter(priced, patient_name=prof.get("full_name"),
-                              rights_findings=protections)
+                              rights_findings=protections,
+                              record_gaps=[c for c in checked
+                                           if c["verdict"] in ("NO_RECORD", "DATE_NO_MATCH")])
         st.markdown(ui.section("A letter you can send"), unsafe_allow_html=True)
         st.caption("Built from the figures above directly — not written by a model, so "
                    "nothing in it can drift from what this screen showed you.")
