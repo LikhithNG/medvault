@@ -106,6 +106,25 @@ def test_two_accounts_cannot_share_an_email():
     assert dupe is None and "already exists" in err
 
 
+def test_the_name_box_refuses_to_hold_the_password():
+    # This happened. The old form ran Email -> Password -> Name, somebody typed their
+    # password into the name box, and it was stored in the clear and shown at the top of
+    # every screen. Order is fixed; the input is refused as well.
+    con = fresh()
+    acct, err = accounts.create(con, email="p@example.com", password="same-string-in-both-boxes",
+                                role="patient", display_name="same-string-in-both-boxes")
+    assert acct is None
+    assert "your password, not your name" in err
+    assert con.execute("SELECT COUNT(*) c FROM accounts").fetchone()["c"] == 0
+
+
+def test_a_real_name_is_still_accepted():
+    con = fresh()
+    acct, err = accounts.create(con, email="p@example.com", password="same-string-in-both-boxes",
+                                role="patient", display_name="Priya Sharma")
+    assert err is None and acct["display_name"] == "Priya Sharma"
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

@@ -87,6 +87,15 @@ def create(con, *, email, password, role, display_name=None, npi_record=None):
     if con.execute("SELECT 1 FROM accounts WHERE email = ?", (email,)).fetchone():
         return None, "An account already exists for that email."
 
+    # The first version of the sign-up form asked for the password before the name, and a
+    # text field directly under a password field reads as "confirm password". Someone typed
+    # their password into the name box, and it was then stored in the clear and printed at
+    # the top of every screen. The form order is fixed; this refuses the input anyway,
+    # because a form can be re-ordered again by someone who does not know why it is so.
+    if display_name and display_name.strip() == (password or ""):
+        return None, ("That is your password, not your name — it would be shown on your "
+                      "health card. Put your name in that box.")
+
     salt, digest = hash_password(password)
     n = npi_record or {}
     cur = con.execute(
