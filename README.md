@@ -184,6 +184,28 @@ resolves against **the manifest's own location**, not the page's. Served from
 `/app/static/`, the icon paths became `/app/static/app/static/icon-192.png` — three 404s —
 and `start_url` would have launched the installed app at `/app/static/` instead of the app.
 
+## Trying it without a bill of your own
+
+`samples/bills/` has seven synthetic statements, as text and as photographs, built from the
+real published prices in `data/a3_reference_table.csv` so the comparison has something true
+to compare against. Each one is planted to trip a specific check, and every file says
+SYNTHETIC on its face.
+
+All are for **Doylestown Hospital** — pick that in the Bill tab or the price comparison has
+nothing to work with.
+
+| File | Trips |
+|---|---|
+| `01_overcharged` | Two lines above the published price · $4,822 questionable |
+| `02_duplicate` | The same code posted twice |
+| `03_quantity` | A visit code billed ten times over |
+| `04_unspecified` | `J3490` and `A9270` — codes that decline to say what was given |
+| `05_ambulance` | The federal ground-ambulance carve-out |
+| `06_summary_not_itemised` | Nothing — it is rejected, which is the point |
+| `07_clean` | Nothing. A bill where everything matches has to look like one. |
+
+Rebuild them with `python3 tools/make_sample_bills.py`.
+
 ## Running it
 
 ```bash

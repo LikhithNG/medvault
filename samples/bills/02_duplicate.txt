@@ -1,0 +1,12 @@
+DOYLESTOWN HOSPITAL
+Patient Financial Services    Account 88211904
+*** SYNTHETIC SAMPLE - NOT A REAL STATEMENT ***
+(The same code posted twice on one statement.)
+
+CODE    DESCRIPTION                        QTY       AMOUNT
+99284   E/R VISIT LEVEL IV                   1     1,605.00
+99284   E/R VISIT LEVEL IV                   1     1,605.00
+70450   CT HEAD/BRAIN W/O CONTRAST           1     1,619.00
+36415   BLOOD DRAW                           2       100.00
+
+                                     TOTAL DUE     4,929.00

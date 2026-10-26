@@ -1,0 +1,12 @@
+DOYLESTOWN HOSPITAL
+Patient Financial Services    Account 88211904
+*** SYNTHETIC SAMPLE - NOT A REAL STATEMENT ***
+(Every line exactly at the published price - nothing should flag.)
+
+CODE    DESCRIPTION                        QTY       AMOUNT
+70450   CT HEAD/BRAIN W/O CONTRAST           1     1,619.00
+71046   XRAY CHEST 2-VIEWS                   1       299.00
+80048   LAB BASIC METABOLIC PANEL            1       241.00
+76700   U/S ABDOMEN COMPLETE                 1     1,373.00
+
+                                     TOTAL DUE     3,532.00

@@ -1,0 +1,11 @@
+DOYLESTOWN HOSPITAL
+Patient Financial Services    Account 88211904
+*** SYNTHETIC SAMPLE - NOT A REAL STATEMENT ***
+(Includes a ground ambulance line - the federal carve-out.)
+
+CODE    DESCRIPTION                        QTY       AMOUNT
+A0427   ALS AMBULANCE EMERGENCY              1     1,890.00
+99285   E/R VISIT LEVEL V                    1     2,247.00
+70450   CT HEAD/BRAIN W/O CONTRAST           1     1,619.00
+
+                                     TOTAL DUE     5,756.00

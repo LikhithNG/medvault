@@ -1,0 +1,11 @@
+DOYLESTOWN HOSPITAL
+Patient Financial Services    Account 88211904
+*** SYNTHETIC SAMPLE - NOT A REAL STATEMENT ***
+(A visit-level code billed ten times over.)
+
+CODE    DESCRIPTION                        QTY       AMOUNT
+99282   E/R VISIT LEVEL II                  10    16,050.00
+80048   LAB BASIC METABOLIC PANEL            1       241.00
+71046   XRAY CHEST 2-VIEWS                   1       299.00
+
+                                     TOTAL DUE    16,590.00

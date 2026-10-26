@@ -489,6 +489,24 @@ def screen_check():
     import crosscheck
     from codes import find_code
 
+    def reject_if_not_itemised(rows):
+        """A statement with no billing codes cannot be checked against anything.
+
+        Itemized rejected these before the Checker ever saw them, which is why a latent
+        defect in its duplicate rule never surfaced there: two lines with an empty code
+        match each other and are reported as the same code billed twice. Guarding at the
+        boundary fixes the behaviour and leaves checker.py byte-identical to the module
+        that produced the Assignment 4 figures.
+        """
+        if rows and not any((r.get("code") or "").strip() for r in rows):
+            st.error("**No billing codes found**\n\nEvery line of an itemised bill carries "
+                     "a procedure code, like 74177 or J1885. None were found here — this "
+                     "may be a summary statement rather than an itemised one. Ask the "
+                     "hospital for the itemised version; you cannot check what you cannot "
+                     "see.")
+            return True
+        return False
+
     lines = []
     if upload is not None:
         ok, why = reader_ready()
@@ -569,6 +587,9 @@ def screen_check():
                           "service_date": d.group(0) if d else None,
                           "code": code, "units": 1,
                           "charged": float(amt[-1].replace(",", "")) if amt else None})
+
+    if reject_if_not_itemised(lines):
+        return
 
     # ---- what the law may already give you, before any price is compared -------
     import rights, billchecks

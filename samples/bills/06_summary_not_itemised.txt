@@ -1,0 +1,10 @@
+DOYLESTOWN HOSPITAL
+Patient Financial Services    Account 88211904
+*** SYNTHETIC SAMPLE - NOT A REAL STATEMENT ***
+(A summary with no billing codes - should be rejected.)
+
+CODE    DESCRIPTION                        QTY       AMOUNT
+        HOSPITAL SERVICES                    1     8,420.00
+        PHARMACY                             1     1,180.00
+
+                                     TOTAL DUE     9,600.00
