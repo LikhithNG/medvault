@@ -1,0 +1,79 @@
+#!/usr/bin/env python3
+"""The letter a patient can put in front of a billing office.
+
+Written from the Checker's figures directly, not by a model. Every number in it came out
+of deterministic code reading a published price file, so there is nothing here that can
+drift from what the screen showed - which is the whole reason it is a template and not a
+generated paragraph.
+"""
+import datetime
+
+VERDICT_LINE = {
+    "ABOVE_POSTED": ("{code} — {desc}\n"
+                     "    Billed {charged}. Your published price for this code is {posted}.\n"
+                     "    Difference: {over}."),
+    "QUANTITY_SUSPECT": ("{code} — {desc}\n"
+                         "    Billed {charged} for {units} units. This is normally provided "
+                         "once per visit.\n"
+                         "    Your published price is {posted} per unit."),
+    "DUPLICATE": ("{code} — {desc}\n"
+                  "    Billed {charged}. This code appears more than once on the statement."),
+    "NOT_POSTED": ("{code} — {desc}\n"
+                   "    Billed {charged}. This code is not in your published standard-charge "
+                   "file, so I cannot check it."),
+}
+
+
+def money(v):
+    return f"${v:,.2f}" if isinstance(v, (int, float)) else "—"
+
+
+def letter(reviewed, patient_name=None, rights_findings=None, account=None):
+    """A dispute letter. Returns plain text."""
+    hospital = reviewed.get("hospital_name") or "the billing office"
+    today = datetime.date.today().strftime("%d %B %Y")
+    flagged = [l for l in reviewed["lines"] if l["verdict"] != "VERIFIED"]
+
+    out = [f"{today}", "", "To the billing office,", f"{hospital}", ""]
+    if account:
+        out += [f"Account: {account}", ""]
+    out += [
+        "I am writing about the itemised statement below. I have compared it against the",
+        "standard-charge file your hospital publishes under 45 CFR 180, and I have",
+        "questions about the following lines.",
+        "",
+        f"Billed on this statement:        {money(reviewed['billed_total'])}",
+        f"Your published prices total:     {money(reviewed['posted_total'])}",
+        f"Difference I am asking about:    {money(reviewed['questionable_amount'])}",
+        "",
+        "Lines in question",
+        "-----------------",
+    ]
+
+    for l in flagged:
+        tmpl = VERDICT_LINE.get(l["verdict"])
+        if not tmpl:
+            continue
+        out.append(tmpl.format(
+            code=l.get("code") or "—", desc=(l.get("description") or "")[:56],
+            charged=money(l.get("charged")), posted=money(l.get("posted_price")),
+            over=money(l.get("amount_over")), units=l.get("units", 1)))
+        out.append("")
+
+    if rights_findings:
+        out += ["Separately", "----------"]
+        for f in rights_findings:
+            out += [f"{f['title']}", f"    {f['todo']}", f"    ({f['source']})", ""]
+
+    out += [
+        "Please send me a written explanation of each line above, and a corrected",
+        "statement if any of them is wrong. I am not disputing that I received care —",
+        "I am asking how these amounts were arrived at.",
+        "",
+        "Please confirm in writing that collection activity is paused while this is",
+        "under review.",
+        "",
+        "Thank you,",
+        patient_name or "",
+    ]
+    return "\n".join(out)

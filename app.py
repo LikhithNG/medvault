@@ -75,6 +75,20 @@ def vault():
 con = vault()
 
 
+# The Checker's verdicts are written for a pipeline. A patient needs a sentence.
+VERDICTS = {
+    "ABOVE_POSTED":     ("Charged above the published price", "bad"),
+    "QUANTITY_SUSPECT": ("Quantity looks wrong", "warn"),
+    "DUPLICATE":        ("Billed more than once", "warn"),
+    "NOT_POSTED":       ("No published price to compare", "warn"),
+    "UNREADABLE":       ("Could not be read", "warn"),
+}
+
+
+def _m(v):
+    return f"${v:,.2f}" if isinstance(v, (int, float)) else "—"
+
+
 def clinician_view():
     """A clinician reviews across patients; a patient only ever sees their own."""
     return accounts.is_verified_clinician(st.session_state.get("account"))
@@ -444,6 +458,21 @@ def screen_check():
         gfe_raw = st.text_input("If you were given a written estimate, what did it say?",
                                 placeholder="e.g. 1200.00", key="rt_gfe")
 
+    # Pricing a bill needs to know whose published file to price it against.
+    import checker
+    @st.cache_resource
+    def price_table():
+        return checker.load_reference()
+
+    known = sorted({h for h, _ in price_table()})
+    pretty = {h: h.title() for h in known}
+    hospital = st.selectbox(
+        "Which hospital issued this bill?", ["— not listed —"] + known,
+        format_func=lambda h: h if h.startswith("—") else pretty[h], key="bill_hosp")
+    st.caption("Nine hospitals have published price files collected for this project. "
+               "Pick yours to compare amounts; leave it unset and everything except the "
+               "price comparison still runs.")
+
     ready = bool(pasted.strip()) or upload is not None
     if not st.button("Check it", type="primary", use_container_width=True) or not ready:
         return
@@ -519,8 +548,17 @@ def screen_check():
                 continue
             d = _re.search(r"\d{4}-\d{2}-\d{2}", raw)
             amt = _re.findall(r"([\d,]+\.\d{2})", raw)
-            lines.append({"description": raw, "service_date": d.group(0) if d else None,
-                          "code": find_code(raw), "units": 1,
+            code = find_code(raw)
+            # The description is what is left once the date, the code and the money have
+            # been taken out. Keeping the whole row printed "72148 2026-03-14 72148 MRI
+            # LUMBAR" on the card - the code twice and a date nobody needed there.
+            desc = raw
+            for part in filter(None, [d.group(0) if d else None, code] + amt):
+                desc = desc.replace(part, " ")
+            desc = _re.sub(r"\s{2,}", " ", desc).strip(" \t|,-")
+            lines.append({"description": desc or (code or raw),
+                          "service_date": d.group(0) if d else None,
+                          "code": code, "units": 1,
                           "charged": float(amt[-1].replace(",", "")) if amt else None})
 
     # ---- what the law may already give you, before any price is compared -------
@@ -563,6 +601,43 @@ def screen_check():
                         f"<div class='b'>{f['detail']}<br><br><b>Ask:</b> {f['ask']}</div>"
                         f"</div>", unsafe_allow_html=True)
 
+    # ---- what the hospital publishes for these codes ---------------------------
+    if hospital != "— not listed —":
+        priced = checker.check_bill(
+            {"hospital_name": hospital,
+             "line_items": [{"code": l.get("code") or "", "description": l["description"],
+                             "units": l.get("units") or 1, "charged": l["charged"]}
+                            for l in lines]},
+            price_table())
+
+        c1, c2, c3 = st.columns(3)
+        c1.metric("You were billed", f"${priced['billed_total']:,.2f}")
+        c2.metric("They publish", f"${priced['posted_total']:,.2f}")
+        c3.metric("Unexplained", f"${priced['questionable_amount']:,.2f}")
+        st.caption("A gap to ask about — not money you are owed, and not a refund estimate. "
+                   "Published prices collected 2 October 2026; a hospital may have "
+                   "republished since.")
+
+        flagged_lines = [l for l in priced["lines"] if l["verdict"] != "VERIFIED"]
+        if flagged_lines:
+            st.markdown(ui.section(f"Above the published price · {len(flagged_lines)}"),
+                        unsafe_allow_html=True)
+            for l in sorted(flagged_lines, key=lambda x: -(x.get("charged") or 0)):
+                label, tone = VERDICTS.get(l["verdict"], ("Checked", "warn"))
+                over = (f" · <b>{_m(l['amount_over'])} above</b>"
+                        if l.get("amount_over") else "")
+                posted = (f"They publish {_m(l['posted_price'])} for this code"
+                          if l.get("posted_price") else
+                          "No published price for this code — worth asking about")
+                st.markdown(
+                    f"<div class='hit {tone}'><span class='amt'>{_m(l['charged'])}</span>"
+                    f"<div class='h'>{label}</div><div class='b'>"
+                    f"<b>{l.get('code') or '—'}</b> {l.get('description','')[:48]} · "
+                    f"qty {l.get('units',1)}<br>{posted}{over}</div></div>",
+                    unsafe_allow_html=True)
+
+        st.session_state["priced"] = priced
+
     checked, summary = crosscheck.check_bill(lines, records)
     st.markdown(ui.section(f"{summary['unsupported']} of {summary['lines']} lines "
                            "have nothing behind them"), unsafe_allow_html=True)
@@ -573,6 +648,22 @@ def screen_check():
         st.markdown(f"<div class='hit {tone}'>{amt}<div class='h'>{label}</div>"
                     f"<div class='b'>{r['ask']}</div></div>", unsafe_allow_html=True)
     st.markdown(f"<div class='note'>{summary['caveat']}</div>", unsafe_allow_html=True)
+
+    # ---- the letter --------------------------------------------------------
+    priced = st.session_state.get("priced")
+    if priced and priced.get("flagged_count"):
+        import dispute
+        prof = db.get_profile(con, my_id())
+        text = dispute.letter(priced, patient_name=prof.get("full_name"),
+                              rights_findings=protections)
+        st.markdown(ui.section("A letter you can send"), unsafe_allow_html=True)
+        st.caption("Built from the figures above directly — not written by a model, so "
+                   "nothing in it can drift from what this screen showed you.")
+        with st.expander("Read it"):
+            st.text(text)
+        st.download_button("Download the letter", data=text,
+                           file_name="medvault-dispute-letter.txt",
+                           use_container_width=True)
 
 
 
