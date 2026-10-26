@@ -100,11 +100,30 @@ def _as_text_prompt(text):
     return PROMPT + "\n\nThe document's text follows.\n\n" + text[:18000]
 
 
+# Scripts that have no business appearing inside an otherwise-Latin medical field. Seen in
+# the wild: a reason field came back as "For the sinus infection整度" - two CJK characters
+# whose byte values (0x6574, 0x5ea6) look like a mis-decoded pair rather than anything the
+# model meant. Stripping them only when the field is otherwise Latin leaves a genuinely
+# non-Latin name or note alone.
+_FOREIGN = re.compile(
+    r"[\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef\U00020000-\U0003ffff]")
+_LATIN = re.compile(r"[A-Za-z]")
+
+
+def _strip_artifacts(text):
+    """Remove stray non-Latin characters from a field that is otherwise English."""
+    if not _LATIN.search(text):
+        return text                   # genuinely non-Latin content: leave it alone
+    return _FOREIGN.sub("", text).strip()
+
+
 def _clean(value):
     """Empty strings and the model's various ways of saying nothing all become None."""
     if value is None:
         return None
-    v = str(value).strip()
+    v = _strip_artifacts(str(value).strip())
+    # Collapse the whitespace a stripped character can leave behind.
+    v = re.sub(r"\s{2,}", " ", v).strip()
     if not v or v.lower() in {"null", "none", "n/a", "na", "unknown", "not printed", "-"}:
         return None
     return v

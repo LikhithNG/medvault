@@ -39,8 +39,10 @@ CREATE TABLE IF NOT EXISTS medications (
     active     INTEGER NOT NULL DEFAULT 1
 );
 CREATE TABLE IF NOT EXISTS profile (
-    key   TEXT PRIMARY KEY,
-    value TEXT
+    account_id INTEGER NOT NULL DEFAULT 0,
+    key        TEXT    NOT NULL,
+    value      TEXT,
+    PRIMARY KEY (account_id, key)
 );
 CREATE INDEX IF NOT EXISTS idx_records_date ON records(service_date);
 CREATE INDEX IF NOT EXISTS idx_meds_record  ON medications(record_id);
@@ -61,6 +63,21 @@ ADDITIONS = [
 
 
 def _migrate(con):
+    # profile predates accounts and was keyed on `key` alone. Rebuilt rather than altered,
+    # because the primary key itself has to change; the rows that exist are handed to the
+    # first patient account, which is whose card they actually were.
+    cols = {r["name"] for r in con.execute("PRAGMA table_info(profile)")}
+    if cols and "account_id" not in cols:
+        first = con.execute(
+            "SELECT id FROM accounts WHERE role='patient' ORDER BY id LIMIT 1").fetchone()
+        owner = first["id"] if first else 0
+        con.execute("ALTER TABLE profile RENAME TO profile_old")
+        con.executescript(SCHEMA)
+        con.execute("INSERT OR REPLACE INTO profile (account_id, key, value)"
+                    " SELECT ?, key, value FROM profile_old", (owner,))
+        con.execute("DROP TABLE profile_old")
+        con.commit()
+
     for table, column, decl in ADDITIONS:
         have = {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}
         if column not in have:
@@ -109,7 +126,7 @@ def add_record(con, *, kind, title, service_date=None, provider=None, summary=No
     return cur.lastrowid
 
 
-def list_records(con, kind=None, query=None, limit=500):
+def list_records(con, kind=None, query=None, limit=500, owner_id=None):
     """Newest first by the date on the document, falling back to when it was added.
 
     A record with no printed date must not vanish to the bottom of the timeline, which is
@@ -119,6 +136,11 @@ def list_records(con, kind=None, query=None, limit=500):
            " added_at, read_by, provenance, verified_by, verified_at, verifier_note,"
            " LENGTH(file_bytes) AS file_size FROM records")
     where, args = [], []
+    # owner_id=None means "every record", which is what a clinician's review queue needs.
+    # A patient screen must always pass their own id: without this filter every account saw
+    # every other account's medical history.
+    if owner_id is not None:
+        where.append("owner_id = ?"); args.append(owner_id)
     if kind:
         where.append("kind = ?"); args.append(kind)
     if query:
@@ -142,9 +164,12 @@ def delete_record(con, record_id):
     con.commit()
 
 
-def counts_by_kind(con):
-    return {r["kind"]: r["n"] for r in
-            _rows(con.execute("SELECT kind, COUNT(*) AS n FROM records GROUP BY kind"))}
+def counts_by_kind(con, owner_id=None):
+    sql = "SELECT kind, COUNT(*) AS n FROM records"
+    args = []
+    if owner_id is not None:
+        sql += " WHERE owner_id = ?"; args.append(owner_id)
+    return {r["kind"]: r["n"] for r in _rows(con.execute(sql + " GROUP BY kind", args))}
 
 
 # ---- medications -----------------------------------------------------------
@@ -158,13 +183,19 @@ def add_medication(con, record_id, med):
     con.commit()
 
 
-def list_medications(con, active_only=True):
+def list_medications(con, active_only=True, owner_id=None):
+    """Medicines belong to the record they came off, so they inherit its owner."""
     sql = ("SELECT m.*, r.service_date, r.provider FROM medications m"
            " LEFT JOIN records r ON r.id = m.record_id")
+    where, args = [], []
     if active_only:
-        sql += " WHERE m.active = 1"
+        where.append("m.active = 1")
+    if owner_id is not None:
+        where.append("r.owner_id = ?"); args.append(owner_id)
+    if where:
+        sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY COALESCE(r.service_date,'') DESC, m.id DESC"
-    return _rows(con.execute(sql))
+    return _rows(con.execute(sql, args))
 
 
 def set_medication_active(con, med_id, active):
@@ -174,15 +205,24 @@ def set_medication_active(con, med_id, active):
 
 # ---- profile ---------------------------------------------------------------
 
-def get_profile(con):
-    return {r["key"]: r["value"] for r in _rows(con.execute("SELECT key, value FROM profile"))}
+def get_profile(con, account_id):
+    """One account's card. account_id is required - there is no "the" profile.
+
+    This table used to be a bare key/value store with no account column, which meant every
+    account on the server shared a single health card: a second person signing up was shown
+    the first person's name, blood type, allergies and emergency contact. In a medical
+    records app that is the worst defect available, and it is why account_id has no default
+    here. A caller that does not know whose card it wants should not get one.
+    """
+    return {r["key"]: r["value"] for r in _rows(con.execute(
+        "SELECT key, value FROM profile WHERE account_id = ?", (account_id,)))}
 
 
-def save_profile(con, values):
+def save_profile(con, account_id, values):
     for k, v in values.items():
-        con.execute("INSERT INTO profile (key, value) VALUES (?,?)"
-                    " ON CONFLICT(key) DO UPDATE SET value = excluded.value",
-                    (k, "" if v is None else str(v)))
+        con.execute("INSERT INTO profile (account_id, key, value) VALUES (?,?,?)"
+                    " ON CONFLICT(account_id, key) DO UPDATE SET value = excluded.value",
+                    (account_id, k, "" if v is None else str(v)))
     con.commit()
 
 

@@ -58,7 +58,8 @@ import accounts                # noqa: E402
 import db                      # noqa: E402
 import npi                     # noqa: E402
 import ui                      # noqa: E402
-from schema import KINDS, KIND_ORDER, kind_label      # noqa: E402
+from schema import (BLOOD_TYPES, KINDS, KIND_ORDER, kind_label,   # noqa: E402
+                    missing_essentials)
 
 st.markdown(ui.CSS, unsafe_allow_html=True)
 
@@ -73,6 +74,19 @@ def vault():
 
 con = vault()
 
+
+def clinician_view():
+    """A clinician reviews across patients; a patient only ever sees their own."""
+    return accounts.is_verified_clinician(st.session_state.get("account"))
+
+
+def me():
+    """The signed-in account. Every data call is scoped through this."""
+    return st.session_state.get("account") or {}
+
+
+def my_id():
+    return me().get("id")
 
 def reader_ready():
     """Whether a document can be read at all, and why not when it cannot."""
@@ -90,20 +104,101 @@ def when(rec):
 
 # ---------------------------------------------------------------- screens ----
 
+def profile_editor(p, expanded):
+    """The form behind the card. Separated out so it can be opened from two places.
+
+    Blood type is a dropdown rather than a free-text box: it is the one field here where a
+    typo is a safety problem, and "o positive", "O +" and "0+" are all things people type.
+    """
+    with st.expander("Set up your card" if expanded else "Edit this card", expanded=expanded):
+        st.caption("This is what someone sees if they pick up your phone in an emergency. "
+                   "Nothing here leaves this device.")
+
+        st.markdown(ui.section("You"), unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        full = c1.text_input("Full name", p.get("full_name", ""))
+        dob = c2.text_input("Date of birth", p.get("date_of_birth", ""),
+                            placeholder="1999-07-12")
+        blood_now = p.get("blood_type", "")
+        blood = c1.selectbox("Blood type", BLOOD_TYPES,
+                             index=BLOOD_TYPES.index(blood_now) if blood_now in BLOOD_TYPES else 0,
+                             format_func=lambda b: b or "— not set —")
+        donor = c2.selectbox("Organ donor", ("Not stated", "Yes", "No"),
+                             index=("Not stated", "Yes", "No").index(
+                                 p.get("organ_donor") or "Not stated"))
+
+        st.markdown(ui.section("What they need to know first"), unsafe_allow_html=True)
+        alle = st.text_area("Allergies", p.get("allergies", ""), height=70,
+                            placeholder="Penicillin (rash), peanuts — or 'none known'")
+        cond = st.text_area("Ongoing conditions", p.get("conditions", ""), height=70,
+                            placeholder="Asthma, type 2 diabetes")
+
+        st.markdown(ui.section("Who to call"), unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        econ = c1.text_input("Emergency contact", p.get("emergency_name", ""))
+        erel = c2.text_input("Relationship", p.get("emergency_relation", ""),
+                             placeholder="sister, partner")
+        ephone = st.text_input("Their phone", p.get("emergency_phone", ""))
+
+        st.markdown(ui.section("Your doctor"), unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        gp = c1.text_input("Primary doctor", p.get("gp_name", ""))
+        gpp = c2.text_input("Their phone", p.get("gp_phone", ""), key="gpphone")
+
+        st.markdown(ui.section("Insurance"), unsafe_allow_html=True)
+        st.caption("The number reception asks for before anything else happens.")
+        c1, c2 = st.columns(2)
+        ins = c1.text_input("Insurer", p.get("insurer", ""), placeholder="Blue Cross")
+        mem = c2.text_input("Member ID", p.get("member_id", ""))
+
+        if st.button("Save my card", type="primary", use_container_width=True):
+            db.save_profile(con, my_id(), {
+                "full_name": full, "date_of_birth": dob, "blood_type": blood,
+                "organ_donor": donor, "allergies": alle, "conditions": cond,
+                "emergency_name": econ, "emergency_relation": erel,
+                "emergency_phone": ephone, "gp_name": gp, "gp_phone": gpp,
+                "insurer": ins, "member_id": mem})
+            st.success("Saved.")
+            st.rerun()
+
+
+def detail_row(label, value, sub=None):
+    return (f"<div class='med'><div class='n'>{value}</div>"
+            f"<div class='d'>{sub}</div></div>" if sub else
+            f"<div class='med'><div class='n'>{value}</div>"
+            f"<div class='d'>{label}</div></div>")
+
+
 def screen_card():
     """The emergency card: what someone needs when you cannot explain yourself."""
-    p = db.get_profile(con)
-    meds = db.list_medications(con, active_only=True)
+    p = db.get_profile(con, my_id())
+    gaps = missing_essentials(p)
+
+    # An empty card used to render as "Your name / None recorded" with the editor collapsed
+    # at the very bottom, below the medicines. A new account had no way of knowing the card
+    # was fillable at all. The prompt and the open form now come first.
+    if gaps:
+        pretty = {"full_name": "your name", "blood_type": "blood type",
+                  "allergies": "allergies", "emergency_name": "an emergency contact"}
+        st.warning("**Your card is not finished yet** — still missing "
+                   + ", ".join(pretty[g] for g in gaps)
+                   + ". This is the screen someone reads if you cannot speak for yourself.")
+        profile_editor(p, expanded=True)
+        if not p.get("full_name"):
+            return
+
+    meds = db.list_medications(con, active_only=True, owner_id=my_id())
     name = p.get("full_name") or "Your name"
     cells = [("Blood", p.get("blood_type") or "—"),
              ("Born", p.get("date_of_birth") or "—"),
-             ("Records", str(sum(db.counts_by_kind(con).values())))]
+             ("Records", str(sum(db.counts_by_kind(con, my_id()).values())))]
     cellhtml = "".join(
         f"<div class='cell'><div class='k'>{k}</div><div class='v'>{v}</div></div>"
         for k, v in cells)
+    donor = (" · organ donor" if (p.get("organ_donor") or "") == "Yes" else "")
     st.markdown(
         f"<div class='idcard'><div class='who'>{name}</div>"
-        f"<div class='sub'>{p.get('conditions') or 'No conditions recorded'}</div>"
+        f"<div class='sub'>{p.get('conditions') or 'No conditions recorded'}{donor}</div>"
         f"<div class='grid'>{cellhtml}</div></div>", unsafe_allow_html=True)
 
     # Allergies get their own red band rather than a cell, because this is the one line on
@@ -116,9 +211,23 @@ def screen_card():
 
     if p.get("emergency_name"):
         st.markdown(ui.section("In an emergency, call"), unsafe_allow_html=True)
-        st.markdown(f"<div class='med'><div class='n'>{p['emergency_name']}</div>"
+        rel = f" · {p['emergency_relation']}" if p.get("emergency_relation") else ""
+        st.markdown(f"<div class='med'><div class='n'>{p['emergency_name']}{rel}</div>"
                     f"<div class='d'>{p.get('emergency_phone') or 'no number on file'}</div>"
                     f"</div>", unsafe_allow_html=True)
+
+    if p.get("insurer") or p.get("member_id"):
+        st.markdown(ui.section("Insurance"), unsafe_allow_html=True)
+        st.markdown(f"<div class='med'><div class='n'>{p.get('insurer') or 'Insurer not set'}"
+                    f"</div><div class='d'>Member ID "
+                    f"<b>{p.get('member_id') or 'not set'}</b></div></div>",
+                    unsafe_allow_html=True)
+
+    if p.get("gp_name"):
+        st.markdown(ui.section("Primary doctor"), unsafe_allow_html=True)
+        st.markdown(f"<div class='med'><div class='n'>{p['gp_name']}</div>"
+                    f"<div class='d'>{p.get('gp_phone') or 'no number on file'}</div></div>",
+                    unsafe_allow_html=True)
 
     st.markdown(ui.section(f"Taking now · {len(meds)}"), unsafe_allow_html=True)
     if not meds:
@@ -131,23 +240,8 @@ def screen_card():
                     + (f"<div class='why'>{m['reason']}</div>" if m.get("reason") else "")
                     + "</div>", unsafe_allow_html=True)
 
-    with st.expander("Edit this card"):
-        c1, c2 = st.columns(2)
-        full = c1.text_input("Full name", p.get("full_name", ""))
-        dob = c2.text_input("Date of birth", p.get("date_of_birth", ""), placeholder="1999-07-12")
-        blood = c1.text_input("Blood type", p.get("blood_type", ""), placeholder="O+")
-        econ = c2.text_input("Emergency contact", p.get("emergency_name", ""))
-        ephone = c2.text_input("Their phone", p.get("emergency_phone", ""))
-        alle = st.text_area("Allergies", p.get("allergies", ""),
-                            placeholder="Penicillin (rash), peanuts", height=70)
-        cond = st.text_area("Ongoing conditions", p.get("conditions", ""),
-                            placeholder="Asthma, type 2 diabetes", height=70)
-        if st.button("Save card", type="primary", use_container_width=True):
-            db.save_profile(con, {"full_name": full, "date_of_birth": dob, "blood_type": blood,
-                                  "allergies": alle, "conditions": cond,
-                                  "emergency_name": econ, "emergency_phone": ephone})
-            st.success("Saved.")
-            st.rerun()
+    if not gaps:
+        profile_editor(p, expanded=False)
 
 
 def screen_add():
@@ -225,15 +319,15 @@ def screen_add():
 
     if st.button("File it", type="primary", use_container_width=True):
         fname, fmime, fbytes = st.session_state["draft_file"]
-        me = st.session_state.get("account") or {}
-        clinical = accounts.is_verified_clinician(me)
+        filer = me()
+        clinical = accounts.is_verified_clinician(filer)
         rid = db.add_record(con, kind=kind, title=title or "Untitled record",
                             service_date=sdate or None, provider=provider or None,
                             summary=summary or None, file_name=fname, file_mime=fmime,
                             file_bytes=fbytes, read_by=st.session_state.get("draft_model"),
                             provenance="CLINICAL" if clinical else "SELF",
-                            owner_id=me.get("id"),
-                            verified_by=me.get("id") if clinical else None)
+                            owner_id=filer.get("id"),
+                            verified_by=filer.get("id") if clinical else None)
         for m in meds:
             db.add_medication(con, rid, m)
         for k in ("draft", "draft_file", "draft_model"):
@@ -246,12 +340,13 @@ def screen_records():
     st.markdown(ui.section("Everything you have filed"), unsafe_allow_html=True)
     q = st.text_input("Search", placeholder="tinnitus, amoxicillin, Lahey…",
                       label_visibility="collapsed")
-    counts = db.counts_by_kind(con)
+    counts = db.counts_by_kind(con, None if clinician_view() else my_id())
     options = ["all"] + [k for k in KIND_ORDER if counts.get(k)]
     kind = st.selectbox("Type", options, label_visibility="collapsed",
                         format_func=lambda k: ("Everything" if k == "all"
                                                else f"{kind_label(k)} ({counts.get(k,0)})"))
-    rows = db.list_records(con, kind=None if kind == "all" else kind, query=q or None)
+    rows = db.list_records(con, kind=None if kind == "all" else kind, query=q or None,
+                           owner_id=None if clinician_view() else my_id())
 
     if not rows:
         st.markdown(ui.empty("Nothing here yet." if not q else f"Nothing matches “{q}”."),
@@ -280,7 +375,7 @@ def screen_records():
 
 
 def screen_medicines():
-    meds = db.list_medications(con, active_only=False)
+    meds = db.list_medications(con, active_only=False, owner_id=my_id())
     st.markdown(ui.section(f"Medicines · {len(meds)}"), unsafe_allow_html=True)
     if not meds:
         st.markdown(ui.empty("No medicines yet.<br>They are pulled out of prescriptions "
@@ -301,7 +396,7 @@ def screen_check():
     st.caption("A price check asks whether a charge was the right amount. This asks "
                "something a price list cannot: does your own paperwork show it happened?")
 
-    records = db.list_records(con, limit=2000)
+    records = db.list_records(con, limit=2000, owner_id=my_id())
     if not records:
         st.markdown(ui.empty("File a few records first.<br>"
                              "With an empty vault there is nothing to check a bill against."),
@@ -473,7 +568,8 @@ if not account:
     screen_signin()
     st.stop()
 
-total = sum(db.counts_by_kind(con).values())
+total = sum(db.counts_by_kind(con, None if accounts.is_verified_clinician(account)
+                              else account["id"]).values())
 st.markdown(ui.brand(f"{total} record{'' if total == 1 else 's'}<br>on this device"),
             unsafe_allow_html=True)
 st.markdown(ui.signed_in_strip(account), unsafe_allow_html=True)

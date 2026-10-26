@@ -72,15 +72,16 @@ def test_deleting_a_record_takes_its_medicines_with_it():
 
 
 def test_profile_round_trips_and_overwrites():
-    # Arrange
+    # Arrange — a card belongs to an account; there is no "the" profile
     con = fresh()
+    me = 1
 
     # Act
-    db.save_profile(con, {"blood_type": "O+", "allergies": "penicillin"})
-    db.save_profile(con, {"blood_type": "O-"})
+    db.save_profile(con, me, {"blood_type": "O+", "allergies": "penicillin"})
+    db.save_profile(con, me, {"blood_type": "O-"})
 
     # Assert
-    p = db.get_profile(con)
+    p = db.get_profile(con, me)
     assert p["blood_type"] == "O-", "a second save must update, not duplicate"
     assert p["allergies"] == "penicillin", "an untouched field must survive"
 

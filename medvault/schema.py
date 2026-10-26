@@ -53,6 +53,22 @@ MED_FIELDS = {
 
 # The emergency card: the screen you hold up at a hospital desk when you cannot talk.
 PROFILE_FIELDS = (
-    "full_name", "date_of_birth", "blood_type", "allergies",
-    "conditions", "emergency_name", "emergency_phone", "notes",
+    "full_name", "date_of_birth", "blood_type", "allergies", "conditions",
+    "emergency_name", "emergency_phone", "emergency_relation",
+    # The things a reception desk asks for before anything clinical happens. A member ID is
+    # the single most requested number in the building and nobody has it memorised.
+    "insurer", "member_id",
+    "gp_name", "gp_phone",
+    "organ_donor", "notes",
 )
+
+# Blood type is picked, never typed. It is the one field on the card where a typo is a
+# safety problem rather than an inconvenience.
+BLOOD_TYPES = ("", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+
+# What has to be filled in before the card is worth holding up at a desk.
+ESSENTIAL = ("full_name", "blood_type", "allergies", "emergency_name")
+
+
+def missing_essentials(profile):
+    return [f for f in ESSENTIAL if not (profile.get(f) or "").strip()]

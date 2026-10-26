@@ -83,6 +83,17 @@ def test_the_summary_carries_the_caveat_and_totals_only_unsupported_lines():
     assert "not proof that the service never happened" in summary["caveat"]
 
 
+def test_a_decoding_artifact_is_stripped_from_an_english_field():
+    # A reason field came back from the model as "For the sinus infection整度". Accents and
+    # genuinely non-Latin text must survive; stray CJK in an English field must not.
+    import sys, pathlib
+    sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "medvault"))
+    from extract import _clean
+    assert _clean("For the sinus infection\u6574\u5ea6") == "For the sinus infection"
+    assert _clean("Caf\u00e9 S\u00e3o Paulo clinic") == "Caf\u00e9 S\u00e3o Paulo clinic"
+    assert _clean("\u6771\u4eac\u7dcf\u5408\u75c5\u9662") == "\u6771\u4eac\u7dcf\u5408\u75c5\u9662"
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
