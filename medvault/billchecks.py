@@ -30,7 +30,15 @@ TOLERANCE = 0.01
 
 
 def arithmetic(line):
-    """units x unit price should equal the charge. When it does not, say by how much."""
+    """units x unit price should equal the charge. When it does not, say by how much.
+
+    Only runs when a unit price is genuinely known - printed on the bill, or carried from a
+    published price file. It deliberately does NOT run on a price read off a photograph by
+    a model: asked for a per-unit column that was not there, the reader divided the charge
+    by the quantity instead, which makes the multiplication true by construction and the
+    check useless. A check that cannot fail is worse than no check, so bill extraction no
+    longer returns a unit price at all.
+    """
     units = line.get("units")
     unit_price = line.get("unit_price") or line.get("posted_price")
     charged = line.get("charged")

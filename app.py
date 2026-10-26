@@ -404,10 +404,27 @@ def screen_check():
         return
 
     st.info(f"Checking against **{len(records)} record(s)** you have filed.")
-    pasted = st.text_area(
-        "Paste the bill's lines", height=150,
-        placeholder="2026-03-14  70450  CT HEAD/BRAIN WO CONTRAST   1   3,100.00")
-    st.caption("One line per charge: a date, a description and an amount.")
+
+    # Pasting was the only way in, which meant retyping a bill that arrived as a PDF or
+    # sits on the kitchen table. A photo is how a patient actually has this document.
+    how = st.radio("Where is the bill?", ["Photograph or PDF", "Paste the lines"],
+                   horizontal=True, label_visibility="collapsed", key="bill_source")
+
+    pasted, upload = "", None
+    if how == "Paste the lines":
+        pasted = st.text_area(
+            "Paste the bill's lines", height=150,
+            placeholder="2026-03-14  70450  CT HEAD/BRAIN WO CONTRAST   1   3,100.00")
+        st.caption("One line per charge: a date, a description and an amount.")
+    else:
+        upload = st.file_uploader("Photo or PDF of the bill",
+                                  type=["jpg", "jpeg", "png", "webp", "pdf"],
+                                  label_visibility="collapsed", key="bill_file")
+        st.caption("On a phone this opens the camera. The bill is read once to pull out "
+                   "the codes, quantities and amounts. It is not stored unless you file it "
+                   "as a record from the Add screen.")
+        if upload:
+            st.caption(f"{upload.name} · {len(upload.getvalue())/1024:,.0f} KB")
 
     # A few questions about the patient's situation unlock protections worth far more than
     # any rate difference on the bill - and none of them need a price file to answer.
@@ -427,22 +444,84 @@ def screen_check():
         gfe_raw = st.text_input("If you were given a written estimate, what did it say?",
                                 placeholder="e.g. 1200.00", key="rt_gfe")
 
-    if not st.button("Check it", type="primary", use_container_width=True) or not pasted.strip():
+    ready = bool(pasted.strip()) or upload is not None
+    if not st.button("Check it", type="primary", use_container_width=True) or not ready:
         return
 
     import re as _re
     import crosscheck
+    from codes import find_code
+
     lines = []
-    for raw in pasted.splitlines():
-        raw = raw.strip()
-        if not raw:
-            continue
-        d = _re.search(r"\d{4}-\d{2}-\d{2}", raw)
-        amt = _re.findall(r"([\d,]+\.\d{2})", raw)
-        from codes import find_code
-        lines.append({"description": raw, "service_date": d.group(0) if d else None,
-                      "code": find_code(raw),
-                      "charged": float(amt[-1].replace(",", "")) if amt else None})
+    if upload is not None:
+        ok, why = reader_ready()
+        if not ok:
+            st.error(f"**This bill cannot be read here**\n\nThe reader is not set up — "
+                     f"{why}. Paste the lines instead and everything else still works.")
+            return
+        from extract import read_bill_verified, pdf_text
+        data = upload.getvalue()
+        is_pdf = (upload.type or "").endswith("pdf") or upload.name.lower().endswith(".pdf")
+        with st.status("Reading the bill…", expanded=False) as status:
+            text = None
+            if is_pdf:
+                import io as _io
+                text, note = pdf_text(_io.BytesIO(data))
+                if text:
+                    status.write(f"Read the text layer · {note}")
+            if not text:
+                status.write("Looking at the page…")
+            lines, meta = (read_bill_verified(text=text) if text
+                           else read_bill_verified(
+                               image=(upload.type or "image/jpeg", data)))
+            if meta.get("attempts", 1) > 1:
+                status.write(f"Read again to check it added up ({meta['attempts']} passes)")
+            status.update(label="Read", state="complete")
+
+        if not meta.get("ok"):
+            st.error("**That bill could not be read just now**\n\nThe reading service did "
+                     "not answer. Nothing was stored. Paste the lines instead, or try again "
+                     "in a moment.")
+            st.caption(f"For the maintainer: {str(meta.get('error'))[:160]}")
+            return
+        if not lines:
+            st.error("**No charges could be read from that bill**\n\nEvery line of an "
+                     "itemised bill carries a code, a quantity and an amount. None were "
+                     "found — this may be a summary rather than an itemised statement. Ask "
+                     "the hospital for the itemised version.")
+            return
+        read_total = sum(l["charged"] for l in lines)
+        if meta.get("reconciled") is True:
+            st.success(f"Read **{len(lines)} charge(s)** totalling **${read_total:,.2f}**"
+                       + (f" from {meta['hospital']}" if meta.get("hospital") else "")
+                       + " — and they add up to the total printed on the bill.")
+        else:
+            # Never show a number from an unverified read without saying so. A truncated
+            # read looks exactly like a short bill.
+            st.warning(
+                f"**Read {len(lines)} charge(s) totalling ${read_total:,.2f}, but could "
+                f"not confirm that against a printed total.**\n\nCheck the list below "
+                f"against the bill in your hand before trusting anything underneath it — "
+                f"if a line is missing, the figures will be too low.")
+        with st.expander("Check what was read",
+                         expanded=meta.get("reconciled") is not True):
+            for l in lines:
+                st.markdown(f"<div class='rec'><div class='top'>"
+                            f"<span class='pill'>{l['code'] or 'no code'}</span>"
+                            f"<span class='when'>{l['service_date'] or 'no date'}</span></div>"
+                            f"<div class='title'>${l['charged']:,.2f}</div>"
+                            f"<div class='who'>{l['description']} · qty {l['units']}</div>"
+                            f"</div>", unsafe_allow_html=True)
+    else:
+        for raw in pasted.splitlines():
+            raw = raw.strip()
+            if not raw:
+                continue
+            d = _re.search(r"\d{4}-\d{2}-\d{2}", raw)
+            amt = _re.findall(r"([\d,]+\.\d{2})", raw)
+            lines.append({"description": raw, "service_date": d.group(0) if d else None,
+                          "code": find_code(raw), "units": 1,
+                          "charged": float(amt[-1].replace(",", "")) if amt else None})
 
     # ---- what the law may already give you, before any price is compared -------
     import rights, billchecks

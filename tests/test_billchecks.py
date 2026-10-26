@@ -55,6 +55,17 @@ def test_run_reports_which_line_each_finding_belongs_to():
     assert {f["rule"] for _, f in found} == {"unspecified_code", "arithmetic"}
 
 
+def test_reconciliation_against_the_printed_total():
+    import extract
+    five = [{"charged": 3100.0}, {"charged": 260.0}, {"charged": 241.0},
+            {"charged": 299.0}, {"charged": 9400.0}]
+    assert extract.reconciles(five, 13300.00) is True
+    assert extract.reconciles(five, 13300.01) is True      # within tolerance
+    assert extract.reconciles(five[:1], 13300.00) is False  # the truncation this catches
+    assert extract.reconciles(five, None) is None, \
+        "no printed total means unverified, which is not the same as correct"
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
