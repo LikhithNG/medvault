@@ -47,6 +47,27 @@ CREATE INDEX IF NOT EXISTS idx_meds_record  ON medications(record_id);
 """
 
 
+# Columns added after the first version shipped. Applied with ALTER TABLE rather than by
+# recreating the table, because a vault that drops a patient's records to make room for a
+# new field is not a vault. Each entry is (table, column, definition) and running it twice
+# is harmless.
+ADDITIONS = [
+    ("records", "provenance",  "TEXT NOT NULL DEFAULT 'SELF'"),
+    ("records", "owner_id",    "INTEGER"),
+    ("records", "verified_by", "INTEGER"),
+    ("records", "verified_at", "REAL"),
+    ("records", "verifier_note", "TEXT"),
+]
+
+
+def _migrate(con):
+    for table, column, decl in ADDITIONS:
+        have = {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}
+        if column not in have:
+            con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+    con.commit()
+
+
 def connect(path=None):
     """A connection with foreign keys on and rows that behave like dicts."""
     p = pathlib.Path(path or DEFAULT_PATH)
@@ -55,6 +76,9 @@ def connect(path=None):
     con.row_factory = sqlite3.Row
     con.execute("PRAGMA foreign_keys = ON")
     con.executescript(SCHEMA)
+    _migrate(con)
+    import accounts
+    accounts.ensure(con)
     return con
 
 
@@ -66,7 +90,7 @@ def _rows(cur):
 
 def add_record(con, *, kind, title, service_date=None, provider=None, summary=None,
                raw_text=None, file_name=None, file_mime=None, file_bytes=None,
-               read_by=None):
+               read_by=None, provenance="SELF", owner_id=None, verified_by=None):
     """Store one document. Returns its id.
 
     file_bytes is the original the patient uploaded, kept so the vault can hand back the
@@ -75,10 +99,12 @@ def add_record(con, *, kind, title, service_date=None, provider=None, summary=No
     """
     cur = con.execute(
         "INSERT INTO records (kind, service_date, provider, title, summary, raw_text,"
-        " file_name, file_mime, file_bytes, added_at, read_by)"
-        " VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+        " file_name, file_mime, file_bytes, added_at, read_by, provenance, owner_id,"
+        " verified_by, verified_at)"
+        " VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
         (kind, service_date, provider, title, summary, raw_text,
-         file_name, file_mime, file_bytes, time.time(), read_by))
+         file_name, file_mime, file_bytes, time.time(), read_by, provenance, owner_id,
+         verified_by, time.time() if verified_by else None))
     con.commit()
     return cur.lastrowid
 
@@ -90,7 +116,8 @@ def list_records(con, kind=None, query=None, limit=500):
     what ORDER BY service_date alone does to every undated prescription.
     """
     sql = ("SELECT id, kind, service_date, provider, title, summary, file_name, file_mime,"
-           " added_at, read_by, LENGTH(file_bytes) AS file_size FROM records")
+           " added_at, read_by, provenance, verified_by, verified_at, verifier_note,"
+           " LENGTH(file_bytes) AS file_size FROM records")
     where, args = [], []
     if kind:
         where.append("kind = ?"); args.append(kind)
@@ -173,3 +200,38 @@ def export_vault(con):
         "records": list_records(con, limit=10_000),
         "medications": list_medications(con, active_only=False),
     }, indent=2, default=str)
+
+
+# ---- verification ----------------------------------------------------------
+
+def verify_record(con, record_id, clinician_id, note=None):
+    """A clinician confirms a record matches what they issued.
+
+    Deliberately one-way and attributed: the row keeps who verified it and when, so a badge
+    on screen can always be traced back to an account with a checked NPI.
+    """
+    con.execute("UPDATE records SET provenance='VERIFIED', verified_by=?, verified_at=?,"
+                " verifier_note=? WHERE id=?",
+                (clinician_id, time.time(), note, record_id))
+    con.commit()
+
+
+def unverify_record(con, record_id, note=None):
+    """Withdraw a verification - a clinician who confirmed the wrong record must be able to
+    take it back, and the record returns to self-filed rather than being deleted."""
+    con.execute("UPDATE records SET provenance='SELF', verified_by=NULL, verified_at=NULL,"
+                " verifier_note=? WHERE id=?", (note, record_id))
+    con.commit()
+
+
+def pending_verification(con, limit=200):
+    """Self-filed records a clinician has not yet looked at, oldest first."""
+    return _rows(con.execute(
+        "SELECT id, kind, service_date, provider, title, summary, added_at, provenance,"
+        " LENGTH(file_bytes) AS file_size FROM records"
+        " WHERE provenance = 'SELF' ORDER BY added_at ASC LIMIT ?", (limit,)))
+
+
+def provenance_counts(con):
+    return {r["provenance"]: r["n"] for r in _rows(con.execute(
+        "SELECT provenance, COUNT(*) AS n FROM records GROUP BY provenance"))}

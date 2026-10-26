@@ -67,6 +67,31 @@ h1,h2,h3,h4{font-family:var(--sans);color:var(--ink);letter-spacing:-.02em}
 .rec .sum{font-size:13.5px;color:var(--soft);margin-top:.4rem;line-height:1.45}
 .rec .nofile{font-size:12px;color:var(--faint);margin-top:.4rem}
 
+/* ---- where a record came from -------------------------------------------- */
+/* The badge is the product's whole answer to "how do I know this is real". It is drawn on
+   every record, including the unverified ones, because a vault that only labels the good
+   records teaches people that an absent badge means nothing. */
+.prov{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+  padding:.2rem .5rem;border-radius:999px;display:inline-flex;align-items:center;gap:.25rem}
+.prov.self{background:#F1F3F7;color:#5B6673;border:1px solid #DFE4EC}
+.prov.verified{background:var(--ok-soft);color:var(--ok);border:1px solid #BCE5CF}
+.prov.clinical{background:var(--accent-soft);color:var(--accent);border:1px solid #CFE3FB}
+.provwhy{font-size:12px;color:var(--faint);margin-top:.35rem;line-height:1.45}
+
+/* The signed-in strip. Named .whoami, not .who: .who was already the provider line inside
+   a record card, and reusing it wrapped every hospital name in a box that looked like an
+   editable text field. */
+.whoami{display:flex;align-items:center;gap:.5rem;background:var(--card);
+  border:1px solid var(--line);border-radius:12px;padding:.55rem .7rem;margin-bottom:.7rem}
+.whoami .av{width:30px;height:30px;border-radius:9px;background:var(--accent-soft);
+  color:var(--accent);display:flex;align-items:center;justify-content:center;
+  font-weight:800;font-size:13px;flex:0 0 auto}
+.whoami .nm{font-size:14px;font-weight:700;color:var(--ink);line-height:1.2}
+.whoami .rl{font-size:11.5px;color:var(--faint)}
+.whoami .chk{margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;
+  letter-spacing:.05em;color:var(--ok);background:var(--ok-soft);border:1px solid #BCE5CF;
+  padding:.2rem .5rem;border-radius:999px;text-align:right;line-height:1.3}
+
 /* ---- a medicine ---------------------------------------------------------- */
 .med{background:var(--card);border:1px solid var(--line);border-radius:14px;
   padding:.8rem .9rem;margin-bottom:.55rem;border-left:4px solid var(--accent)}
@@ -141,3 +166,28 @@ def section(label):
 
 def empty(message):
     return f"<div class='empty'>{message}</div>"
+
+
+PROV_CLASS = {"SELF": "self", "VERIFIED": "verified", "CLINICAL": "clinical"}
+
+
+def provenance_badge(record):
+    """The badge for one record. Always drawn, including for unverified records."""
+    import accounts
+    prov = record.get("provenance") or "SELF"
+    label = accounts.PROVENANCE.get(prov, accounts.PROVENANCE["SELF"])[0]
+    return f"<span class='prov {PROV_CLASS.get(prov, 'self')}'>{label}</span>"
+
+
+def signed_in_strip(account):
+    import accounts
+    initials = "".join(w[0] for w in (account.get("display_name") or
+                                      account.get("email", "?")).split()[:2]).upper()
+    role = ("Clinician" if account["role"] == "clinician" else "Patient")
+    chk = ""
+    if accounts.is_verified_clinician(account):
+        chk = (f"<div class='chk'>NPI {account['npi']} verified<br>"
+               f"{account.get('npi_specialty') or ''}</div>")
+    return (f"<div class='whoami'><div class='av'>{initials or '?'}</div>"
+            f"<div><div class='nm'>{account.get('display_name') or account['email']}</div>"
+            f"<div class='rl'>{role}</div></div>{chk}</div>")

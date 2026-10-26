@@ -31,6 +31,37 @@ is never everything, so "no record found" means *you have nothing on file suppor
 never *this did not happen*. Every verdict is phrased as a question to ask the billing
 office. There are tests in `tests/test_crosscheck.py` whose only job is to keep it that way.
 
+## Who can say a record is real
+
+The obvious answer is "only let doctors upload". It is the wrong one: it empties the vault
+on day one and leaves the product waiting for an adoption it cannot get, because no
+clinician joins an app with no patients in it.
+
+So nobody is locked out. Every record carries **where it came from**, and the badge is drawn
+on all of them — including the unverified ones, because a vault that only labels the good
+records teaches people that a missing badge means nothing.
+
+| Badge | What it means |
+|---|---|
+| **Self-filed** | The patient uploaded it. Useful to them. Evidence to nobody. |
+| **Clinician-verified** | A clinician with a registry-checked NPI confirmed it matches what they issued. |
+| **Filed by a clinician** | Uploaded directly by a verified clinician. |
+
+A clinician account requires an **NPI checked live against the CMS national provider
+registry** — a free public API that returns the provider's licence number, state, specialty
+and status. An invented number is rejected.
+
+What that proves, stated precisely because the feature rests on it: the NPI exists, is
+active, and matches a licence. It does **not** prove the person typing it is that provider.
+Closing that gap needs an out-of-band step — an email to the address on file, hospital SSO —
+which is beyond a student project. The interface therefore says *"NPI verified"* and never
+*"identity verified"*.
+
+Verification is attributed and reversible. Each verified record stores which account
+confirmed it and when, so a badge can always be traced back to a checked NPI, and a
+clinician who confirmed the wrong record can withdraw it — which demotes the record to
+self-filed rather than deleting it.
+
 ## Screens
 
 | | |
@@ -40,6 +71,7 @@ office. There are tests in `tests/test_crosscheck.py` whose only job is to keep 
 | **Records** | Everything in one timeline, searchable, filterable, with the original attached. |
 | **Medicines** | Pulled out of prescriptions automatically, with dose, frequency and what it is for. |
 | **Check a bill** | A hospital bill against your own records. |
+| **Review** | Clinicians only. The queue of patient-filed records waiting to be confirmed. |
 
 ## Where your data lives
 
@@ -64,8 +96,9 @@ Reads `GEMINI_API_KEY` from a local `.env` (git-ignored) or from Streamlit secre
 deployed. Without a key everything works except reading new documents.
 
 ```bash
-python3 tests/test_db.py
-python3 tests/test_crosscheck.py
+python3 tests/test_db.py          # storage keeps what it is given
+python3 tests/test_crosscheck.py  # the cross-check never accuses
+python3 tests/test_accounts.py    # a badge cannot exist without a checked NPI
 ```
 
 ## Built on

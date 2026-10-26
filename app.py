@@ -54,7 +54,9 @@ def _load_credentials():
 
 _load_credentials()
 
+import accounts                # noqa: E402
 import db                      # noqa: E402
+import npi                     # noqa: E402
 import ui                      # noqa: E402
 from schema import KINDS, KIND_ORDER, kind_label      # noqa: E402
 
@@ -220,10 +222,15 @@ def screen_add():
 
     if st.button("File it", type="primary", use_container_width=True):
         fname, fmime, fbytes = st.session_state["draft_file"]
+        me = st.session_state.get("account") or {}
+        clinical = accounts.is_verified_clinician(me)
         rid = db.add_record(con, kind=kind, title=title or "Untitled record",
                             service_date=sdate or None, provider=provider or None,
                             summary=summary or None, file_name=fname, file_mime=fmime,
-                            file_bytes=fbytes, read_by=st.session_state.get("draft_model"))
+                            file_bytes=fbytes, read_by=st.session_state.get("draft_model"),
+                            provenance="CLINICAL" if clinical else "SELF",
+                            owner_id=me.get("id"),
+                            verified_by=me.get("id") if clinical else None)
         for m in meds:
             db.add_medication(con, rid, m)
         for k in ("draft", "draft_file", "draft_model"):
@@ -252,10 +259,12 @@ def screen_records():
         st.markdown(
             f"<div class='rec'><div class='top'>"
             f"<span class='pill'>{kind_label(r['kind'])}</span>"
+            f"{ui.provenance_badge(r)}"
             f"<span class='when'>{when(r)}</span></div>"
             f"<div class='title'>{r['title']}</div>"
             + (f"<div class='who'>{r['provider']}</div>" if r.get("provider") else "")
             + (f"<div class='sum'>{r['summary']}</div>" if r.get("summary") else "")
+            + f"<div class='provwhy'>{accounts.PROVENANCE.get(r.get('provenance') or 'SELF', accounts.PROVENANCE['SELF'])[1]}</div>"
             + ("" if r.get("file_size") else
                "<div class='nofile'>No original attached</div>")
             + "</div>", unsafe_allow_html=True)
@@ -329,18 +338,148 @@ def screen_check():
     st.markdown(f"<div class='note'>{summary['caveat']}</div>", unsafe_allow_html=True)
 
 
+
+
+# ------------------------------------------------------------ who you are ----
+
+def screen_signin():
+    """Two doors. The clinician one goes through the national provider registry."""
+    st.markdown(ui.brand("your records<br>stay on this device"), unsafe_allow_html=True)
+    st.markdown(ui.section("Sign in"), unsafe_allow_html=True)
+
+    tab_in, tab_new = st.tabs(["I have an account", "Create one"])
+
+    with tab_in:
+        # st.form, not loose inputs: inside one, Enter submits. A sign-in screen where the
+        # return key does nothing is the kind of thing nobody reports and everybody feels.
+        with st.form("signin", border=False):
+            email = st.text_input("Email", key="si_email")
+            pw = st.text_input("Password", type="password", key="si_pw")
+            if st.form_submit_button("Sign in", type="primary", use_container_width=True):
+                acct, problem = accounts.sign_in(con, email, pw)
+                if problem:
+                    st.error(problem)
+                else:
+                    st.session_state["account"] = acct
+                    st.rerun()
+
+    with tab_new:
+        role = st.radio("This account is for", ["patient", "clinician"], horizontal=True,
+                        format_func=lambda r: "A patient" if r == "patient" else "A clinician",
+                        key="su_role")
+        email2 = st.text_input("Email", key="su_email")
+        pw2 = st.text_input("Password", type="password", key="su_pw",
+                            help="At least 8 characters.")
+        name2 = st.text_input("Name", key="su_name")
+
+        record = None
+        if role == "clinician":
+            st.markdown(ui.section("Verify your NPI"), unsafe_allow_html=True)
+            st.caption("Checked live against the CMS national provider registry. This "
+                       "confirms the number is real, active and matches a licence — it "
+                       "does not, on its own, prove you are that person.")
+            npi_in = st.text_input("NPI number", key="su_npi", placeholder="10 digits")
+            if st.button("Check the registry", use_container_width=True):
+                found, problem = npi.lookup(npi_in)
+                if problem:
+                    st.error(problem)
+                    st.session_state.pop("npi_record", None)
+                else:
+                    st.session_state["npi_record"] = found
+            record = st.session_state.get("npi_record")
+            if record:
+                st.success(f"**{record['name'] or 'Registered organisation'}**"
+                           f"{' · ' + record['credential'] if record['credential'] else ''}")
+                st.markdown(
+                    f"<div class='rec'><div class='title'>{record['specialty'] or '—'}</div>"
+                    f"<div class='who'>Licence {record['license'] or '—'} "
+                    f"{record['license_state'] or ''} · {record['city']}, {record['state']}"
+                    f"</div></div>", unsafe_allow_html=True)
+
+        if st.button("Create account", type="primary", use_container_width=True):
+            acct, problem = accounts.create(con, email=email2, password=pw2, role=role,
+                                            display_name=name2, npi_record=record)
+            if problem:
+                st.error(problem)
+            else:
+                st.session_state["account"] = acct
+                st.session_state.pop("npi_record", None)
+                st.rerun()
+
+
+def screen_review(account):
+    """A clinician confirming that a record matches what they actually issued."""
+    pending = db.pending_verification(con)
+    st.markdown(ui.section(f"Waiting on you · {len(pending)}"), unsafe_allow_html=True)
+    st.caption("Records a patient filed themselves. Confirming one means it matches what "
+               "you issued — your NPI is attached to that claim, so only confirm what you "
+               "actually recognise.")
+
+    if not pending:
+        st.markdown(ui.empty("Nothing waiting.<br>Every record here has been looked at."),
+                    unsafe_allow_html=True)
+        return
+
+    for r in pending:
+        st.markdown(
+            f"<div class='rec'><div class='top'>"
+            f"<span class='pill'>{kind_label(r['kind'])}</span>"
+            f"{ui.provenance_badge(r)}"
+            f"<span class='when'>{when(r)}</span></div>"
+            f"<div class='title'>{r['title']}</div>"
+            + (f"<div class='who'>{r['provider']}</div>" if r.get("provider") else "")
+            + (f"<div class='sum'>{r['summary']}</div>" if r.get("summary") else "")
+            + "</div>", unsafe_allow_html=True)
+        if r.get("file_size"):
+            full = db.get_record(con, r["id"])
+            with st.expander("Look at the original"):
+                if (full.get("file_mime") or "").startswith("image/"):
+                    st.image(full["file_bytes"])
+                else:
+                    st.download_button("Open it", data=full["file_bytes"],
+                                       file_name=full["file_name"] or "record",
+                                       key=f"rv{r['id']}", use_container_width=True)
+        c1, c2 = st.columns(2)
+        if c1.button("Confirm", key=f"ok{r['id']}", type="primary", use_container_width=True):
+            db.verify_record(con, r["id"], account["id"],
+                             note=f"Confirmed by NPI {account.get('npi')}")
+            st.rerun()
+        if c2.button("Not mine", key=f"no{r['id']}", use_container_width=True):
+            db.verify_record(con, r["id"], account["id"], note="reviewed")
+            db.unverify_record(con, r["id"], note="Clinician did not recognise this record")
+            st.rerun()
+
 # ------------------------------------------------------------------ shell ----
+
+account = st.session_state.get("account")
+if not account:
+    screen_signin()
+    st.stop()
 
 total = sum(db.counts_by_kind(con).values())
 st.markdown(ui.brand(f"{total} record{'' if total == 1 else 's'}<br>on this device"),
             unsafe_allow_html=True)
+st.markdown(ui.signed_in_strip(account), unsafe_allow_html=True)
 
-tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Check a bill"])
-with tabs[0]: screen_card()
-with tabs[1]: screen_add()
-with tabs[2]: screen_records()
-with tabs[3]: screen_medicines()
-with tabs[4]: screen_check()
+if accounts.is_verified_clinician(account):
+    # A clinician's job here is reviewing, not keeping a vault, so they get that screen
+    # first rather than someone else's emergency card.
+    tabs = st.tabs(["Review", "Records", "Sign out"])
+    with tabs[0]: screen_review(account)
+    with tabs[1]: screen_records()
+    with tabs[2]:
+        if st.button("Sign out", use_container_width=True):
+            st.session_state.pop("account", None); st.rerun()
+else:
+    tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Check a bill", "·"])
+    with tabs[0]: screen_card()
+    with tabs[1]: screen_add()
+    with tabs[2]: screen_records()
+    with tabs[3]: screen_medicines()
+    with tabs[4]: screen_check()
+    with tabs[5]:
+        if st.button("Sign out", use_container_width=True):
+            st.session_state.pop("account", None); st.rerun()
 
 if st.query_params.get("diag"):
     st.divider()

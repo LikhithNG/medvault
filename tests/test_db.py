@@ -5,8 +5,10 @@ Run with  python3 tests/test_db.py
 """
 import pathlib, sys, tempfile
 
-sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent))
-from medvault import db                                              # noqa: E402
+# The modules import each other flatly (import accounts, import gemini), the convention
+# carried over from Itemized, so medvault/ itself goes on the path - not the repo root.
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent.parent / "medvault"))
+import db                                                            # noqa: E402
 
 
 def fresh():
