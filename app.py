@@ -639,6 +639,9 @@ def screen_check():
         st.session_state["priced"] = priced
 
     checked, summary = crosscheck.check_bill(lines, records)
+    st.session_state["findings"] = {"priced": st.session_state.get("priced"),
+                                    "rights": protections, "face": [f for _, f in face],
+                                    "crosschecked": checked}
     st.markdown(ui.section(f"{summary['unsupported']} of {summary['lines']} lines "
                            "have nothing behind them"), unsafe_allow_html=True)
     for r in checked:
@@ -664,6 +667,17 @@ def screen_check():
         st.download_button("Download the letter", data=text,
                            file_name="medvault-dispute-letter.txt",
                            use_container_width=True)
+
+    # ---- ask about any of it ----------------------------------------------
+    st.markdown(ui.section("Ask about this bill"), unsafe_allow_html=True)
+    st.caption("Answers come out of the findings above, not out of a language model — so "
+               "it can only tell you things the checks actually established, and it says "
+               "when it does not know.")
+    question = st.text_input("Ask", key="ask_q", label_visibility="collapsed",
+                             placeholder="why is 72148 flagged?  ·  what do I do next?")
+    if question:
+        import explain
+        st.markdown(explain.answer(question, st.session_state.get("findings") or {}))
 
 
 

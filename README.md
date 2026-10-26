@@ -111,6 +111,32 @@ page. Which icons are drawn is inferred in CSS from how many tabs the signed-in 
 produced, five for a patient and two for a clinician, because Streamlit strips `<script>`
 from markdown so a class set from Python never arrives.
 
+## Where the AI is, and where it deliberately is not
+
+Reading a photograph needs a model. Nothing else here does.
+
+| Step | How |
+|---|---|
+| Turn a photo or PDF into line items | Vision model, one call, reconciled against the bill's printed total |
+| Duplicate codes | `checker.py` — pure Python |
+| Charged above the published price | `checker.py` — pure Python |
+| Quantity billed many times over | `checker.py` — pure Python |
+| Lines that do not multiply out | `billchecks.py` — pure Python |
+| Unspecified codes | `billchecks.py` — pure Python |
+| What the law may give you | `rights.py` — pure Python |
+| Whether your records support a line | `crosscheck.py` — pure Python |
+| The dispute letter | `dispute.py` — a template over the Checker's figures |
+| Answering questions about the bill | `explain.py` — reads the findings, generates nothing |
+
+**The explainer is not a chatbot, and that is the design.** Asked "why is this charge
+wrong?", a language model produces a fluent paragraph whether or not it knows — and on a
+medical bill a fluent wrong paragraph is what sends somebody into a billing office quoting
+a figure that collapses under one question. Everything `explain.py` says is read out of
+findings the deterministic checks produced. It can be wrong only if the Checker was wrong,
+it can never invent a figure, and when it does not understand a question it says so and
+lists what it can answer. Ten tests exist to keep it that way, including one that scans
+every answer for a dollar amount the checks never established.
+
 ## Where your data lives
 
 In one SQLite file next to the app (`vault.db`, git-ignored). Uploaded originals are stored
