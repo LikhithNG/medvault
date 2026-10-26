@@ -13,8 +13,9 @@ import streamlit as st
 HERE = pathlib.Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE / "medvault"))
 
-st.set_page_config(page_title="MedVault", page_icon="🩺", layout="centered",
-                   initial_sidebar_state="collapsed")
+st.set_page_config(page_title="MedVault — your records, and the bill that follows",
+                   page_icon=str(HERE / "static" / "icon-192.png"),
+                   layout="centered", initial_sidebar_state="collapsed")
 
 SECRET_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_POOL",
                "GROQ_API_KEY", "GROQ_MODEL", "GROQ_POOL", "MEDVAULT_DB")
@@ -64,6 +65,7 @@ _load_credentials()
 
 import accounts                # noqa: E402
 import db                      # noqa: E402
+import landing                 # noqa: E402
 import npi                     # noqa: E402
 import ui                      # noqa: E402
 from schema import (BLOOD_TYPES, KINDS, KIND_ORDER, kind_label,   # noqa: E402
@@ -219,7 +221,9 @@ def screen_card():
         for k, v in cells)
     donor = (" · organ donor" if (p.get("organ_donor") or "") == "Yes" else "")
     st.markdown(
-        f"<div class='idcard'><div class='who'>{name}</div>"
+        f"<div class='idcard'>"
+        f"<div class='brandline'>{ui.mono_mark()} MedVault · emergency card</div>"
+        f"<div class='who'>{name}</div>"
         f"<div class='sub'>{p.get('conditions') or 'No conditions recorded'}{donor}</div>"
         f"<div class='grid'>{cellhtml}</div></div>", unsafe_allow_html=True)
 
@@ -834,15 +838,47 @@ def screen_check():
 # ------------------------------------------------------------ who you are ----
 
 def screen_signin():
-    """Two doors. The clinician one goes through the national provider registry."""
-    st.markdown(ui.brand("your records<br>stay on this device"), unsafe_allow_html=True)
-    st.markdown(ui.section("Sign in"), unsafe_allow_html=True)
+    """The landing page.
 
+    Somebody arriving here is usually holding a bill they do not understand, and a login
+    box on grey tells them nothing about what they would be logging in to. So the page
+    says what the product does, shows the sign-in panel beside it rather than instead of
+    it, and puts the caveats at the bottom in the same type as everything else.
+    """
+    st.markdown(landing.nav(), unsafe_allow_html=True)
+
+    hero, panel = st.columns([1.05, 1], gap="large")
+    with hero:
+        st.markdown(landing.hero(), unsafe_allow_html=True)
+    with panel:
+        # st.container(border=True) is the only wrapper Streamlit will let a stylesheet
+        # find reliably; the marker inside it is what the :has() selector keys on.
+        with st.container(border=True):
+            st.markdown("<div class='panelmark'></div>"
+                        "<div class='panelhead'>Open your vault</div>"
+                        "<div class='panelsub'>Patients and clinicians both sign in "
+                        "here. A clinician is checked against the national provider "
+                        "registry when the account is made.</div>",
+                        unsafe_allow_html=True)
+            auth_panel()
+
+    st.markdown(ui.section("What it does"), unsafe_allow_html=True)
+    for col, feature in zip(st.columns(3, gap="medium"), landing.FEATURES):
+        col.markdown(landing.feature(*feature), unsafe_allow_html=True)
+
+    st.markdown(ui.section("How it works"), unsafe_allow_html=True)
+    st.markdown(landing.steps(), unsafe_allow_html=True)
+    st.markdown(landing.footer(), unsafe_allow_html=True)
+
+
+def auth_panel():
+    """Two doors. The clinician one goes through the national provider registry."""
     # Deliberately a radio rather than st.tabs. The navigation bar is styled by selecting
     # every tab-list on the page, so a second group of tabs anywhere would be dragged to the
     # bottom of the screen wearing the wrong icons - which is exactly what happened here.
     # One tab group per app, and it is the navigation.
-    mode = st.radio("", ["I have an account", "Create one"], horizontal=True,
+    mode = st.radio("Are you signing in or starting out?",
+                    ["I have an account", "Create one"], horizontal=True,
                     label_visibility="collapsed", key="auth_mode")
 
     if mode == "I have an account":
@@ -976,9 +1012,8 @@ if not account:
 
 total = sum(db.counts_by_kind(con, None if accounts.is_verified_clinician(account)
                               else account["id"]).values())
-st.markdown(ui.brand(f"{total} record{'' if total == 1 else 's'}<br>on this device"),
-            unsafe_allow_html=True)
-st.markdown(ui.signed_in_strip(account), unsafe_allow_html=True)
+st.markdown(ui.appbar(ui.signed_in_strip(
+    account, meta=f"{total} record{'' if total == 1 else 's'}")), unsafe_allow_html=True)
 
 # Signing out is not a destination, so it is not a navigation item. It lives at the foot of
 # the first screen of each role, which also keeps the bar at five icons and two - the counts

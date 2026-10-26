@@ -135,6 +135,7 @@ coding error.
 
 | | |
 |---|---|
+| **Landing** | What a signed-out visitor sees: what the product does, how it works, the caveats, and the sign-in panel beside it rather than instead of it. |
 | **Card** | The emergency screen. Name, blood type, allergies in red, conditions, current medicines, who to call. |
 | **Add** | Photograph or upload a document. It is read once, you check what was read, then it is filed. |
 | **Records** | Everything in one timeline, searchable, filterable, with the original attached. |
@@ -202,14 +203,37 @@ retained there. Nothing else leaves the machine the app runs on.
 **This is a student project, not a medical device.** It holds a copy of your paperwork; it
 does not interpret results, and it is not a substitute for talking to your doctor.
 
+## The mark
+
+The logo is a shield with the cross cut *out* of it rather than drawn on top. That is the
+only version that survives being nineteen pixels wide in a navigation rail: a cross drawn
+in a second colour turns to mush at that size, a hole does not.
+
+`medvault/logo.py` holds the geometry as the list of segments the shield is made of. The
+SVG path string is generated from that list, the CSS mask is generated from the same string,
+and `tools/make_icons.py` samples the same curves with Pillow to draw the home-screen PNGs —
+so the mark in the app bar and the icon on a phone cannot drift apart by somebody forgetting
+to re-export. There is no SVG rasteriser in this project's dependencies and adding one for
+four files would be silly.
+
+Three things here fail silently rather than loudly, so they are covered by tests
+(`tests/test_logo.py`): geometry drifting outside its 48-unit box, which clips the icon; a
+`#` from a colour reaching a CSS data URI unescaped, which truncates the rest of the rule;
+and two copies of the mark on one page sharing a mask id, where the second wins and the
+first renders as a solid square.
+
 ## One product, two shapes
 
 **On a phone** it installs. Open the URL, *Add to Home Screen*, and it launches from an
 icon with no browser chrome — a manifest and the Apple meta tags make it a standalone app
 rather than a bookmark. Navigation is a bar across the bottom, where a thumb already is.
 
-**On a laptop** the bar becomes a left rail and the content moves over beside it, widening
-to 1040px with records laid out two-up. Same code, same login, same data.
+**On a laptop** the bar becomes a left rail with the brand at the top of it, and the
+content moves over beside it, widening to 1000px. Same code, same login, same data.
+
+Records stay one column on a wide screen. A two-up grid was written and then taken out
+again: each card is its own `st.markdown` call, so there is no single element for a grid to
+live on, and a rule that can never match is worse than no rule — it reads as a feature.
 
 Getting those tags into the page needed a workaround worth knowing about: Streamlit
 sanitises `<link>` and `<meta>` out of `st.markdown`, and `set_page_config` only reaches the
