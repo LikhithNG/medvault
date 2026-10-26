@@ -14,3 +14,5 @@ toolbarMode = "minimal"
 
 [server]
 maxUploadSize = 25
+# serves static/ at /app/static/ - needed for the web manifest and the home-screen icons
+enableStaticServing = true

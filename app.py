@@ -62,6 +62,9 @@ from schema import KINDS, KIND_ORDER, kind_label      # noqa: E402
 
 st.markdown(ui.CSS, unsafe_allow_html=True)
 
+import pwa                     # noqa: E402
+pwa.install()                  # home-screen icon and standalone launch on a phone
+
 
 @st.cache_resource
 def vault():

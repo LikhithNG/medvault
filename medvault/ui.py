@@ -198,6 +198,48 @@ div[data-baseweb="tab-list"]:has(button:nth-child(5)) button:nth-child(4)::befor
 div[data-baseweb="tab-list"]:has(button:nth-child(5)) button:nth-child(5)::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%203.5h12v17l-2-1.4-2%201.4-2-1.4-2%201.4-2-1.4-2%201.4z%22%2F%3E%3Cpath%20d%3D%22M9%208h6M9%2011.5h6M9%2015h3.5%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%203.5h12v17l-2-1.4-2%201.4-2-1.4-2%201.4-2-1.4-2%201.4z%22%2F%3E%3Cpath%20d%3D%22M9%208h6M9%2011.5h6M9%2015h3.5%22%2F%3E%3C%2Fsvg%3E")}
 div[data-baseweb="tab-list"]:not(:has(button:nth-child(3))) button:nth-child(1)::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M7%203.5h10a2%202%200%200%201%202%202V18a2%202%200%200%201-2%202H7a2%202%200%200%201-2-2V5.5a2%202%200%200%201%202-2Z%22%2F%3E%3Cpath%20d%3D%22M8.8%2012.2l2.2%202.2%204.2-4.6%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M7%203.5h10a2%202%200%200%201%202%202V18a2%202%200%200%201-2%202H7a2%202%200%200%201-2-2V5.5a2%202%200%200%201%202-2Z%22%2F%3E%3Cpath%20d%3D%22M8.8%2012.2l2.2%202.2%204.2-4.6%22%2F%3E%3C%2Fsvg%3E")}
 div[data-baseweb="tab-list"]:not(:has(button:nth-child(3))) button:nth-child(2)::before{-webkit-mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M7%203.5h7l4%204V17a2%202%200%200%201-2%202H7a2%202%200%200%201-2-2V5.5a2%202%200%200%201%202-2Z%22%2F%3E%3Cpath%20d%3D%22M14%203.5V8h4%22%2F%3E%3Cpath%20d%3D%22M8.5%2012.5h7M8.5%2015.5h4.5%22%2F%3E%3C%2Fsvg%3E");mask-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%221.9%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M7%203.5h7l4%204V17a2%202%200%200%201-2%202H7a2%202%200%200%201-2-2V5.5a2%202%200%200%201%202-2Z%22%2F%3E%3Cpath%20d%3D%22M14%203.5V8h4%22%2F%3E%3Cpath%20d%3D%22M8.5%2012.5h7M8.5%2015.5h4.5%22%2F%3E%3C%2Fsvg%3E")}
+/* ---- on a laptop --------------------------------------------------------- */
+/* The phone layout is a 620px column, which on a 1440px screen is a narrow strip stranded
+   in the middle with the navigation bar stretched across the whole width behind it. From
+   900px up the bar becomes a left rail and the content moves over beside it, which is what
+   a desktop application looks like. Nothing about the phone layout changes. */
+@media (min-width: 900px){
+  div[data-baseweb="tab-list"]{
+    top:0;bottom:0;right:auto;width:216px;height:100vh;
+    flex-direction:column;justify-content:flex-start;gap:.2rem;
+    padding:1.3rem .7rem;border-top:none;border-right:1px solid var(--line);
+    background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;
+    box-shadow:none}
+  div[data-baseweb="tab-list"] button{
+    flex:0 0 auto;width:100%;flex-direction:row;justify-content:flex-start;
+    gap:.65rem;padding:.6rem .7rem!important;border-radius:10px}
+  div[data-baseweb="tab-list"] button[aria-selected="true"]{background:var(--accent-soft)}
+  div[data-baseweb="tab-list"] button p{font-size:14px!important}
+  div[data-baseweb="tab-list"] button::before{width:19px;height:19px}
+
+  /* The rail is fixed, so the page has to be moved out from under it - but only when
+     there is a rail. The sign-in screen draws no tabs, and indenting it by 216px left the
+     form floating off to one side of an empty page. */
+  .stApp:has(div[data-baseweb="tab-list"]) .block-container{
+    max-width:860px!important;padding:1.6rem 2rem 2rem calc(216px + 2rem)!important}
+  .stApp:not(:has(div[data-baseweb="tab-list"])) .block-container{
+    max-width:420px!important;padding:3.5rem 1rem 2rem!important}
+  div[data-baseweb="tab-panel"]{padding-bottom:1rem}
+
+  /* room to breathe, and the emergency card stops looking like a phone widget */
+  .idcard{padding:1.5rem 1.6rem 1.6rem}
+  .idcard .who{font-size:27px}
+  .idcard .cell .v{font-size:17px}
+}
+
+/* On a wide laptop the record list is a single long column of short cards, which wastes
+   half the screen. Two columns from 1200px, with the cards still whole. */
+@media (min-width: 1200px){
+  .stApp:has(div[data-baseweb="tab-list"]) .block-container{max-width:1040px!important}
+  .reclist{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;align-items:start}
+  .reclist .rec,.reclist .med{margin-bottom:0}
+}
+
 </style>
 """
 

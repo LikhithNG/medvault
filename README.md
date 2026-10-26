@@ -91,6 +91,25 @@ retained there. Nothing else leaves the machine the app runs on.
 **This is a student project, not a medical device.** It holds a copy of your paperwork; it
 does not interpret results, and it is not a substitute for talking to your doctor.
 
+## One product, two shapes
+
+**On a phone** it installs. Open the URL, *Add to Home Screen*, and it launches from an
+icon with no browser chrome — a manifest and the Apple meta tags make it a standalone app
+rather than a bookmark. Navigation is a bar across the bottom, where a thumb already is.
+
+**On a laptop** the bar becomes a left rail and the content moves over beside it, widening
+to 1040px with records laid out two-up. Same code, same login, same data.
+
+Getting those tags into the page needed a workaround worth knowing about: Streamlit
+sanitises `<link>` and `<meta>` out of `st.markdown`, and `set_page_config` only reaches the
+favicon. `medvault/pwa.py` injects them from a zero-height `components.v1.html` block, which
+renders in an iframe and can reach `window.parent.document.head`.
+
+One trap caught by checking rather than assuming: every relative URL inside a manifest
+resolves against **the manifest's own location**, not the page's. Served from
+`/app/static/`, the icon paths became `/app/static/app/static/icon-192.png` — three 404s —
+and `start_url` would have launched the installed app at `/app/static/` instead of the app.
+
 ## Running it
 
 ```bash
