@@ -94,6 +94,23 @@ def test_a_decoding_artifact_is_stripped_from_an_english_field():
     assert _clean("\u6771\u4eac\u7dcf\u5408\u75c5\u9662") == "\u6771\u4eac\u7dcf\u5408\u75c5\u9662"
 
 
+def test_one_generic_word_is_not_a_match():
+    # "BLOOD DRAW" was reported as supported by a basic metabolic panel, on the single
+    # shared word "blood". A false match is the worst direction of error here: a line the
+    # patient believes is accounted for is a line they never ask about.
+    r = cc.check_line({"description": "BLOOD DRAW", "service_date": "2026-03-14"}, VAULT)
+    assert r["verdict"] == "DATE_NO_MATCH", f"matched on {r.get('overlap')}"
+
+
+def test_one_distinctive_word_still_matches():
+    # Requiring two words outright is too strict: this overlaps "Chest X-ray" on an
+    # anatomical word that actually means something.
+    r = cc.check_line({"description": "XRAY CHEST 2-VIEWS", "service_date": "2026-03-14"},
+                      VAULT)
+    assert r["verdict"] == "MATCHED"
+    assert "chest" in r["overlap"]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

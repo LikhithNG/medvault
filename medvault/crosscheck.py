@@ -25,6 +25,22 @@ STOPWORDS = {
     "with", "without", "and", "the", "for", "initial", "subsequent", "department",
 }
 
+# Words that appear across half of all clinical paperwork and so cannot carry a match on
+# their own. "BLOOD DRAW" matched a basic metabolic panel on the single word "blood" and
+# was reported as supported by it - a false match is the worst direction of error here,
+# because a line the patient believes is accounted for is a line they do not ask about.
+#
+# A match therefore needs either one word that is actually distinctive, or two or more
+# words of any kind. Requiring two outright was tried and is too strict: "XRAY CHEST
+# 2-VIEWS" against a record titled "Chest X-ray" overlaps on "chest" alone.
+WEAK = {
+    "blood", "test", "tests", "testing", "exam", "panel", "level", "visit", "care",
+    "lab", "labs", "study", "report", "routine", "complete", "basic", "total", "left",
+    "right", "patient", "hospital", "medical", "center", "clinic", "morning", "same",
+    "taken", "chemistry", "general", "standard", "single", "scan", "imaging", "view",
+    "views", "procedure", "treatment", "therapy", "medicine", "drug", "dose",
+}
+
 VERDICTS = {
     "MATCHED":       ("Matches a record you filed", "ok"),
     "DATE_NO_MATCH": ("You have records that day, but none mention this", "warn"),
@@ -90,8 +106,12 @@ def check_line(line, records):
     scored = []
     for r in near:
         overlap = wanted & _words(_record_text(r))
-        if overlap:
-            scored.append((len(overlap), r, sorted(overlap)))
+        if not overlap:
+            continue
+        distinctive = overlap - WEAK
+        # One distinctive word is evidence. One generic word is a coincidence.
+        if distinctive or len(overlap) >= 2:
+            scored.append((len(distinctive) * 10 + len(overlap), r, sorted(overlap)))
     scored.sort(key=lambda t: -t[0])
 
     if scored:

@@ -707,8 +707,19 @@ def screen_check():
             label, tone = crosscheck.VERDICTS[r["verdict"]]
             amt = (f"<span class='amt'>${r['charged']:,.2f}</span>"
                    if r.get("charged") else "")
+            # Which line this is about. Three cards reading "You have records that day,
+            # but none mention this" differed only by amount, and on a bill with the same
+            # code twice at the same price there was no way to tell them apart at all.
+            which = " · ".join(filter(None, [
+                f"<b>{r['code']}</b>" if r.get("code") else None,
+                (r.get("description") or "")[:46] or None,
+                r.get("service_date") or None]))
             st.markdown(f"<div class='hit {tone}'>{amt}<div class='h'>{label}</div>"
-                        f"<div class='b'>{r['ask']}</div></div>", unsafe_allow_html=True)
+                        f"<div class='b'>{which}<br>{r['ask']}</div></div>"
+                        if which else
+                        f"<div class='hit {tone}'>{amt}<div class='h'>{label}</div>"
+                        f"<div class='b'>{r['ask']}</div></div>",
+                        unsafe_allow_html=True)
     st.markdown(f"<div class='note'>{summary['caveat']}</div>", unsafe_allow_html=True)
 
     # ---- the letter --------------------------------------------------------
