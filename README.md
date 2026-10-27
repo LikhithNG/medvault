@@ -410,12 +410,35 @@ On Streamlit Community Cloud, point it at `app.py`, add `GEMINI_API_KEY` under *
 in the app's settings, and set `MEDVAULT_HOSTED = "1"` beside it. That second one turns on
 the warning the next paragraph explains.
 
-**The storage is temporary on a free tier.** The host restarts an app when it is idle and
-on every redeploy, and the SQLite file goes with it. For something called a vault that is
-a broken promise, so the Card screen says so and carries both halves of the way out —
+**Give it a database, or the vault empties on restart.** A free tier restarts an app when
+it is idle and on every redeploy, and the SQLite file goes with it. Add two more secrets
+and it stops being a file on that disk:
+
+```
+TURSO_DATABASE_URL = "libsql://your-db.turso.io"
+TURSO_AUTH_TOKEN   = "..."
+```
+
+[Turso](https://turso.tech) is free, signs in with GitHub, and speaks **SQLite's own
+dialect** — which is the whole reason it was chosen over Postgres, because not one line of
+SQL in `db.py` changes. `medvault/store.py` is the adapter; local SQLite stays the default
+and the tests never reach the network.
+
+Run `python3 tools/check_turso.py` with those two set before trusting it. The unit tests
+cover the wire format and cannot cover the round trip, and a green suite should not be
+allowed to imply otherwise.
+
+**It talks HTTP by hand rather than using the official client.** The first version
+imported `libsql-client`; its synchronous client hung, under pytest and again in a plain
+probe. Streamlit runs a script inside a thread that already owns an event loop, which is
+exactly the shape that deadlocks an async client behind a sync facade — and a storage
+layer that sometimes never returns is worse than none. So `store.py` speaks Turso's HTTP
+pipeline API with `urllib`, the same no-SDK discipline `gemini.py` and `groq.py` already
+follow. No new dependency at all.
+
+**Either way, you can leave with your records.** The Card screen carries both halves —
 **Download my vault** writes everything except the original scans to a JSON file, and
-**Restore it** puts that file back, skipping anything already there. Fixing it properly
-means a managed database, which is a cost decision rather than an engineering one.
+**Restore it** puts that file back, skipping anything already there.
 
 ## Running it
 

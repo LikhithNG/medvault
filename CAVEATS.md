@@ -196,8 +196,11 @@ A clinician's confirmation does not travel with the file. The account that gave 
 not exist on the machine the file lands on, so the badge would be a claim with nothing
 behind it — every restored record is labelled as filed by you.
 
-Fixing this properly means a managed database rather than a file on an ephemeral disk.
-That is a cost decision, not an engineering one.
+**This is fixable, and the fix is in the repository.** Setting `TURSO_DATABASE_URL` and
+`TURSO_AUTH_TOKEN` moves the vault off that disk and into a libSQL database that outlives
+a restart; the app then says so on the same screen instead of warning. Without those two
+secrets it is still a file, and still temporary — the warning is about the storage, not
+about being hosted, so it tells you which of the two you actually have.
 
 ## 11. This is not a medical record
 

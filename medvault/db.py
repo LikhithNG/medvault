@@ -86,7 +86,25 @@ def _migrate(con):
 
 
 def connect(path=None):
-    """A connection with foreign keys on and rows that behave like dicts."""
+    """A connection with foreign keys on and rows that behave like dicts.
+
+    Two backends, one surface. A local file by default - a vault on your own machine
+    should be something you can copy - and a remote libSQL database when the app is
+    hosted somewhere whose disk does not survive a restart. Same SQL either way: libSQL
+    speaks SQLite's dialect, which is the entire reason it was chosen over Postgres.
+
+    An explicit path always means the local file. Tests pass one, so they never reach for
+    the network, and `MEDVAULT_DB` keeps working.
+    """
+    import store
+    if path is None and store.configured():
+        con = store.connect()
+        con.executescript(SCHEMA)
+        _migrate(con)
+        import accounts
+        accounts.ensure(con)
+        return con
+
     p = pathlib.Path(path or DEFAULT_PATH)
     p.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(p, check_same_thread=False)

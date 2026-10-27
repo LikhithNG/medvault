@@ -73,6 +73,7 @@ import landing                 # noqa: E402
 import ask                     # noqa: E402
 import npi                     # noqa: E402
 import paste                   # noqa: E402
+import store                   # noqa: E402
 import ui                      # noqa: E402
 from schema import (BLOOD_TYPES, KINDS, KIND_ORDER, kind_label,   # noqa: E402
                     missing_essentials)
@@ -1121,12 +1122,19 @@ def hosted():
 def vault_transfer(account):
     """Take your records out, and put them back. Both halves, or it is a trap."""
     st.markdown(ui.section("Your records, as a file"), unsafe_allow_html=True)
-    if hosted():
+    # The warning is about the storage, not about being hosted. With a remote database
+    # behind it the records do outlive a restart, and saying otherwise would be a caveat
+    # that is no longer true - which costs as much trust as a missing one.
+    if hosted() and not store.configured():
         st.warning("**This deployment's storage is temporary.** The server restarts when "
                    "it is idle and the database goes with it. Download your vault before "
-                   "you close the tab, and put it back with the box below. A real "
-                   "deployment would use a managed database; this is a student project "
-                   "on a free tier, and saying so beats finding out.")
+                   "you close the tab, and put it back with the box below. Setting "
+                   "`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in this app's secrets "
+                   "moves it to a database that survives.")
+    elif store.configured():
+        st.success("**Your records are kept in a database, not on this server's disk.** "
+                   "They survive a restart and a redeploy. Taking a copy is still worth "
+                   "doing — a vault you cannot leave with is a trap.")
     st.caption("Everything except the original scans, as JSON small enough to email "
                "yourself. A vault that only takes deposits is a trap, so this goes both "
                "ways.")
@@ -1213,4 +1221,5 @@ if st.query_params.get("diag"):
         st.text(note)
     ready, why = reader_ready()
     st.text(f"reader · {'ready' if ready else why}")
-    st.text(f"vault  · {db.DEFAULT_PATH}")
+    st.text(f"vault  · {store.describe()}")
+    st.text(f"local  · {db.DEFAULT_PATH}")
