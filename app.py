@@ -66,6 +66,7 @@ _load_credentials()
 import accounts                # noqa: E402
 import db                      # noqa: E402
 import landing                 # noqa: E402
+import ask                     # noqa: E402
 import npi                     # noqa: E402
 import ui                      # noqa: E402
 from schema import (BLOOD_TYPES, KINDS, KIND_ORDER, kind_label,   # noqa: E402
@@ -837,6 +838,93 @@ def screen_check():
 
 # ------------------------------------------------------------ who you are ----
 
+EXAMPLE_QUESTIONS = [
+    "What is each of my medicines for?",
+    "What did my last scan find?",
+    "Why am I taking two antibiotics?",
+]
+
+
+def _render_turn(turn):
+    """One question and its answer, with the badge that says where the answer came from."""
+    st.markdown(f"<div class='qa'><div class='bubble q'>{turn['q']}</div>",
+                unsafe_allow_html=True)
+    a = turn["a"]
+    if a.get("kind") == "error":
+        st.markdown("<div class='bubble a'><span class='badge bad'>Could not answer</span>"
+                    "<div>The reader did not respond. Nothing was made up to fill the "
+                    "gap.</div></div></div>", unsafe_allow_html=True)
+        st.caption(f"Reader said: {a.get('error')}")
+        return
+
+    label, tone = ask.KIND_LABEL.get(a["kind"], ("Answer", "warn")) \
+        if a["kind"] != "emergency" else ("Call for help now", "bad")
+    body = "".join(f"<p>{para}</p>" for para in a["answer"].split("\n") if para.strip())
+    srcs = ""
+    if a.get("sources"):
+        items = " · ".join(
+            f"<b>{r.get('title')}</b> ({r.get('service_date') or 'undated'})"
+            for r in a["sources"].values())
+        srcs = f"<div class='srcs'>Read out of: {items}</div>"
+    st.markdown(f"<div class='bubble a'><span class='badge {tone}'>{label}</span>"
+                f"{body}{srcs}</div></div>", unsafe_allow_html=True)
+
+
+def screen_ask():
+    """A bot for the paperwork, with the checkable things checked before it is asked."""
+    findings = ask.brief(con, my_id())
+    st.markdown(ui.section(f"What your own records already show · {len(findings)}"),
+                unsafe_allow_html=True)
+    st.caption("These are worked out here, from your records, by arithmetic — no model is "
+               "involved and nothing leaves this server to produce them.")
+    if not findings:
+        st.markdown(ui.empty("Nothing to flag.<br>No duplicate medicines, no finished "
+                             "course still marked as current, nothing that collides with "
+                             "your recorded allergies."), unsafe_allow_html=True)
+    for f in findings:
+        st.markdown(f"<div class='hit {f['tone']}'><div class='h'>{f['title']}</div>"
+                    f"<div class='b'>{f['body']}</div></div>", unsafe_allow_html=True)
+
+    st.markdown(ui.section("Ask about your medicines and treatment"), unsafe_allow_html=True)
+    ready, why = reader_ready()
+    if not ready:
+        st.info(f"The question box needs a reading key, and {why}. The checks above do "
+                f"not — they are already complete.")
+        return
+
+    st.caption("It answers from the records in your vault, and says so when an answer is "
+               "general knowledge instead. It will not tell you to change a dose, judge "
+               "whether something is safe for you, or check drug interactions — it has no "
+               "interaction database and will not pretend otherwise. **Your question and "
+               "the text of your records are sent to the reader to answer it.**")
+
+    log = st.session_state.setdefault("ask_log", [])
+    for turn in log:
+        _render_turn(turn)
+
+    def run(question):
+        with st.spinner("Reading your records…"):
+            st.session_state["ask_log"].append(
+                {"q": question, "a": ask.answer(con, my_id(), question)})
+        st.rerun()
+
+    with st.form("askform", border=False, clear_on_submit=True):
+        q = st.text_input("Your question", key="ask_box", label_visibility="collapsed",
+                          placeholder="what is the fluticasone for?")
+        if st.form_submit_button("Ask", type="primary", use_container_width=True) and q:
+            run(q)
+
+    if not log:
+        st.caption("Or start with one of these:")
+        for col, example in zip(st.columns(len(EXAMPLE_QUESTIONS)), EXAMPLE_QUESTIONS):
+            if col.button(example, key=f"ex{example[:12]}", use_container_width=True):
+                run(example)
+    elif st.button("Clear this conversation", use_container_width=True):
+        st.session_state["ask_log"] = []
+        st.rerun()
+
+
+
 def screen_signin():
     """The landing page.
 
@@ -1028,7 +1116,7 @@ if accounts.is_verified_clinician(account):
     with tabs[1]:
         screen_records()
 else:
-    tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Bill"])
+    tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Bill", "Ask"])
     with tabs[0]:
         screen_card()
         sign_out()
@@ -1036,6 +1124,7 @@ else:
     with tabs[2]: screen_records()
     with tabs[3]: screen_medicines()
     with tabs[4]: screen_check()
+    with tabs[5]: screen_ask()
 
 if st.query_params.get("diag"):
     st.divider()

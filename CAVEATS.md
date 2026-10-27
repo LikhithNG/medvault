@@ -89,7 +89,43 @@ access. If you deploy this for more than one real person, that is the first thin
 Deployed to a hosted service, the database lives on that server, not on your phone. It is
 not encrypted at rest.
 
-## 8. This is not a medical record
+## 8. What the question box is, and is not
+
+The Ask screen answers questions about the records in your own vault. A model writes those
+answers, which means they carry every limitation a model has, and the interface is built
+around that rather than around hiding it.
+
+**What is not generated.** The findings above the box — a duplicate medicine, a course
+whose end date has passed, a medicine that collides with a recorded allergy — are
+arithmetic over your records. No model is involved and nothing leaves the server to
+produce them.
+
+**What never reaches a model.** A question that reads like an emergency is answered with a
+phone number and nothing else. A question asking whether to start, stop, skip or change a
+dose is answered by naming the prescriber and quoting what your own record says; that
+relabelling is applied after the answer comes back, so it does not depend on the model
+having been honest about what it was doing.
+
+**What the badges mean.** *From your records* means the answer cites at least one record,
+and the records it cites are named under it. *General information* means it is textbook
+knowledge about a drug or a test and is **not a statement about you**. *Your records do not
+say* means the answer is not in the vault. An answer that claimed the records but cited
+none is relabelled before it is shown.
+
+**It does not check drug interactions.** There is no interaction database here. A check
+that quietly does not run is worse than one that is absent, so it is absent and the screen
+says so.
+
+**The allergy check is a prompt, not a clearance.** It matches the medicine's name, and a
+short hand-written table of five drug families, against what you typed in the allergies
+box — that is what catches "allergic to penicillin" against amoxicillin, which share no
+letters. Five families is not a formulary. It will miss things. Tell the hospital your
+allergies yourself.
+
+**Your question and your records are sent to the model to answer it.** That is the one
+place in this app where record text leaves the server other than a document being read.
+
+## 9. This is not a medical record
 
 MedVault holds a copy of paperwork you chose to upload. It is not a clinical system, it is
 not interoperable with any hospital, nothing in it is authoritative, and no clinician is

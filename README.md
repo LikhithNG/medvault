@@ -141,17 +141,19 @@ coding error.
 | **Records** | Everything in one timeline, searchable, filterable, with the original attached. |
 | **Medicines** | Pulled out of prescriptions automatically, with dose, frequency and what it is for. |
 | **Check a bill** | A hospital bill against your own records. |
+| **Ask** | What your records already show, checked by arithmetic — then a bot you can ask about your medicines and treatment. |
 | **Review** | Clinicians only. The queue of patient-filed records waiting to be confirmed. |
 
 Navigation is a fixed bar at the bottom of the screen with an icon above each label — where
 a thumb already is on a phone, and the clearest signal that this is an app rather than a web
 page. Which icons are drawn is inferred in CSS from how many tabs the signed-in role
-produced, five for a patient and two for a clinician, because Streamlit strips `<script>`
+produced, six for a patient and two for a clinician, because Streamlit strips `<script>`
 from markdown so a class set from Python never arrives.
 
 ## Where the AI is, and where it deliberately is not
 
-Reading a photograph needs a model. Nothing else here does.
+Two jobs need a model: reading a photograph, and answering a question about what a
+document means. Nothing else here does.
 
 | Step | How |
 |---|---|
@@ -166,6 +168,8 @@ Reading a photograph needs a model. Nothing else here does.
 | Whether your records support a line | `crosscheck.py` — pure Python |
 | The dispute letter | `dispute.py` — a template over the Checker's figures |
 | Answering questions about the bill | `explain.py` — reads the findings, generates nothing |
+| Duplicate medicines, finished courses, allergy collisions | `ask.py` — pure Python |
+| Answering questions about your records | `ask.py` — a model, inside the fence below |
 
 ### Open models where they work
 
@@ -191,14 +195,46 @@ it can never invent a figure, and when it does not understand a question it says
 lists what it can answer. Ten tests exist to keep it that way, including one that scans
 every answer for a dollar amount the checks never established.
 
+### Two bots, and only one of them generates
+
+The bill explainer is not a chatbot and the records bot is, and those are the same decision
+rather than two different ones. A bill's findings are a bounded set of computed facts, so
+generating a sentence about them adds a way to be wrong and nothing else. "What did this
+discharge summary actually say" has no lookup table behind it, and a patient holding a
+document they cannot read is exactly who a careful reader helps most.
+
+So `ask.py` calls a model, with a fence around it:
+
+- **The checks run first, and never call one.** Duplicate medicines, a course whose end
+  date has passed, a medicine that collides with a recorded allergy — those are arithmetic
+  over the vault, and the answers must not vary with a model's mood, so they do not.
+- **Two questions never reach it.** Anything that reads like an emergency is answered with a
+  phone number. Anything asking for a dose decision is answered by naming the prescriber and
+  then quoting what the record actually says. Both are pattern-matched in Python, and the
+  dose relabelling is applied *after* the model answers, so the badge does not depend on the
+  model having classified itself honestly.
+- **Every answer says where it came from.** *From your records* must cite at least one
+  record, and an answer claiming the records while citing none is relabelled *general* before
+  it is shown. A citation of a record belonging to someone else is dropped.
+- **It does not check drug interactions**, and says so, because there is no interaction
+  database here and a check that quietly does not run is worse than one that is absent.
+
+The allergy check knows a short, hand-written table of drug families, because "allergic to
+penicillin" and "amoxicillin" share no letters and a name-only check would call that pair
+unrelated. The table is five families long and the interface says so on every card it
+produces. It is a prompt to ask a question, not a clearance.
+
 ## Where your data lives
 
 In one SQLite file next to the app (`vault.db`, git-ignored). Uploaded originals are stored
 in it too, so the vault can hand back the actual page rather than only what a model made of
 it — a summary is useful, the original is evidence.
 
-When a document is read, the page is sent once to a vision model for extraction and is not
-retained there. Nothing else leaves the machine the app runs on.
+Two things leave that machine, both only when you ask for them. A document you upload is
+sent once to a model to be read, and is not retained there. A question you type into the Ask
+screen is sent with the text of your records, because an answer about your records cannot be
+given without them. Everything else — every check, every price comparison, every finding —
+is computed locally.
 
 **This is a student project, not a medical device.** It holds a copy of your paperwork; it
 does not interpret results, and it is not a substitute for talking to your doctor.

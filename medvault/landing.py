@@ -107,6 +107,7 @@ def footer():
         f"{SUPPORT}; the national benchmark is the CMS Physician Fee Schedule. The rights "
         "section follows the No Surprises Act and IRC 501(r) and tells you what may apply "
         "to a bill, never what will.</div>"
-        "<div>Your records are kept on the server this copy runs on, and nothing is sent "
-        "to a third party except the document text a bill reader is asked to transcribe.</div>"
+        "<div>Your records are kept on the server this copy runs on. Two things leave it, "
+        "and only when you ask for them: a document you upload to be read, and — if you "
+        "use the question box — your question and the text of your records.</div>"
         "</div>")

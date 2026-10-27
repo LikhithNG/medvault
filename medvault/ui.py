@@ -227,6 +227,30 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(> div >
 .hit .amt{float:right;font-weight:800;font-size:16px;margin-left:.75rem;
   padding-left:.15rem}
 
+/* ---- the question and answer thread -------------------------------------- */
+.qa{margin-bottom:1rem}
+.bubble{border-radius:16px;padding:.75rem .95rem;font-size:14.5px;line-height:1.58;
+  width:fit-content;max-width:92%}
+.bubble.q{background:linear-gradient(135deg,var(--accent-bright),var(--accent-deep));
+  color:#fff;margin-left:auto;border-bottom-right-radius:5px;font-weight:500;
+  box-shadow:0 5px 16px rgba(15,111,222,.26)}
+.bubble.a{background:var(--card);border:1px solid var(--line);color:var(--ink);
+  border-bottom-left-radius:5px;box-shadow:var(--sh-sm);margin-top:.5rem}
+.bubble.a p{margin:0 0 .6rem}
+.bubble.a p:last-child{margin:0}
+/* The badge is the whole point of the answer: a reader has to be able to tell at a glance
+   whether what follows came out of their own records or out of a model's general
+   knowledge, and those two things look identical once they are prose. */
+.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:10.5px;font-weight:700;
+  text-transform:uppercase;letter-spacing:.055em;padding:.22rem .55rem;border-radius:999px;
+  margin-bottom:.55rem}
+.badge.ok{background:var(--ok-soft);color:var(--ok);border:1px solid #BCE5CF}
+.badge.warn{background:var(--warn-soft);color:var(--warn);border:1px solid #F7E0B5}
+.badge.bad{background:var(--danger-soft);color:var(--danger);border:1px solid #F6C9C4}
+.srcs{font-size:12px;color:var(--faint);margin-top:.6rem;padding-top:.55rem;
+  border-top:1px dashed var(--line);line-height:1.5}
+.srcs b{color:var(--soft);font-weight:600}
+
 /* ---- small shared bits --------------------------------------------------- */
 .sect{display:flex;align-items:center;gap:.45rem;font-size:11.5px;font-weight:700;
   text-transform:uppercase;letter-spacing:.09em;color:var(--soft);margin:1.4rem 0 .6rem}
@@ -295,6 +319,11 @@ div[data-baseweb="tab-list"] button p{
   font-family:var(--sans)!important;font-size:10.5px!important;font-weight:600!important;
   color:var(--faint)!important;margin:0;letter-spacing:-.01em;white-space:nowrap}
 div[data-baseweb="tab-list"] button[aria-selected="true"] p{color:var(--accent)!important}
+/* Six labels across a phone is 62px each, and at 10.5px "Records" and "Medicines" met in
+   the middle with no space between them. Smaller, and clipped rather than overlapping. */
+div[data-baseweb="tab-list"]:has(button:nth-child(6)) button p{
+  font-size:9.5px!important;letter-spacing:-.02em;max-width:100%;overflow:hidden;
+  text-overflow:ellipsis}
 div[data-baseweb="tab-highlight"],div[data-baseweb="tab-border"]{display:none}
 
 /* one icon per position, drawn above the label */
@@ -388,12 +417,13 @@ __ICONS__
 # The navigation icons, kept out of the stylesheet above so the shape of the page stays
 # readable. Which set appears is inferred from the number of tabs the role drew.
 _NAV = {
-    5: [  # patient: card, add, records, medicines, bill
+    6: [  # patient: card, add, records, medicines, bill, ask
         '<rect x="2.5" y="4.5" width="19" height="15" rx="3"/><path d="M12 15.2s-3.1-2-3.1-4a1.8 1.8 0 0 1 3.1-1.2 1.8 1.8 0 0 1 3.1 1.2c0 2-3.1 4-3.1 4Z"/>',
         '<path d="M3 8.5h3l1.6-2.2h8.8L18 8.5h3v10H3z"/><circle cx="12" cy="13" r="3.4"/>',
         '<path d="M7 3.5h7l4 4V17a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z"/><path d="M14 3.5V8h4"/><path d="M8.5 12.5h7M8.5 15.5h4.5"/>',
         '<rect x="3.2" y="8.6" width="17.6" height="6.8" rx="3.4" transform="rotate(-40 12 12)"/><path d="M9.6 9.6l4.8 4.8"/>',
         '<path d="M6 3.5h12v17l-2-1.4-2 1.4-2-1.4-2 1.4-2-1.4-2 1.4z"/><path d="M9 8h6M9 11.5h6M9 15h3.5"/>',
+        '<path d="M12 3.8c-4.6 0-8.4 3.1-8.4 7s3.8 7 8.4 7c.7 0 1.3 0 1.9-.2l3.6 2.1v-3.8c1.7-1.3 2.9-3.1 2.9-5.1 0-3.9-3.8-7-8.4-7Z"/><path d="M12 12.9v-.3c0-.9.5-1.3 1.1-1.8.5-.4.9-.9.9-1.5a2 2 0 0 0-4 0"/><path d="M12 15.1h.01"/>',
     ],
     2: [  # clinician: review, records
         '<path d="M7 3.5h10a2 2 0 0 1 2 2V18a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2Z"/><path d="M8.8 12.2l2.2 2.2 4.2-4.6"/>',
@@ -411,9 +441,9 @@ def _stroke_svg(body, width=1.9):
 def _nav_css():
     out = []
     for count, icons in _NAV.items():
-        # five tabs means a patient, two means a clinician; the stylesheet can tell them
-        # apart by asking whether a fifth button exists.
-        scope = ('div[data-baseweb="tab-list"]:has(button:nth-child(5))' if count == 5
+        # six tabs means a patient, two means a clinician; the stylesheet can tell them
+        # apart by asking whether a sixth button exists.
+        scope = ('div[data-baseweb="tab-list"]:has(button:nth-child(6))' if count == 6
                  else 'div[data-baseweb="tab-list"]:not(:has(button:nth-child(3)))')
         for i, body in enumerate(icons, start=1):
             url = logo.css_url(_stroke_svg(body))
