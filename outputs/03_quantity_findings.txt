@@ -1,0 +1,41 @@
+MedVault — what the checks found on 03_quantity
+======================================================================
+
+Hospital           Doylestown Hospital
+Lines read         3
+Billed total       $16,590.00
+Published total    $16,590.00
+Unexplained gap    $0.00
+
+This gap is a question to ask, not money owed back and not a refund estimate.
+
+Checked against the hospital's own published prices
+----------------------------------------------------------------------
+  99282    E/R VISIT LEVEL II                          $16,050.00
+           verdict: QUANTITY_SUSPECT — billed 10 times; 99282 is normally billed once per visit
+           receipt: hospital gross charge, collected 2026-10-02
+                    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv
+
+Wrong on the bill's own face
+----------------------------------------------------------------------
+  Nothing. The arithmetic adds up and no code is unspecified.
+
+Against the national Medicare allowance
+----------------------------------------------------------------------
+  99282    Emergency Room Visit - Low Complexity       $16,050.00
+           Medicare allows $40.42 — 39.7x   (CMS CMS_PFS 2026)
+  80048    Basic Metabolic Panel (BMP)                    $241.00
+           Medicare allows $8.46 — 28.5x   (CMS CMS_CLFS 2026)
+  71046    Chest X-ray (2 Views)                          $299.00
+           Medicare allows $33.07 — 9x   (CMS CMS_PFS 2026)
+
+A Medicare rate is not a price cap. A hospital may charge a commercial
+patient more, and usually does.
+
+What the law may already give you
+----------------------------------------------------------------------
+  Nothing was established — the questions that decide this were left unanswered.
+
+Receipt audit
+----------------------------------------------------------------------
+  Every line that asserts a dollar comparison carries a complete receipt.

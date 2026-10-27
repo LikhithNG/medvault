@@ -1,0 +1,39 @@
+MedVault — what the checks found on 04_unspecified
+======================================================================
+
+Hospital           Doylestown Hospital
+Lines read         3
+Billed total       $6,679.00
+Published total    $1,619.00
+Unexplained gap    $0.00
+
+This gap is a question to ask, not money owed back and not a refund estimate.
+
+Checked against the hospital's own published prices
+----------------------------------------------------------------------
+  J3490    UNCLASSIFIED DRUG                            $4,200.00
+           verdict: NOT_POSTED — Doylestown Hospital publishes no price for code J3490, so this charge cannot be checked against its own price file
+
+  A9270    NON-COVERED ITEM                               $860.00
+           verdict: NOT_POSTED — Doylestown Hospital publishes no price for code A9270, so this charge cannot be checked against its own price file
+
+Wrong on the bill's own face
+----------------------------------------------------------------------
+  line 2: Code J3490 does not say what this was — J3490 means “Unclassified drug”. It is a real billing code, but it identifies nothing specific, so there is no published price to compare it against and no way to tell whether the amount is reasonable.
+  line 3: Code A9270 does not say what this was — A9270 means “Non-covered item or service”. It is a real billing code, but it identifies nothing specific, so there is no published price to compare it against and no way to tell whether the amount is reasonable.
+
+Against the national Medicare allowance
+----------------------------------------------------------------------
+  70450    CT Scan of the Head without Contrast         $1,619.00
+           Medicare allows $106.55 — 15.2x   (CMS CMS_PFS 2026)
+
+A Medicare rate is not a price cap. A hospital may charge a commercial
+patient more, and usually does.
+
+What the law may already give you
+----------------------------------------------------------------------
+  Nothing was established — the questions that decide this were left unanswered.
+
+Receipt audit
+----------------------------------------------------------------------
+  Every line that asserts a dollar comparison carries a complete receipt.

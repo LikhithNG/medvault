@@ -1,0 +1,44 @@
+MedVault — what the checks found on 05_ambulance
+======================================================================
+
+Hospital           Doylestown Hospital
+Lines read         3
+Billed total       $5,756.00
+Published total    $3,224.00
+Unexplained gap    $642.00
+
+This gap is a question to ask, not money owed back and not a refund estimate.
+
+Checked against the hospital's own published prices
+----------------------------------------------------------------------
+  A0427    ALS AMBULANCE EMERGENCY                      $1,890.00
+           verdict: NOT_POSTED — Doylestown Hospital publishes no price for code A0427, so this charge cannot be checked against its own price file
+
+  99285    E/R VISIT LEVEL V                            $2,247.00
+           verdict: ABOVE_POSTED — charged $2,247.00 against a posted price of $1,605.00 for 1 unit(s) - $642.00 over
+           receipt: hospital gross charge, collected 2026-10-02
+                    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv
+
+Wrong on the bill's own face
+----------------------------------------------------------------------
+  line 2: The line does not multiply out — 1 at $1,605.00 each is $1,605.00, but the line is billed $2,247.00 — over by $642.00.
+
+Against the national Medicare allowance
+----------------------------------------------------------------------
+  99285    Emergency Room Visit - Critical/Life-Thr     $2,247.00
+           Medicare allows $171.35 — 13.1x   (CMS CMS_PFS 2026)
+  70450    CT Scan of the Head without Contrast         $1,619.00
+           Medicare allows $106.55 — 15.2x   (CMS CMS_PFS 2026)
+
+A Medicare rate is not a price cap. A hospital may charge a commercial
+patient more, and usually does.
+
+What the law may already give you
+----------------------------------------------------------------------
+  Ground ambulance is not covered by the federal protection
+           Ask your state department of insurance whether your state limits ground-ambulance balance billing, and whether your plan is self-funded, which usually puts it out of state reach.
+           (No Surprises Act · ground ambulance excluded from 45 CFR 149.110)
+
+Receipt audit
+----------------------------------------------------------------------
+  Every line that asserts a dollar comparison carries a complete receipt.

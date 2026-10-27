@@ -1,0 +1,49 @@
+MedVault — what the checks found on 01_overcharged
+======================================================================
+
+Hospital           Doylestown Hospital
+Lines read         4
+Billed total       $12,990.14
+Published total    $8,168.00
+Unexplained gap    $4,822.14
+
+This gap is a question to ask, not money owed back and not a refund estimate.
+
+Checked against the hospital's own published prices
+----------------------------------------------------------------------
+  70450    CT HEAD/BRAIN W/O CONTRAST                   $3,076.10
+           verdict: ABOVE_POSTED — charged $3,076.10 against a posted price of $1,619.00 for 1 unit(s) - $1,457.10 over
+           receipt: hospital gross charge, collected 2026-10-02
+                    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv
+
+  72148    MRI LUMBAR WITHOUT                           $9,374.04
+           verdict: ABOVE_POSTED — charged $9,374.04 against a posted price of $6,009.00 for 1 unit(s) - $3,365.04 over
+           receipt: hospital gross charge, collected 2026-10-02
+                    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv
+
+Wrong on the bill's own face
+----------------------------------------------------------------------
+  line 1: The line does not multiply out — 1 at $1,619.00 each is $1,619.00, but the line is billed $3,076.10 — over by $1,457.10.
+  line 2: The line does not multiply out — 1 at $6,009.00 each is $6,009.00, but the line is billed $9,374.04 — over by $3,365.04.
+
+Against the national Medicare allowance
+----------------------------------------------------------------------
+  70450    CT Scan of the Head without Contrast         $3,076.10
+           Medicare allows $106.55 — 28.9x   (CMS CMS_PFS 2026)
+  72148    MRI of the Lower Back (Lumbar Spine) wit     $9,374.04
+           Medicare allows $191.72 — 48.9x   (CMS CMS_PFS 2026)
+  71046    Chest X-ray (2 Views)                          $299.00
+           Medicare allows $33.07 — 9x   (CMS CMS_PFS 2026)
+  80048    Basic Metabolic Panel (BMP)                    $241.00
+           Medicare allows $8.46 — 28.5x   (CMS CMS_CLFS 2026)
+
+A Medicare rate is not a price cap. A hospital may charge a commercial
+patient more, and usually does.
+
+What the law may already give you
+----------------------------------------------------------------------
+  Nothing was established — the questions that decide this were left unanswered.
+
+Receipt audit
+----------------------------------------------------------------------
+  Every line that asserts a dollar comparison carries a complete receipt.

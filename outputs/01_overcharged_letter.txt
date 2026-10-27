@@ -1,0 +1,36 @@
+26 October 2026
+
+To the billing office,
+Doylestown Hospital
+
+I am writing about the itemised statement below. I have compared it against the
+standard-charge file your hospital publishes under 45 CFR 180, and I have
+questions about the following lines.
+
+Billed on this statement:        $12,990.14
+Your published prices total:     $8,168.00
+Difference I am asking about:    $4,822.14
+
+Lines in question
+-----------------
+72148 — MRI LUMBAR WITHOUT
+    Billed $9,374.04. Your published price for this code is $6,009.00.
+    Difference: $3,365.04.
+    Source: your hospital gross charge for this code, published at
+    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv (collected 2026-10-02).
+
+70450 — CT HEAD/BRAIN W/O CONTRAST
+    Billed $3,076.10. Your published price for this code is $1,619.00.
+    Difference: $1,457.10.
+    Source: your hospital gross charge for this code, published at
+    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv (collected 2026-10-02).
+
+Please send me a written explanation of each line above, and a corrected
+statement if any of them is wrong. I am not disputing that I received care —
+I am asking how these amounts were arrived at.
+
+Please confirm in writing that collection activity is paused while this is
+under review.
+
+Thank you,
+A. Patient

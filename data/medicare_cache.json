@@ -21,6 +21,17 @@
   "name": "CT Scan of the Head without Contrast",
   "plain": "A CT scan of your head without contrast dye, creating detailed cross-sectional images of your brain and skull."
  },
+ "71045": {
+  "_at": 1793066554.3230278,
+  "category": "Radiology",
+  "code": "71045",
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 25.38,
+  "name": "Chest X-ray (1 View)",
+  "plain": "A standard chest X-ray taken from the front (one view), showing your lungs, heart, and ribcage."
+ },
  "71046": {
   "_at": 1793014276.9155352,
   "category": "Radiology",
@@ -43,6 +54,17 @@
   "name": "MRI of the Lower Back (Lumbar Spine) without Contrast",
   "plain": "An MRI of your lumbar spine (lower back) without contrast, showing detailed images of discs, nerves, and spinal cord."
  },
+ "76700": {
+  "_at": 1793066647.364649,
+  "category": "Radiology",
+  "code": "76700",
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 114.23,
+  "name": "Abdominal Ultrasound (Complete)",
+  "plain": "Complete abdominal ultrasound with limited Doppler."
+ },
  "80048": {
   "_at": 1793014277.2393012,
   "category": "Pathology/Laboratory",
@@ -53,6 +75,39 @@
   "medicare_rate": 8.46,
   "name": "Basic Metabolic Panel (BMP)",
   "plain": "A basic metabolic panel (BMP) blood test measuring 8 substances including blood sugar, calcium, and kidney function markers."
+ },
+ "80053": {
+  "_at": 1793066553.717481,
+  "category": "Pathology/Laboratory",
+  "code": "80053",
+  "dataset": "CMS_CLFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 10.56,
+  "name": "Comprehensive Metabolic Panel (CMP)",
+  "plain": "A comprehensive metabolic panel (CMP) blood test that measures 14 different substances in your blood including sugar, electrolytes, kidney function, and liver function."
+ },
+ "85025": {
+  "_at": 1793066554.004246,
+  "category": "Pathology/Laboratory",
+  "code": "85025",
+  "dataset": "CMS_CLFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 7.77,
+  "name": "Complete Blood Count (CBC) with Differential",
+  "plain": "A complete blood count (CBC) with differential, measuring red blood cells, white blood cells, platelets, and the types of white blood cells."
+ },
+ "93000": {
+  "_at": 1793066553.11221,
+  "category": "Cardiovascular",
+  "code": "93000",
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 15.36,
+  "name": "EKG (Electrocardiogram)",
+  "plain": "A standard 12-lead electrocardiogram (EKG/ECG) that records the electrical activity of your heart."
  },
  "93005": {
   "_at": 1793064738.895178,
@@ -65,6 +120,28 @@
   "name": "Electrocardiogram Tracing",
   "plain": "The tracing-only portion of an EKG, where just the heart rhythm recording is obtained."
  },
+ "99213": {
+  "_at": 1793066553.3912058,
+  "category": "Evaluation & Management",
+  "code": "99213",
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 57.45,
+  "name": "Established Patient Office Visit - Low Complexity",
+  "plain": "A standard follow-up visit with your regular doctor, the most common type of office visit."
+ },
+ "99282": {
+  "_at": 1793066646.680755,
+  "category": "Evaluation & Management",
+  "code": "99282",
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 40.42,
+  "name": "Emergency Room Visit - Low Complexity",
+  "plain": "An emergency room visit for a problem that needs some evaluation but is not life-threatening."
+ },
  "99284": {
   "_at": 1793014277.744063,
   "category": "Evaluation & Management",
@@ -75,5 +152,16 @@
   "medicare_rate": 118.24,
   "name": "Emergency Room Visit - High Complexity",
   "plain": "A serious emergency room visit for conditions that need urgent and detailed evaluation, often involving multiple tests."
+ },
+ "99285": {
+  "_at": 1793066646.953668,
+  "category": "Evaluation & Management",
+  "code": "99285",
+  "dataset": "CMS_PFS",
+  "effective_year": 2026,
+  "found": true,
+  "medicare_rate": 171.35,
+  "name": "Emergency Room Visit - Critical/Life-Threatening",
+  "plain": "The most serious level of emergency room visit for life-threatening or critical conditions requiring immediate intervention."
  }
 }

@@ -1,0 +1,41 @@
+MedVault — what the checks found on 02_duplicate
+======================================================================
+
+Hospital           Doylestown Hospital
+Lines read         4
+Billed total       $4,929.00
+Published total    $3,324.00
+Unexplained gap    $1,605.00
+
+This gap is a question to ask, not money owed back and not a refund estimate.
+
+Checked against the hospital's own published prices
+----------------------------------------------------------------------
+  99284    E/R VISIT LEVEL IV                           $1,605.00
+           verdict: DUPLICATE — code 99284 appears more than once on this bill
+
+Wrong on the bill's own face
+----------------------------------------------------------------------
+  Nothing. The arithmetic adds up and no code is unspecified.
+
+Against the national Medicare allowance
+----------------------------------------------------------------------
+  99284    Emergency Room Visit - High Complexity       $1,605.00
+           Medicare allows $118.24 — 13.6x   (CMS CMS_PFS 2026)
+  99284    Emergency Room Visit - High Complexity       $1,605.00
+           Medicare allows $118.24 — 13.6x   (CMS CMS_PFS 2026)
+  70450    CT Scan of the Head without Contrast         $1,619.00
+           Medicare allows $106.55 — 15.2x   (CMS CMS_PFS 2026)
+  36415    Blood Draw (Venipuncture)                      $100.00
+           Medicare allows $9.34 — 5.4x   (CMS CMS_CLFS 2026)
+
+A Medicare rate is not a price cap. A hospital may charge a commercial
+patient more, and usually does.
+
+What the law may already give you
+----------------------------------------------------------------------
+  Nothing was established — the questions that decide this were left unanswered.
+
+Receipt audit
+----------------------------------------------------------------------
+  Every line that asserts a dollar comparison carries a complete receipt.

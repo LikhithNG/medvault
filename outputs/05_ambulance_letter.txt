@@ -1,0 +1,39 @@
+26 October 2026
+
+To the billing office,
+Doylestown Hospital
+
+I am writing about the itemised statement below. I have compared it against the
+standard-charge file your hospital publishes under 45 CFR 180, and I have
+questions about the following lines.
+
+Billed on this statement:        $5,756.00
+Your published prices total:     $3,224.00
+Difference I am asking about:    $642.00
+
+Lines in question
+-----------------
+A0427 — ALS AMBULANCE EMERGENCY
+    Billed $1,890.00. This code is not in your published standard-charge file, so I cannot check it.
+
+99285 — E/R VISIT LEVEL V
+    Billed $2,247.00. Your published price for this code is $1,605.00.
+    Difference: $642.00.
+    Source: your hospital gross charge for this code, published at
+    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv (collected 2026-10-02).
+
+Separately
+----------
+Ground ambulance is not covered by the federal protection
+    Ask your state department of insurance whether your state limits ground-ambulance balance billing, and whether your plan is self-funded, which usually puts it out of state reach.
+    (No Surprises Act · ground ambulance excluded from 45 CFR 149.110)
+
+Please send me a written explanation of each line above, and a corrected
+statement if any of them is wrong. I am not disputing that I received care —
+I am asking how these amounts were arrived at.
+
+Please confirm in writing that collection activity is paused while this is
+under review.
+
+Thank you,
+A. Patient

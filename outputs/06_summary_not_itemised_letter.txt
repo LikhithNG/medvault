@@ -1,0 +1,30 @@
+26 October 2026
+
+To the billing office,
+Doylestown Hospital
+
+I am writing about the itemised statement below. I have compared it against the
+standard-charge file your hospital publishes under 45 CFR 180, and I have
+questions about the following lines.
+
+Billed on this statement:        $9,600.00
+Your published prices total:     $0.00
+Difference I am asking about:    $1,180.00
+
+Lines in question
+-----------------
+None — HOSPITAL SERVICES
+    Billed $8,420.00. This code is not in your published standard-charge file, so I cannot check it.
+
+None — PHARMACY
+    Billed $1,180.00. This code appears more than once on the statement.
+
+Please send me a written explanation of each line above, and a corrected
+statement if any of them is wrong. I am not disputing that I received care —
+I am asking how these amounts were arrived at.
+
+Please confirm in writing that collection activity is paused while this is
+under review.
+
+Thank you,
+A. Patient

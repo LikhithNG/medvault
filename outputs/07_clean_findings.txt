@@ -1,0 +1,39 @@
+MedVault — what the checks found on 07_clean
+======================================================================
+
+Hospital           Doylestown Hospital
+Lines read         4
+Billed total       $3,532.00
+Published total    $3,532.00
+Unexplained gap    $0.00
+
+This gap is a question to ask, not money owed back and not a refund estimate.
+
+Checked against the hospital's own published prices
+----------------------------------------------------------------------
+  Every line matches the price this hospital publishes. Nothing to raise.
+Wrong on the bill's own face
+----------------------------------------------------------------------
+  Nothing. The arithmetic adds up and no code is unspecified.
+
+Against the national Medicare allowance
+----------------------------------------------------------------------
+  70450    CT Scan of the Head without Contrast         $1,619.00
+           Medicare allows $106.55 — 15.2x   (CMS CMS_PFS 2026)
+  71046    Chest X-ray (2 Views)                          $299.00
+           Medicare allows $33.07 — 9x   (CMS CMS_PFS 2026)
+  80048    Basic Metabolic Panel (BMP)                    $241.00
+           Medicare allows $8.46 — 28.5x   (CMS CMS_CLFS 2026)
+  76700    Abdominal Ultrasound (Complete)              $1,373.00
+           Medicare allows $114.23 — 12x   (CMS CMS_PFS 2026)
+
+A Medicare rate is not a price cap. A hospital may charge a commercial
+patient more, and usually does.
+
+What the law may already give you
+----------------------------------------------------------------------
+  Nothing was established — the questions that decide this were left unanswered.
+
+Receipt audit
+----------------------------------------------------------------------
+  Every line that asserts a dollar comparison carries a complete receipt.

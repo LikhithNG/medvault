@@ -69,6 +69,7 @@ import db                      # noqa: E402
 import landing                 # noqa: E402
 import ask                     # noqa: E402
 import npi                     # noqa: E402
+import paste                   # noqa: E402
 import ui                      # noqa: E402
 from schema import (BLOOD_TYPES, KINDS, KIND_ORDER, kind_label,   # noqa: E402
                     missing_essentials)
@@ -584,36 +585,7 @@ def screen_check():
                             f"<div class='who'>{l['description']} · qty {l['units']}</div>"
                             f"</div>", unsafe_allow_html=True)
     else:
-        for raw in pasted.splitlines():
-            raw = raw.strip()
-            if not raw:
-                continue
-            d = _re.search(r"\d{4}-\d{2}-\d{2}", raw)
-            amt = _re.findall(r"([\d,]+\.\d{2})", raw)
-            code = find_code(raw)
-            # The description is what is left once the date, the code and the money have
-            # been taken out. Keeping the whole row printed "72148 2026-03-14 72148 MRI
-            # LUMBAR" on the card - the code twice and a date nobody needed there.
-            # The quantity column, which this parser used to ignore entirely and set to 1.
-            # A blood draw billed 2 at a published $50 is $100 and correct; read as one
-            # unit it looked like $50 over, and the letter said so in writing. The quantity
-            # is the bare integer sitting between the description and the amount.
-            qty = _re.search(r"(?:^|\s)(\d{1,3})\s+[\d,]+\.\d{2}\s*$", raw)
-            units = int(qty.group(1)) if qty else 1
-
-            desc = raw
-            for part in filter(None, [d.group(0) if d else None, code] + amt):
-                desc = desc.replace(part, " ")
-            desc = _re.sub(r"\s{2,}", " ", desc).strip(" \t|,-")
-            if qty:
-                # Strip the quantity off the end of what is left. Slicing by the match's
-                # own offsets does not work: those index the original row, and the amounts
-                # and the code have already been removed from this string.
-                desc = _re.sub(rf"\s*\b{qty.group(1)}\b\s*$", "", desc).strip()
-            lines.append({"description": desc or (code or raw),
-                          "service_date": d.group(0) if d else None,
-                          "code": code, "units": units,
-                          "charged": float(amt[-1].replace(",", "")) if amt else None})
+        lines = paste.lines(pasted)
 
     if reject_if_not_itemised(lines):
         return

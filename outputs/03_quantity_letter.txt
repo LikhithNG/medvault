@@ -1,0 +1,30 @@
+26 October 2026
+
+To the billing office,
+Doylestown Hospital
+
+I am writing about the itemised statement below. I have compared it against the
+standard-charge file your hospital publishes under 45 CFR 180, and I have
+questions about the following lines.
+
+Billed on this statement:        $16,590.00
+Your published prices total:     $16,590.00
+Difference I am asking about:    $0.00
+
+Lines in question
+-----------------
+99282 — E/R VISIT LEVEL II
+    Billed $16,050.00 for 10 units. This is normally provided once per visit.
+    Your published price is $1,605.00 per unit.
+    Source: your hospital gross charge for this code, published at
+    https://tupa-q-001.sitecorecontenthub.cloud/api/public/content/231352174_doylestown-hospital_standardcharges.csv (collected 2026-10-02).
+
+Please send me a written explanation of each line above, and a corrected
+statement if any of them is wrong. I am not disputing that I received care —
+I am asking how these amounts were arrived at.
+
+Please confirm in writing that collection activity is paused while this is
+under review.
+
+Thank you,
+A. Patient

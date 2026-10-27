@@ -23,6 +23,13 @@ file on 26 October 2026 by a second implementation written from the data's side
 the first page). All nine hospitals' counts agree exactly — and the same check found two
 zeros that are failed name joins rather than clean records, which CAVEATS §9 names.
 
+**Measured, not estimated.** `tools/scale_test.py` runs the deterministic path at 1, 10,
+50, 100, 500 and 1,000 bills: **~10,000 bills per second, p99 0.11 ms**, flat across the
+range, with zero receipt failures at every volume. What breaks is the half that leaves the
+machine — Gemini's free tier allows 20 requests per day *per model*, which is why
+`gemini.py` keeps a pool. A real reader call measured 6.4 and 9.6 seconds.
+`tools/make_outputs.py` writes what a person actually ends up holding into `outputs/`.
+
 **The honest limits.** The published-price table is **nine hospitals and 31 codes**,
 collected by hand on 2 October 2026; everything else falls back to the national Medicare
 benchmark, which is not a price cap. A clinician account can currently read every
@@ -346,7 +353,7 @@ screen. Everything else — the price comparison, the arithmetic, the rights che
 record cross-check and the findings above the Ask box — runs without a key.
 
 ```bash
-python3 -m pytest tests -q        # all 111
+python3 -m pytest tests -q        # all 121
 python3 tests/test_receipts.py    # no receipt, no flag
 python3 tests/test_isolation.py   # one patient cannot see another's vault
 python3 tests/test_crosscheck.py  # the cross-check never accuses
