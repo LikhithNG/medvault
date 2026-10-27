@@ -88,6 +88,32 @@ def test_a_scan_survives_the_round_trip():
     assert store.decode(store.encode(page)) == page
 
 
+def test_a_blob_decodes_however_the_server_encoded_it():
+    """This is the test that was missing, and the shape of the hole is worth keeping.
+
+    The round-trip test above encodes with store.encode and decodes with store.decode —
+    so it only ever proved the two agree with each other. The real server strips base64
+    padding, and b64decode refuses input without it, so an uploaded scan came back as
+    "Incorrect padding" against a live database while the suite stayed green. These
+    encode the SAME bytes three ways the server legitimately might, none of them using
+    store.encode."""
+    import base64
+    page = bytes(range(256)) * 4
+    standard = base64.b64encode(page).decode()
+
+    for label, encoded in (
+            ("padded", standard),
+            ("padding stripped", standard.rstrip("=")),
+            ("url-safe, unpadded",
+             base64.urlsafe_b64encode(page).decode().rstrip("=")),
+    ):
+        assert store.decode({"type": "blob", "base64": encoded}) == page, label
+
+
+def test_an_empty_blob_is_empty_bytes_not_an_error():
+    assert store.decode({"type": "blob", "base64": ""}) == b""
+
+
 def test_every_type_the_schema_uses_round_trips():
     for value in (None, 0, 1, -17, 3.5, "", "text", True, b"\x00\xff"):
         out = store.decode(store.encode(value))

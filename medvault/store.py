@@ -99,7 +99,13 @@ def decode(cell):
     if kind == "float":
         return float(cell["value"])
     if kind == "blob":
-        return base64.b64decode(cell.get("base64") or "")
+        # The server returns base64 with the padding stripped, and may use the URL-safe
+        # alphabet. b64decode insists on padding and rejects '-' and '_', so a stored
+        # scan came back as "Incorrect padding" rather than as bytes. Found by running
+        # tools/check_turso.py against a real database, which is the only place it could
+        # have been found - the wire format tests used my own encoder for both halves.
+        raw = (cell.get("base64") or "").strip().replace("-", "+").replace("_", "/")
+        return base64.b64decode(raw + "=" * (-len(raw) % 4))
     return cell.get("value")
 
 
