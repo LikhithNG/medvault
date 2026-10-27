@@ -81,3 +81,17 @@ if __name__ == "__main__":
         if name.startswith("test_") and callable(fn):
             fn(); print(f"  pass · {name}"); n += 1
     print(f"{n} passed")
+
+
+def test_the_landing_page_says_where_the_records_actually_live():
+    """The one claim on the signed-out page a deployment can falsify, and the only way
+    to check a deployment's storage without signing in to it."""
+    sys.path.insert(0, str(ROOT / "medvault"))
+    import landing
+
+    temporary = landing.footer(durable=False)
+    durable = landing.footer(durable=True)
+
+    assert "wipes that disk" in temporary
+    assert "outlives a restart" in durable
+    assert temporary != durable

@@ -98,7 +98,17 @@ def steps():
     return f"<div class='steps'>{out}</div>"
 
 
-def footer():
+def footer(durable=False):
+    """The last line is where the records actually live.
+
+    It takes the real answer rather than a fixed sentence because this is the one claim
+    on the page a deployment can falsify. It is also, usefully, readable without signing
+    in - which is how a deployment's storage can be checked from outside at all.
+    """
+    where = ("Your records are kept in a database that outlives a restart of this "
+             "server." if durable else
+             "Your records are kept on the server this copy runs on, and a free host "
+             "wipes that disk when it restarts.")
     return (
         f"<div class='sitefoot'>{logo.wordmark(size=15, uid='f')}"
         "<div><b>A student project, built for INFO 7375 at Northeastern.</b> "
@@ -107,7 +117,7 @@ def footer():
         f"{SUPPORT}; the national benchmark is the CMS Physician Fee Schedule. The rights "
         "section follows the No Surprises Act and IRC 501(r) and tells you what may apply "
         "to a bill, never what will.</div>"
-        "<div>Your records are kept on the server this copy runs on. Two things leave it, "
-        "and only when you ask for them: a document you upload to be read, and — if you "
-        "use the question box — your question and the text of your records.</div>"
+        f"<div>{where} Two things leave it, and only when you ask for them: a document "
+        "you upload to be read, and — if you use the question box — your question and "
+        "the text of your records.</div>"
         "</div>")
