@@ -25,8 +25,29 @@ machine should be a file they can copy.
 import base64
 import json
 import os
+import pathlib
 import urllib.error
 import urllib.request
+
+
+def _load_env():
+    """Settings come from the real environment first, then .env at the project root.
+
+    Same loader gemini.py and groq.py use, for the same reason: credentials belong in a
+    chmod 600 file that git ignores, not in a shell history or a screenshot.
+    """
+    env = pathlib.Path(__file__).resolve().parent.parent / ".env"
+    if not env.exists():
+        return
+    for line in env.read_text().splitlines():
+        line = line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        os.environ.setdefault(key.strip(), value.strip().strip("\"'"))
+
+
+_load_env()
 
 REQUIRED = ("TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN")
 TIMEOUT = int(os.environ.get("TURSO_TIMEOUT", "30"))
