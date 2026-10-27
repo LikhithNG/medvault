@@ -98,13 +98,26 @@ def steps():
     return f"<div class='steps'>{out}</div>"
 
 
-def footer(durable=False):
+def footer(durable=None):
     """The last line is where the records actually live.
 
-    It takes the real answer rather than a fixed sentence because this is the one claim
-    on the page a deployment can falsify. It is also, usefully, readable without signing
-    in - which is how a deployment's storage can be checked from outside at all.
+    It states the real answer rather than a fixed sentence, because this is the one claim
+    on the page a deployment can falsify - and it is readable without signing in, which
+    is how a deployment's storage can be checked from outside at all.
+
+    `durable=None` means "work it out", and the argument is optional on purpose. The
+    first version made it required-with-a-default and the caller passed it by keyword,
+    which took the live site down: Streamlit reran the new app.py against a `landing`
+    module still in memory from the previous deploy, and footer() did not yet accept the
+    keyword. A signature that an older caller can still call cannot fail that way, and a
+    landing page is the last thing that should be able to crash.
     """
+    if durable is None:
+        try:
+            import store
+            durable = store.configured()
+        except Exception:        # noqa: BLE001 - a footer must never take the page down
+            durable = False
     where = ("Your records are kept in a database that outlives a restart of this "
              "server." if durable else
              "Your records are kept on the server this copy runs on, and a free host "

@@ -990,7 +990,7 @@ def screen_signin():
 
     st.markdown(ui.section("How it works"), unsafe_allow_html=True)
     st.markdown(landing.steps(), unsafe_allow_html=True)
-    st.markdown(landing.footer(durable=store.configured()), unsafe_allow_html=True)
+    st.markdown(landing.footer(), unsafe_allow_html=True)
 
 
 def auth_panel():

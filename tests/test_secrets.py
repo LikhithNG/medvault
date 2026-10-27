@@ -95,3 +95,13 @@ def test_the_landing_page_says_where_the_records_actually_live():
     assert "wipes that disk" in temporary
     assert "outlives a restart" in durable
     assert temporary != durable
+
+
+def test_the_footer_can_be_called_the_old_way():
+    """A landing page must not be able to crash. The first version of this took the live
+    site down: a new app.py called footer(durable=...) against a landing module still in
+    memory from the previous deploy, which did not accept the keyword."""
+    import landing
+
+    assert landing.footer()
+    assert landing.footer(durable=True) != landing.footer(durable=False)
