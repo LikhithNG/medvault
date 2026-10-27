@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""The letter a patient can put in front of a billing office.
+"""The Advocate - Madison **Performance**: the letter a patient can put in
+front of a billing office.
 
 Written from the Checker's figures directly, not by a model. Every number in it came out
 of deterministic code reading a published price file, so there is nothing here that can

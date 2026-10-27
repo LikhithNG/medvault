@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Read an uploaded document and turn it into a record the vault can hold.
+"""The Reader - Madison **Intelligence**: read an uploaded document and turn it
+into a record the vault can hold.
 
 Two channels, same contract: a photograph goes to a vision model, a PDF with a text layer is
 read locally first and only its text is sent. A PDF that yields no text is treated as a

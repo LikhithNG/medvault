@@ -276,6 +276,32 @@ is computed locally.
 **This is a student project, not a medical device.** It holds a copy of your paperwork; it
 does not interpret results, and it is not a substitute for talking to your doctor.
 
+## The agents
+
+Assignment 2 named three agents and mapped them onto Madison's roles. That mapping lived
+on a Figma board and nowhere in the code — the word "Madison" appeared zero times in this
+repository while three of its agents sat in it working. `medvault/agents.py` is the
+mapping as data, and `tests/test_agents.py` resolves every entry point in it, so renaming
+`dispute.letter` fails the suite rather than quietly making the architecture wrong.
+
+| Agent | Madison role | Lives in | Generative |
+|---|---|---|---|
+| **Reader** | Intelligence | `extract.read_document` | yes — a model reads the page |
+| **Checker** | Research | `checker.check_bill` | **no** |
+| **Advocate** | Performance | `dispute.letter` | **no** |
+| **Companion** | Experience | `ask.answer` | yes — a model, inside the fence above |
+
+**DOES NOT DO is a field, not a comment.** It was a column on the Assignment 2 board for
+the same reason: it is the half of an agent's description that stops it being asked to do
+the thing it must not. Two of those are enforced by tests that read the source — neither
+`checker.py` nor `dispute.py` may import a model client at all, which is a stronger
+guarantee than a promise in a docstring.
+
+**The fourth agent was not in the plan.** MedVault grew a records vault and a bot that
+answers questions about it. That is Madison's Experience role — the one role of the five
+the original three-agent design never used. It is listed as what it is rather than left
+off for being unplanned.
+
 ## The mark
 
 The logo is a shield with the cross cut *out* of it rather than drawn on top. That is the

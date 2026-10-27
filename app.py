@@ -65,6 +65,7 @@ def _load_credentials():
 _load_credentials()
 
 import accounts                # noqa: E402
+import agents                  # noqa: E402
 import db                      # noqa: E402
 import landing                 # noqa: E402
 import ask                     # noqa: E402
@@ -1147,6 +1148,14 @@ else:
 
 if st.query_params.get("diag"):
     st.divider()
+    st.markdown("#### Agents")
+    st.caption("Which agent plays which Madison role, read out of `medvault/agents.py`. "
+               "Every entry point below is resolved by `tests/test_agents.py`, so this "
+               "cannot drift from the code without the suite failing.")
+    import agents as agent_registry
+    for line in agent_registry.roster():
+        st.text(line)
+
     st.markdown("#### Server diagnostics")
     for note in CRED_TRACE:
         st.text(note)

@@ -1,5 +1,9 @@
 #!/usr/bin/env python3
-"""The bot that answers questions about your own records.
+"""The Companion - Madison **Experience**: the bot that answers questions about
+your own records.
+
+The fourth agent, and the one Assignment 2 did not plan for. Experience is the one
+Madison role of the five the original three-agent design never used.
 
 Separate from explain.py, which answers questions about a bill and is deliberately not a
 language model. This one is, because the questions are different: "what is this medicine

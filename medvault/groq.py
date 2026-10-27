@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Groq client - same contract as gemini.py, so the Reader and Advocate do not change.
+"""Groq client - same contract as gemini.py, so the Reader does not change.
 
 Groq is OpenAI-compatible, so structured output comes from JSON mode plus the schema
 restated in the prompt, rather than Gemini's responseSchema field. The daily allowance is

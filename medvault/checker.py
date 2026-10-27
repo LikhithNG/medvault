@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""The Checker - Itemized's verification core.
+"""The Checker - Madison **Research**, and MedVault's verification core.
 
 Every figure that reaches a patient originates here, from the Assignment 3 reference
-table. The AI layer is allowed to explain these numbers and nothing else; it never
+table. See agents.py for the role; what matters in this file is the half of it that says
+DOES NOT: this module never calls a model, never estimates a price that is not published,
+and never reports a code the hospital does not publish as an overcharge. The AI layer is allowed to explain these numbers and nothing else; it never
 produces one. That boundary is what makes the output citable, and `receipts.py` enforces
 it rather than trusting it: a line that asserts a dollar comparison without carrying the
 published figure, the basis it was compared on, the file it came from and the date that
