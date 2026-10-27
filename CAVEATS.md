@@ -2,6 +2,24 @@
 
 Read this before relying on anything MedVault tells you.
 
+## Executive summary
+
+**The nine things that limit this tool**, in the order they are most likely to matter:
+it gives information and not advice (1); "no record found" is a question, not a finding
+(2); an unanswered rights question is unknown, never "no" (3); the rights checks cover
+four federal protections and no state law (4); a model reads documents and can misread
+them (5); a verified NPI confirms the number, never the person typing it (6); a clinician
+account can read every patient's records and there is no grant mechanism yet (7); the
+question box sends your records to a model and does not check drug interactions (8); and
+none of this is a medical record (9).
+
+**The one added since the Assignment 2 PRD.** That PRD said the MVP "processes in memory,
+persists nothing, and never sends a name, MRN or date of birth to a model — only the code
+and the amount." MedVault is a vault: it persists everything, by design. And a vision
+model has to see the whole page to read a bill, so the name on it goes too. Section 5 and
+section 8 say what actually happens. The PRD's sentence was never achievable for an image
+and is not true of this build.
+
 This document is deliberately specific. A tool that tells people what to ask about a
 medical bill — or what their records do and do not show — can cause real harm by being
 confidently wrong, so every known limit is written down here rather than left to be
@@ -64,6 +82,14 @@ recoverable. A summary is useful; the original is evidence.
 The reader does not interpret results. "Haemoglobin 11.2 g/dL" is recorded as printed;
 whether that is low is for your doctor.
 
+**The whole page goes to the model, your name included.** There is no redaction step, and
+there cannot usefully be one on the image path: a vision model has to see the page to read
+what is on it, and the name, the account number and the date of birth are printed on the
+same page as the codes. The PRD this project grew out of promised to send "only the code
+and the amount". That is achievable for a text PDF and not for a photograph, and this
+build does not do it for either. What it does instead: the page is sent once, for
+extraction, and is not retained by the model provider.
+
 ## 6. What "clinician-verified" means, and does not
 
 A clinician account requires an NPI checked live against the CMS national provider
@@ -88,6 +114,10 @@ access. If you deploy this for more than one real person, that is the first thin
 
 Deployed to a hosted service, the database lives on that server, not on your phone. It is
 not encrypted at rest.
+
+**Two things leave the machine, and only when you ask for them:** a document you upload to
+be read (section 5), and a question you type on the Ask screen, which goes with the text of
+your records (section 8). Every check, price comparison and finding is computed locally.
 
 ## 8. What the question box is, and is not
 

@@ -4,6 +4,7 @@
 Built phone-first. The question behind every screen is "could someone hold this up at a
 hospital desk and have it be useful", which is a harder test than "does it look like an app".
 """
+import datetime
 import os
 import pathlib
 import sys
@@ -98,6 +99,15 @@ VERDICTS = {
 
 def _m(v):
     return f"${v:,.2f}" if isinstance(v, (int, float)) else "—"
+
+
+def _date(iso):
+    """2026-10-02 -> 2 October 2026. The date is read from the data; only its shape is
+    written here, so a refreshed table moves the sentence instead of contradicting it."""
+    try:
+        return datetime.date.fromisoformat(str(iso)[:10]).strftime("%-d %B %Y")
+    except (TypeError, ValueError):
+        return str(iso)
 
 
 def clinician_view():
@@ -681,10 +691,8 @@ def screen_check():
                 f"{f' · qty {l["units"]}' if (l.get('units') or 1) > 1 else ''}<br>"
                 f"Medicare allows {_m(b['medicare_rate'])}"
                 f"{f' per unit' if (l.get('units') or 1) > 1 else ''} — {times}."
-                + (f" Commercial plans typically pay "
-                   f"{_m(b['commercial_low'])}–{_m(b['commercial_high'])}."
-                   if b.get("commercial_low") else "")
-                + f"<br><span style='opacity:.65'>CMS {b.get('dataset','')} "
+                + f"<br><span style='opacity:.65'>Source: CMS "
+                  f"{str(b.get('dataset','')).replace('CMS_','').replace('_',' ')}, "
                   f"{b.get('effective_year','')}</span></div></div>",
                 unsafe_allow_html=True)
 
@@ -708,9 +716,27 @@ def screen_check():
         c1.metric("You were billed", f"${priced['billed_total']:,.2f}")
         c2.metric("They publish", f"${priced['posted_total']:,.2f}")
         c3.metric("Unexplained", f"${priced['questionable_amount']:,.2f}")
-        st.caption("A gap to ask about — not money you are owed, and not a refund estimate. "
-                   "Published prices collected 2 October 2026; a hospital may have "
+        # The date was hardcoded here. The table carries collected_date on every row, so
+        # the caption reads it: a refreshed table moves this line instead of silently
+        # leaving a stale date on screen.
+        collected = sorted({l["collected_date"] for l in priced["lines"]
+                            if l.get("collected_date")})
+        when = (" · ".join(_date(d) for d in collected) if collected
+                else "an undated table")
+        st.caption("A gap to ask about — not money you are owed, and not a refund "
+                   f"estimate. Published prices collected {when}; a hospital may have "
                    "republished since.")
+
+        # Attached to every flag since the Checker was written and never shown until now.
+        # The PRD promised it as what this screen says when a price file cannot settle a
+        # line: how often CMS has already had to act against this hospital.
+        actions = max((l.get("hospital_enforcement_actions") or 0)
+                      for l in priced["lines"]) if priced["lines"] else 0
+        if actions:
+            st.caption(f"CMS has recorded **{actions} price-transparency enforcement "
+                       f"action(s)** against this hospital. That is about whether it "
+                       f"published properly, not about your bill — but it is context for "
+                       f"how much weight the file above deserves.")
 
         flagged_lines = [l for l in priced["lines"] if l["verdict"] != "VERIFIED"]
         if flagged_lines:
@@ -734,11 +760,17 @@ def screen_check():
                                  None)
                 posted = (f"They publish {_m(price)} for this code" if price else
                           "No published price for this code — worth asking about")
+                # The receipt, on the card rather than only in the letter: which of the
+                # hospital's three published numbers this was compared against, and when
+                # that file was collected.
+                cite = (f"<br><span style='opacity:.65'>Compared against their "
+                        f"{l['basis']}, collected {_date(l['collected_date'])}</span>"
+                        if l.get("basis") and l.get("collected_date") else "")
                 st.markdown(
                     f"<div class='hit {tone}'><span class='amt'>{_m(l['charged'])}</span>"
                     f"<div class='h'>{label}</div><div class='b'>"
                     f"<b>{l.get('code') or '—'}</b> {l.get('description','')[:48]} · "
-                    f"qty {l.get('units',1)}<br>{posted}{over}</div></div>",
+                    f"qty {l.get('units',1)}<br>{posted}{over}{cite}</div></div>",
                     unsafe_allow_html=True)
 
         st.session_state["priced"] = priced

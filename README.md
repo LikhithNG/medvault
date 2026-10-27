@@ -2,6 +2,28 @@
 
 Every piece of your medical paperwork, on the phone in your pocket.
 
+## Executive summary
+
+**What this is.** One app holding two things a patient needs at the same desk: every
+prescription, report and discharge summary they have, and a check on the hospital bill
+that follows. Records are filed, searchable and labelled with where they came from. A bill
+is checked line by line against that hospital's own published price file, the national
+Medicare allowance, the law that may already cover it, and the patient's own records —
+then turned into a letter they can send.
+
+**What is deterministic and what is not.** Every figure a patient acts on is computed in
+Python from a published file. A model reads documents and answers questions about records;
+it never produces a number. A line that asserts a dollar comparison carries the published
+figure, the basis it was compared on, the file URL and the date that file was collected,
+or it is not quoted at all — `receipts.py` enforces that rather than asking for it.
+
+**The honest limits.** The published-price table is **nine hospitals and 31 codes**,
+collected by hand on 2 October 2026; everything else falls back to the national Medicare
+benchmark, which is not a price cap. A clinician account can currently read every
+patient's records. The question box sends your records to a model to answer. None of the
+four success metrics in the Assignment 2 PRD have been measured. **Read
+[CAVEATS.md](CAVEATS.md) before relying on anything this says.**
+
 You photograph a prescription or a discharge summary once. MedVault reads it, files it, and
 pulls the medicines out of it. At a hospital desk you open one screen instead of carrying a
 folder — blood type, allergies, conditions, what you are currently taking, and the original
@@ -61,7 +83,9 @@ way data.cms.gov cannot.
 
 Coverage is CPT. HCPCS Level II — J-codes for drugs, G- and A-codes — is outside the
 dataset, and the screen says which codes it could not benchmark rather than leaving them out
-silently. Lookups are cached to disk, so a demo does not depend on a network and nobody
+silently. Lookups are cached to disk — but the cache committed here holds **six codes**,
+so any other code needs the network at the moment it is asked for. Cached lookups cost
+nothing and nobody
 re-reads the same code off a free service.
 
 This also settles **Change 9** from the Itemized user testing, where a tester asked for
@@ -311,12 +335,16 @@ python3 -m streamlit run app.py
 ```
 
 Reads `GEMINI_API_KEY` from a local `.env` (git-ignored) or from Streamlit secrets when
-deployed. Without a key everything works except reading new documents.
+deployed. Two things need it: reading a new document, and the question box on the Ask
+screen. Everything else — the price comparison, the arithmetic, the rights checks, the
+record cross-check and the findings above the Ask box — runs without a key.
 
 ```bash
-python3 tests/test_db.py          # storage keeps what it is given
+python3 -m pytest tests -q        # all 111
+python3 tests/test_receipts.py    # no receipt, no flag
+python3 tests/test_isolation.py   # one patient cannot see another's vault
 python3 tests/test_crosscheck.py  # the cross-check never accuses
-python3 tests/test_accounts.py    # a badge cannot exist without a checked NPI
+python3 tests/test_ask.py         # the two questions a model never sees
 ```
 
 ## Built on

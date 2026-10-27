@@ -8,6 +8,8 @@ generated paragraph.
 """
 import datetime
 
+import receipts
+
 VERDICT_LINE = {
     "ABOVE_POSTED": ("{code} — {desc}\n"
                      "    Billed {charged}. Your published price for this code is {posted}.\n"
@@ -51,7 +53,15 @@ def letter(reviewed, patient_name=None, rights_findings=None, account=None,
         "-----------------",
     ]
 
-    for l in flagged:
+    # Ranked by dollars at stake rather than by the order the bill happened to list them.
+    # A billing office reads the first entry and skims the rest, so the $4,000 line cannot
+    # be third because it was printed third.
+    def at_stake(line):
+        return line.get("amount_over") or line.get("charged") or 0
+
+    quotable, withheld = receipts.quotable(sorted(flagged, key=at_stake, reverse=True))
+
+    for l in quotable:
         tmpl = VERDICT_LINE.get(l["verdict"])
         if not tmpl:
             continue
@@ -59,7 +69,18 @@ def letter(reviewed, patient_name=None, rights_findings=None, account=None,
             code=l.get("code") or "—", desc=(l.get("description") or "")[:56],
             charged=money(l.get("charged")), posted=money(l.get("posted_price")),
             over=money(l.get("amount_over")), units=l.get("units", 1)))
+        if l.get("source_url"):
+            out.append(f"    Source: your {l['basis']} for this code, published at")
+            out.append(f"    {l['source_url']} (collected {l['collected_date']}).")
         out.append("")
+
+    # A line that asserts a dollar comparison without a complete receipt is not quoted.
+    # Said out loud rather than dropped: an earlier version of this letter silently lost a
+    # flagged line, and a letter that quietly shrinks is worse than one that explains.
+    if withheld:
+        out += [f"({len(withheld)} further line(s) looked wrong but are not listed here, "
+                f"because I could not trace a published figure for them to a source I can "
+                f"cite. I am not asserting anything about those.)", ""]
 
     if record_gaps:
         out += ["Charges I have no record of",

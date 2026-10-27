@@ -82,3 +82,11 @@ def test_every_navigation_position_gets_an_icon():
     for count in (5, 2):
         for i in range(1, count + 1):
             assert f"button:nth-child({i})::before" in ui.CSS
+
+
+if __name__ == "__main__":
+    n = 0
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            fn(); print(f"  pass · {name}"); n += 1
+    print(f"{n} passed")

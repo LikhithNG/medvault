@@ -61,7 +61,13 @@ def _save():
 
 def _shape(code, data):
     consumer = data.get("consumerDescription") or {}
-    commercial = data.get("commercialEstimates") or {}
+    # The endpoint also returns a "commercialEstimates" low/high band. It is not observed
+    # commercial pricing: on every code checked it is exactly 1.5x and 2.5x the Medicare
+    # rate, to three decimals - a multiplier, not a measurement. Displaying it as
+    # "commercial plans typically pay $287.58-$479.30" put false precision on an
+    # assumption and cited it to the CMS fee schedule, which publishes no commercial
+    # rates at all. In a tool whose whole claim is that every figure says where it came
+    # from, that was the worst line on the screen. It is not read.
     rate = data.get("nationalFacilityRate")
     return {
         "code": code,
@@ -72,11 +78,20 @@ def _shape(code, data):
         "plain": consumer.get("plainDescription"),
         "category": data.get("category"),
         "medicare_rate": round(float(rate), 2) if rate is not None else None,
-        "commercial_low": commercial.get("low"),
-        "commercial_high": commercial.get("high"),
         "effective_year": data.get("effectiveYear"),
         "dataset": data.get("sourceDataset"),
     }
+
+
+# Fields a caller may rely on. A cache written before a field was retired must not hand
+# that field back: the commercial band was removed from the parser and a two-week-old
+# cache entry went on serving it, which is the quiet way a retired claim returns.
+RETURNED = ("code", "found", "why", "name", "plain", "category",
+            "medicare_rate", "effective_year", "dataset")
+
+
+def _clean(entry):
+    return {k: v for k, v in (entry or {}).items() if k in RETURNED}
 
 
 def lookup(code, use_cache=True):
@@ -90,7 +105,7 @@ def lookup(code, use_cache=True):
     cache = _load()
     hit = cache.get(code)
     if use_cache and hit and (time.time() - hit.get("_at", 0)) < TTL_SECONDS:
-        return {k: v for k, v in hit.items() if k != "_at"}
+        return _clean(hit)
 
     req = urllib.request.Request(API + code,
                                  headers={"User-Agent": UA, "Accept": "application/json"})
@@ -113,7 +128,7 @@ def lookup(code, use_cache=True):
         "code": code, "found": False, "why": "Not in the national fee schedule."}
     cache[code] = out | {"_at": time.time()}
     _save()
-    return out
+    return _clean(out)
 
 
 def lookup_many(codes):

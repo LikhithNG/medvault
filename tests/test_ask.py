@@ -216,3 +216,11 @@ def test_the_emergency_answer_is_html_not_markdown():
     """It is rendered inside a raw HTML bubble, where ** is just two asterisks."""
     answer = ask.triage("I have chest pain")["answer"]
     assert "**" not in answer and "<b>" in answer
+
+
+if __name__ == "__main__":
+    n = 0
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            fn(); print(f"  pass · {name}"); n += 1
+    print(f"{n} passed")

@@ -88,6 +88,16 @@ def test_lookup_many_deduplicates():
     assert set(out) == {"70450", "99999"}
 
 
+def test_no_commercial_estimate_is_surfaced():
+    """The endpoint returns a low/high "commercial" band that is exactly 1.5x and 2.5x the
+    Medicare rate on every code — a multiplier, not a measurement. It was being shown as
+    "commercial plans typically pay $287.58–$479.30" and cited to the CMS fee schedule,
+    which publishes no commercial rates at all. It must not come back."""
+    m = fresh_module(SEEDED)
+    out = m.lookup("70450")
+    assert "commercial_low" not in out and "commercial_high" not in out
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

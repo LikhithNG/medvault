@@ -3,8 +3,10 @@
 
 Every figure that reaches a patient originates here, from the Assignment 3 reference
 table. The AI layer is allowed to explain these numbers and nothing else; it never
-produces one. That boundary is what makes the output citable, and `provenance.py`
-enforces it rather than trusting it.
+produces one. That boundary is what makes the output citable, and `receipts.py` enforces
+it rather than trusting it: a line that asserts a dollar comparison without carrying the
+published figure, the basis it was compared on, the file it came from and the date that
+file was collected is not quoted at all.
 """
 import csv, os, collections
 
@@ -47,6 +49,12 @@ def check_line(item, hospital, table, seen_codes):
         'expected_for_units': None,
         'amount_over': None,
         'source_url': None,
+        'collected_date': None,
+        # Which of the hospital's three published numbers this line was compared against.
+        # Gross charge, cash price and negotiated rate are different figures for the same
+        # code, and comparing a bill against the wrong one manufactures a fake overcharge -
+        # so the receipt has to say which one was used rather than leave it inferred.
+        'basis': None,
         'hospital_enforcement_actions': None,
     }
 
@@ -79,6 +87,8 @@ def check_line(item, hospital, table, seen_codes):
         'expected_for_units': expected,
         'amount_over': over,
         'source_url': ref['mrf_source_url'],
+        'collected_date': ref.get('collected_date'),
+        'basis': 'hospital gross charge' if posted is not None else None,
         'hospital_enforcement_actions': int(ref['hospital_cms_enforcement_actions'] or 0),
         'posted_description': ref['description'],
     }
