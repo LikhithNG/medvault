@@ -20,8 +20,19 @@ st.set_page_config(page_title="MedVault — your records, and the bill that foll
                    page_icon=str(HERE / "static" / "icon-192.png"),
                    layout="centered", initial_sidebar_state="collapsed")
 
-SECRET_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_POOL",
-               "GROQ_API_KEY", "GROQ_MODEL", "GROQ_POOL", "MEDVAULT_DB")
+# Every setting that may come from a hosting platform's secrets rather than from .env.
+# Streamlit puts secrets in st.secrets and NOT in os.environ, so anything missing from
+# this tuple is silently ignored when deployed - which has now happened twice. It cost
+# Itemized a working reader (GEMINI_API_KEY was omitted) and cost MedVault a working
+# database (both TURSO keys were omitted, so a vault with a real database behind it went
+# on quietly writing to a disk that gets wiped). tests/test_secrets.py reads the source
+# for environment lookups and fails when one is not listed here.
+SECRET_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_POOL", "GEMINI_TIMEOUT",
+               "GEMINI_DEADLINE",
+               "GROQ_API_KEY", "GROQ_MODEL", "GROQ_POOL", "GROQ_TIMEOUT",
+               "POOL_RETIRE_SECONDS", "MEDVAULT_MAX_EDGE",
+               "MEDVAULT_DB", "MEDVAULT_HOSTED", "MEDVAULT_MEDICARE_CACHE",
+               "TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "TURSO_TIMEOUT")
 CRED_TRACE = []
 
 
