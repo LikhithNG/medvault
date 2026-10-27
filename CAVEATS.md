@@ -11,8 +11,9 @@ four federal protections and no state law (4); a model reads documents and can m
 them (5); a verified NPI confirms the number, never the person typing it (6); a clinician
 account can read every patient's records and there is no grant mechanism yet (7); the
 question box sends your records to a model and does not check drug interactions (8); two
-hospitals' enforcement counts are failed joins recorded as zeros (9); and none of this is
-a medical record (10).
+hospitals' enforcement counts are failed joins recorded as zeros (9); hosted, the storage
+is temporary and the way out is a file you download (10); and none of this is a medical
+record (11).
 
 **The one added since the Assignment 2 PRD.** That PRD said the MVP "processes in memory,
 persists nothing, and never sends a name, MRN or date of birth to a model — only the code
@@ -180,7 +181,25 @@ never as a hospital with nothing against it.
 This is the same distinction as section 2. "Not found" is not "did not happen", and a tool
 that blurs the two on a medical record has no business making the claim on a hospital.
 
-## 10. This is not a medical record
+## 10. Hosted, the storage is temporary
+
+Deployed to a free tier, the database lives on a disk that does not survive a restart —
+and the host restarts an app when it has been idle and on every redeploy. Everything in
+the vault goes with it.
+
+That is a broken promise for something called a vault, so the app says so on the screen
+where your records are, and both halves of the way out exist: **Download my vault** writes
+everything except the original scans to a JSON file, and **Restore it** puts that file
+back. Restoring the same file twice adds nothing the second time.
+
+A clinician's confirmation does not travel with the file. The account that gave it does
+not exist on the machine the file lands on, so the badge would be a claim with nothing
+behind it — every restored record is labelled as filed by you.
+
+Fixing this properly means a managed database rather than a file on an ephemeral disk.
+That is a cost decision, not an engineering one.
+
+## 11. This is not a medical record
 
 MedVault holds a copy of paperwork you chose to upload. It is not a clinical system, it is
 not interoperable with any hospital, nothing in it is authoritative, and no clinician is

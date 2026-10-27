@@ -228,18 +228,88 @@ def save_profile(con, account_id, values):
 
 # ---- the whole vault, for export and import --------------------------------
 
-def export_vault(con):
-    """Everything except the stored originals, as JSON a person could read.
+def export_vault(con, account_id):
+    """One account's vault, as JSON a person could read.
 
-    The files are left out on purpose: this export is meant to be small enough to email to
-    yourself, and a vault of scans is not. Originals stay in the database file.
+    account_id is required for the same reason get_profile's is. This function used to
+    take none: it called get_profile(con) - which has not accepted that since the
+    isolation fix, so it raised TypeError and had evidently never been called - and
+    list_records(con, limit=10_000) with no owner filter, which would have written every
+    account on the server into one file. A dead function kept a live defect.
+
+    Stored originals are left out on purpose: this is meant to be small enough to email
+    to yourself, and a vault of scans is not.
     """
+    if account_id is None:
+        raise ValueError("export_vault needs to know whose vault it is exporting")
     return json.dumps({
+        "medvault_export": 1,
         "exported_at": time.strftime("%Y-%m-%d %H:%M"),
-        "profile": get_profile(con),
-        "records": list_records(con, limit=10_000),
-        "medications": list_medications(con, active_only=False),
+        "profile": get_profile(con, account_id),
+        "records": list_records(con, limit=10_000, owner_id=account_id),
+        "medications": list_medications(con, active_only=False, owner_id=account_id),
     }, indent=2, default=str)
+
+
+RESTORABLE = ("kind", "service_date", "provider", "title", "summary", "read_by",
+              "provenance")
+
+
+def import_vault(con, account_id, payload):
+    """Put an exported vault back, into this account. Returns what it did.
+
+    Why this exists at all: hosted free tiers have ephemeral disks. A deployment reboots
+    and the database file goes with it, which for a bill checker is annoying and for
+    something called a vault is a broken promise. Export and import are what make the
+    promise survivable without a paid database - and they also mean a person can leave
+    with their own records, which a vault that only accepts deposits does not allow.
+
+    A record already here with the same kind, title and date is skipped rather than
+    duplicated, so restoring twice is safe.
+
+    Provenance is deliberately NOT carried across. A record that a clinician confirmed on
+    one server has no confirmation on this one: the verifying account does not exist here
+    and the badge would be a claim with nothing behind it. Everything lands as SELF.
+    """
+    if account_id is None:
+        raise ValueError("import_vault needs to know whose vault it is importing into")
+    data = json.loads(payload) if isinstance(payload, (str, bytes)) else payload
+    if not isinstance(data, dict) or "records" not in data:
+        raise ValueError("that file is not a MedVault export")
+
+    existing = {(r["kind"], r["title"], r.get("service_date"))
+                for r in list_records(con, limit=10_000, owner_id=account_id)}
+
+    added, skipped, meds_added = 0, 0, 0
+    id_map = {}
+    for row in data.get("records") or []:
+        key = (row.get("kind"), row.get("title"), row.get("service_date"))
+        if key in existing:
+            skipped += 1
+            continue
+        fields = {k: row.get(k) for k in RESTORABLE}
+        fields["kind"] = fields.get("kind") or "other"
+        fields["title"] = fields.get("title") or "Untitled record"
+        # Imported, so unverified: see the docstring.
+        fields["provenance"] = "SELF"
+        new_id = add_record(con, owner_id=account_id, **fields)
+        id_map[row.get("id")] = new_id
+        existing.add(key)
+        added += 1
+
+    for med in data.get("medications") or []:
+        target = id_map.get(med.get("record_id"))
+        if target is None:
+            continue            # its record was a duplicate, so the medicine is too
+        add_medication(con, target, med)
+        meds_added += 1
+
+    profile = data.get("profile") or {}
+    if profile:
+        save_profile(con, account_id, profile)
+
+    return {"records_added": added, "records_skipped": skipped,
+            "medications_added": meds_added, "profile_restored": bool(profile)}
 
 
 # ---- verification ----------------------------------------------------------

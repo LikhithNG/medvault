@@ -5,9 +5,11 @@ Built phone-first. The question behind every screen is "could someone hold this 
 hospital desk and have it be useful", which is a harder test than "does it look like an app".
 """
 import datetime
+import json
 import os
 import pathlib
 import sys
+import time
 
 import streamlit as st
 
@@ -1104,6 +1106,55 @@ def screen_review(account):
 
 
 
+def hosted():
+    """Whether this copy is running somewhere with a disk that does not survive a reboot.
+
+    Streamlit Community Cloud restarts an app on inactivity and on every redeploy, and
+    takes the SQLite file with it. For a bill checker that is annoying; for something
+    called a vault it is a promise being broken quietly. So the app says so, in the place
+    where somebody is looking at the records they would lose.
+    """
+    return bool(os.environ.get("MEDVAULT_HOSTED")) or "HOSTNAME" in os.environ and \
+        os.environ.get("HOME", "").startswith("/home/appuser")
+
+
+def vault_transfer(account):
+    """Take your records out, and put them back. Both halves, or it is a trap."""
+    st.markdown(ui.section("Your records, as a file"), unsafe_allow_html=True)
+    if hosted():
+        st.warning("**This deployment's storage is temporary.** The server restarts when "
+                   "it is idle and the database goes with it. Download your vault before "
+                   "you close the tab, and put it back with the box below. A real "
+                   "deployment would use a managed database; this is a student project "
+                   "on a free tier, and saying so beats finding out.")
+    st.caption("Everything except the original scans, as JSON small enough to email "
+               "yourself. A vault that only takes deposits is a trap, so this goes both "
+               "ways.")
+
+    st.download_button("Download my vault",
+                       data=db.export_vault(con, my_id()),
+                       file_name=f"medvault-{time.strftime('%Y-%m-%d')}.json",
+                       mime="application/json", use_container_width=True)
+
+    back = st.file_uploader("Put a vault file back", type=["json"], key="vault_in")
+    if back is not None and st.button("Restore it", use_container_width=True):
+        try:
+            done = db.import_vault(con, my_id(), back.getvalue())
+        except (ValueError, json.JSONDecodeError) as problem:
+            st.error(f"That file could not be read: {problem}")
+        else:
+            st.success(
+                f"Restored {done['records_added']} record(s)"
+                + (f", skipped {done['records_skipped']} already here"
+                   if done["records_skipped"] else "")
+                + f", {done['medications_added']} medicine(s)."
+                + (" Your card was restored too." if done["profile_restored"] else ""))
+            st.caption("Restored records are labelled as filed by you. A confirmation "
+                       "from a clinician on another server does not travel with the file "
+                       "— the account that gave it does not exist here.")
+            st.rerun()
+
+
 def sign_out():
     """At the foot of a screen, not in the navigation - leaving is not a place to go."""
     st.markdown("<div style='height:.6rem'></div>", unsafe_allow_html=True)
@@ -1139,6 +1190,7 @@ else:
     tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Bill", "Ask"])
     with tabs[0]:
         screen_card()
+        vault_transfer(account)
         sign_out()
     with tabs[1]: screen_add()
     with tabs[2]: screen_records()

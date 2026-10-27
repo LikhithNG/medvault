@@ -116,3 +116,80 @@ if __name__ == "__main__":
         if name.startswith("test_") and callable(fn):
             fn(); print(f"  pass · {name}"); n += 1
     print(f"{n} passed")
+
+
+def test_an_export_holds_one_account_and_not_the_other():
+    """export_vault used to take no account id at all. It called get_profile(con), which
+    has not accepted that since this file was written, so it raised TypeError and had
+    plainly never been called — and it called list_records with no owner filter, which
+    would have written every account on the server into one file. A dead function kept a
+    live defect."""
+    import json as _json
+    con, a, b = two_patients()
+    db.save_profile(con, a, {"full_name": "Patient A"})
+    db.add_record(con, kind="lab", title="A's blood panel", owner_id=a)
+    db.add_record(con, kind="imaging", title="B's knee MRI", owner_id=b)
+
+    out = db.export_vault(con, a)
+
+    assert "A's blood panel" in out
+    assert "B's knee MRI" not in out, "one patient's export held another's records"
+    assert _json.loads(out)["profile"]["full_name"] == "Patient A"
+
+
+def test_an_export_cannot_be_taken_without_naming_an_account():
+    con, _, _ = two_patients()
+    try:
+        db.export_vault(con, None)
+    except ValueError:
+        return
+    raise AssertionError("export_vault accepted no account id")
+
+
+def test_a_restored_vault_lands_in_the_importing_account_only():
+    con, a, b = two_patients()
+    db.add_record(con, kind="lab", title="A's blood panel", service_date="2026-03-14",
+                  owner_id=a)
+    payload = db.export_vault(con, a)
+
+    done = db.import_vault(con, b, payload)
+
+    assert done["records_added"] == 1
+    assert [r["title"] for r in db.list_records(con, owner_id=b)] == ["A's blood panel"]
+    assert len(db.list_records(con, owner_id=a)) == 1, "the source account changed"
+
+
+def test_restoring_the_same_file_twice_does_not_duplicate():
+    con, a, b = two_patients()
+    db.add_record(con, kind="lab", title="Blood panel", service_date="2026-03-14",
+                  owner_id=a)
+    payload = db.export_vault(con, a)
+
+    db.import_vault(con, b, payload)
+    second = db.import_vault(con, b, payload)
+
+    assert second["records_added"] == 0 and second["records_skipped"] == 1
+    assert len(db.list_records(con, owner_id=b)) == 1
+
+
+def test_a_clinician_confirmation_does_not_travel_with_the_file():
+    """The verifying account does not exist on the machine the file lands on, so the
+    badge would be a claim with nothing behind it."""
+    con, a, b = two_patients()
+    rid = db.add_record(con, kind="lab", title="Confirmed panel", owner_id=a,
+                        provenance="VERIFIED")
+    payload = db.export_vault(con, a)
+
+    db.import_vault(con, b, payload)
+
+    assert db.list_records(con, owner_id=b)[0]["provenance"] == "SELF"
+
+
+def test_a_file_that_is_not_an_export_is_refused():
+    con, a, _ = two_patients()
+    for junk in ('{"something": "else"}', '[]'):
+        try:
+            db.import_vault(con, a, junk)
+        except ValueError:
+            continue
+        raise AssertionError(f"accepted {junk}")

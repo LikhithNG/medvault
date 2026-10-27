@@ -401,6 +401,22 @@ nothing to work with.
 
 Rebuild them with `python3 tools/make_sample_bills.py`.
 
+## Deploying it
+
+The repository is deployable as it stands: a clean clone boots with no `.env` and no
+database, creates the database on first use, and holds every data file it reads.
+
+On Streamlit Community Cloud, point it at `app.py`, add `GEMINI_API_KEY` under **Secrets**
+in the app's settings, and set `MEDVAULT_HOSTED = "1"` beside it. That second one turns on
+the warning the next paragraph explains.
+
+**The storage is temporary on a free tier.** The host restarts an app when it is idle and
+on every redeploy, and the SQLite file goes with it. For something called a vault that is
+a broken promise, so the Card screen says so and carries both halves of the way out —
+**Download my vault** writes everything except the original scans to a JSON file, and
+**Restore it** puts that file back, skipping anything already there. Fixing it properly
+means a managed database, which is a cost decision rather than an engineering one.
+
 ## Running it
 
 ```bash
