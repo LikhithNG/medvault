@@ -1,0 +1,14 @@
+DOYLESTOWN HOSPITAL
+Patient Financial Services    Account 00000000
+*** SYNTHETIC BENCHMARK BILL - NOT A REAL STATEMENT ***
+
+DATE        CODE    DESCRIPTION                      QTY       AMOUNT
+2026-03-14  76700   U/S ABDOMEN COMPLETE              2     7,307.11
+2026-03-14  99283   E/R LIMITED CARE I                2     2,555.05
+2026-03-14  J7030   NSS1000 - 0.9% SODCHLOR 1000ML    1        38.11
+2026-03-14  99282   E/R VISIT LEVEL II                1     1,613.02
+2026-03-14  80048   LAB BASIC METABOLIC PANEL         1     1,131.25
+2026-03-14  99283   E/R LIMITED CARE I                2     1,370.00
+2026-03-14  36415   BLOOD DRAW                        1        50.00
+
+                                                 TOTAL DUE    14,064.54

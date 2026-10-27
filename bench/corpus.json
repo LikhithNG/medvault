@@ -1,0 +1,3278 @@
+{
+ "generated_with": "tools/accuracy_test.py --bills 50 --seed 20261026",
+ "labels": "by construction, not by hand - see the module docstring",
+ "hospitals": [
+  "ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS",
+  "BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH",
+  "Community Hospital of Stokes",
+  "Doylestown Hospital",
+  "Inova Alexandria Hospital",
+  "Jefferson Abington Hospital",
+  "Leonard J. Chabert Medical Center",
+  "Scripps Green Hospital",
+  "Sharp Chula Vista Medical Center"
+ ],
+ "reference_collected": "2026-10-02",
+ "bills": [
+  {
+   "id": "bench_000",
+   "hospital_name": "ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS",
+   "line_items": [
+    {
+     "code": "12001",
+     "description": "HCHG SIMPLE REPAIR WOUND 2.5CM OR LESS",
+     "units": 1,
+     "charged": 4861.97,
+     "label": "above_published",
+     "posted": 1194.0,
+     "multiple": 4.072,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80061",
+     "description": "HCHG CORE LIPID PNL",
+     "units": 1,
+     "charged": 343.0,
+     "label": "at_published",
+     "posted": 343.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "74177",
+     "description": "HCHG CT ABD & PELVIS W/CON",
+     "units": 2,
+     "charged": 69627.37,
+     "label": "above_published",
+     "posted": 8287.0,
+     "multiple": 4.201,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96374",
+     "description": "HCHG IV PUSH INITIAL DRUG",
+     "units": 1,
+     "charged": 650.23,
+     "label": "just_inside_tolerance",
+     "posted": 647.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80061",
+     "description": "HCHG CORE LIPID PNL",
+     "units": 2,
+     "charged": 686.0,
+     "label": "duplicate",
+     "posted": 343.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    }
+   ]
+  },
+  {
+   "id": "bench_001",
+   "hospital_name": "BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH",
+   "line_items": [
+    {
+     "code": "83036",
+     "description": "HC GLYCOSYLATED HEMOGLOBIN",
+     "units": 1,
+     "charged": 446.23,
+     "label": "above_published",
+     "posted": 185.85,
+     "multiple": 2.401,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "83036",
+     "description": "HC GLYCOSYLATED HEMOGLOBIN",
+     "units": 1,
+     "charged": 185.85,
+     "label": "duplicate",
+     "posted": 185.85,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "80053",
+     "description": "HC COMPREHENSIVE METABOLIC PANEL",
+     "units": 1,
+     "charged": 392.86,
+     "label": "at_published",
+     "posted": 392.86,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 357.4,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "J7030",
+     "description": "HC NORMAL SALINE 1000CC IV",
+     "units": 1,
+     "charged": 65.46,
+     "label": "above_published",
+     "posted": 31.44,
+     "multiple": 2.082,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80061",
+     "description": "HC LIPID PANEL",
+     "units": 1,
+     "charged": 328.07,
+     "label": "at_published",
+     "posted": 328.07,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99281",
+     "description": "HC EMERGENCY DEPT LEVEL I",
+     "units": 24,
+     "charged": 11477.52,
+     "label": "quantity",
+     "posted": 478.23,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    }
+   ]
+  },
+  {
+   "id": "bench_002",
+   "hospital_name": "Community Hospital of Stokes",
+   "line_items": [
+    {
+     "code": "G0379",
+     "description": "DIRECT ADMISSION PATIENT FOR HOSPITAL ",
+     "units": 13,
+     "charged": 4759.56,
+     "label": "quantity",
+     "posted": 366.12,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "72148",
+     "description": "ITEM 72148",
+     "units": 1,
+     "charged": 646.02,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "G0378",
+     "description": "OBSERVATION PER HOUR",
+     "units": 1,
+     "charged": 1134.26,
+     "label": "above_published",
+     "posted": 214.7,
+     "multiple": 5.283,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99284",
+     "description": "FAC FEE LEVEL IV",
+     "units": 1,
+     "charged": 1492.24,
+     "label": "just_inside_tolerance",
+     "posted": 1484.82,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "83036",
+     "description": "HGB A1C LC",
+     "units": 1,
+     "charged": 88.14,
+     "label": "at_published",
+     "posted": 88.14,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "84443",
+     "description": "TSH (THYROID STIMULATING HORMONE)",
+     "units": 1,
+     "charged": 626.7,
+     "label": "above_published",
+     "posted": 106.22,
+     "multiple": 5.9,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_003",
+   "hospital_name": "Doylestown Hospital",
+   "line_items": [
+    {
+     "code": "76700",
+     "description": "U/S ABDOMEN COMPLETE",
+     "units": 2,
+     "charged": 7307.11,
+     "label": "above_published",
+     "posted": 1373.0,
+     "multiple": 2.661,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99283",
+     "description": "E/R LIMITED CARE I",
+     "units": 2,
+     "charged": 2555.05,
+     "label": "above_published",
+     "posted": 685.0,
+     "multiple": 1.865,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "J7030",
+     "description": "NSS1000 - 0.9% SODCHLOR 1000ML",
+     "units": 1,
+     "charged": 38.11,
+     "label": "at_published",
+     "posted": 38.11,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99282",
+     "description": "E/R VISIT LEVEL II",
+     "units": 1,
+     "charged": 1613.02,
+     "label": "just_inside_tolerance",
+     "posted": 1605.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80048",
+     "description": "LAB BASIC METABOLIC PANEL",
+     "units": 1,
+     "charged": 1131.25,
+     "label": "above_published",
+     "posted": 241.0,
+     "multiple": 4.694,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99283",
+     "description": "E/R LIMITED CARE I",
+     "units": 2,
+     "charged": 1370.0,
+     "label": "duplicate",
+     "posted": 685.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "36415",
+     "description": "BLOOD DRAW",
+     "units": 1,
+     "charged": 50.0,
+     "label": "at_published",
+     "posted": 50.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_004",
+   "hospital_name": "Inova Alexandria Hospital",
+   "line_items": [
+    {
+     "code": "71046",
+     "description": "HC XR CHEST 2 VIEWS",
+     "units": 10,
+     "charged": 4940.0,
+     "label": "quantity",
+     "posted": 494.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "12001",
+     "description": "HC REPAIR SIMPLE S/N/A/G/T/EXT 2.5CM/<",
+     "units": 2,
+     "charged": 7591.06,
+     "label": "above_published",
+     "posted": 726.0,
+     "multiple": 5.228,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70486",
+     "description": "HC CT MAXILLOFAC-SINUS WO IV CONT",
+     "units": 1,
+     "charged": 1256.0,
+     "label": "at_published",
+     "posted": 1256.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J1885",
+     "description": "ketorolac tromethamine per 15 mg",
+     "units": 2,
+     "charged": 30.44,
+     "label": "at_published",
+     "posted": 15.22,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "76700",
+     "description": "HC US ABD W/IMAGE DOC COMP",
+     "units": 1,
+     "charged": 5238.41,
+     "label": "above_published",
+     "posted": 1734.0,
+     "multiple": 3.021,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_005",
+   "hospital_name": "Jefferson Abington Hospital",
+   "line_items": [
+    {
+     "code": "J1200",
+     "description": "DIPHENHYDRAMINE 50 MG/50 ML IN 0.9% NA",
+     "units": 1,
+     "charged": 5.0,
+     "label": "at_published",
+     "posted": 5.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "71046",
+     "description": "11-OFFICE-X-ray exam chest 2 views",
+     "units": 1,
+     "charged": 228.6,
+     "label": "above_published",
+     "posted": 50.0,
+     "multiple": 4.572,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "83036",
+     "description": "11-OFFICE-Hemoglobin glycosylated a1c",
+     "units": 1,
+     "charged": 30.15,
+     "label": "just_inside_tolerance",
+     "posted": 30.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "83036",
+     "description": "11-OFFICE-Hemoglobin glycosylated a1c",
+     "units": 1,
+     "charged": 30.0,
+     "label": "duplicate",
+     "posted": 30.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "85025",
+     "description": "11-OFFICE-Bld cnt cmplt CBC atmtd atmt",
+     "units": 2,
+     "charged": 208.62,
+     "label": "above_published",
+     "posted": 30.0,
+     "multiple": 3.477,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "36415",
+     "description": "COLLECTION OF VENOUS BLOOD",
+     "units": 1,
+     "charged": 14.0,
+     "label": "at_published",
+     "posted": 14.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_006",
+   "hospital_name": "Leonard J. Chabert Medical Center",
+   "line_items": [
+    {
+     "code": "80048",
+     "description": "HC BASIC METABOLIC PANEL(8 TESTS)",
+     "units": 2,
+     "charged": 388.47,
+     "label": "above_published",
+     "posted": 49.0,
+     "multiple": 3.964,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96365",
+     "description": "HC IV INFUSION, THER/PROPH/DIAG - UP T",
+     "units": 1,
+     "charged": 745.85,
+     "label": "above_published",
+     "posted": 350.0,
+     "multiple": 2.131,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0378",
+     "description": "HC HOURLY OBSERVATION BED CHARGE",
+     "units": 1,
+     "charged": 23.0,
+     "label": "at_published",
+     "posted": 23.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "G0379",
+     "description": "HC DIRECT ADMIT FOR HOSPITAL OBSERVATI",
+     "units": 2,
+     "charged": 446.0,
+     "label": "at_published",
+     "posted": 223.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "83036",
+     "description": "HC GLYCOSYLATED HB",
+     "units": 2,
+     "charged": 368.7,
+     "label": "above_published",
+     "posted": 56.0,
+     "multiple": 3.292,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "72148",
+     "description": "HC MRI SPINE LUMBAR WITHOUT CONTRAST",
+     "units": 15,
+     "charged": 14460.0,
+     "label": "quantity",
+     "posted": 964.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    }
+   ]
+  },
+  {
+   "id": "bench_007",
+   "hospital_name": "Scripps Green Hospital",
+   "line_items": [
+    {
+     "code": "72148",
+     "description": "HC MR Lumbar WO",
+     "units": 1,
+     "charged": 3028.06,
+     "label": "just_inside_tolerance",
+     "posted": 3013.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J2405",
+     "description": "HC Ondansetron 2mg/Ml 2ml",
+     "units": 1,
+     "charged": 30.0,
+     "label": "at_published",
+     "posted": 30.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99282",
+     "description": "HC ER Level II",
+     "units": 1,
+     "charged": 5081.54,
+     "label": "above_published",
+     "posted": 1312.38,
+     "multiple": 3.872,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85025",
+     "description": "HC Cbc",
+     "units": 1,
+     "charged": 583.0,
+     "label": "above_published",
+     "posted": 110.0,
+     "multiple": 5.3,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT Head WO",
+     "units": 23,
+     "charged": 79525.26,
+     "label": "quantity",
+     "posted": 3457.62,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "J2405",
+     "description": "HC Ondansetron 2mg/Ml 2ml",
+     "units": 1,
+     "charged": 30.0,
+     "label": "duplicate",
+     "posted": 30.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    }
+   ]
+  },
+  {
+   "id": "bench_008",
+   "hospital_name": "Sharp Chula Vista Medical Center",
+   "line_items": [
+    {
+     "code": "70486",
+     "description": "HC CT SCANMAXILLOFACIAL W/O CONTRAST -",
+     "units": 2,
+     "charged": 7600.0,
+     "label": "at_published",
+     "posted": 3800.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "71046",
+     "description": "HC RADIOLOGIC EXAM CHEST 2 VIEWS - XR ",
+     "units": 2,
+     "charged": 4206.04,
+     "label": "above_published",
+     "posted": 710.0,
+     "multiple": 2.962,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "71046",
+     "description": "HC RADIOLOGIC EXAM CHEST 2 VIEWS - XR ",
+     "units": 2,
+     "charged": 1420.0,
+     "label": "duplicate",
+     "posted": 710.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "96374",
+     "description": "HC INJ IV PUSH SNGL/INITIAL",
+     "units": 2,
+     "charged": 8903.66,
+     "label": "above_published",
+     "posted": 876.0,
+     "multiple": 5.082,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 809.04,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "J7030",
+     "description": "ABIRATERONE 250 MG TABLET",
+     "units": 1,
+     "charged": 5.73,
+     "label": "above_published",
+     "posted": 1.39,
+     "multiple": 4.121,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_009",
+   "hospital_name": "ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS",
+   "line_items": [
+    {
+     "code": "99281",
+     "description": "HCHG ED LEVEL 1",
+     "units": 2,
+     "charged": 1796.94,
+     "label": "above_published",
+     "posted": 603.0,
+     "multiple": 1.49,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70450",
+     "description": "HCHG CT BRAIN WO CONTR",
+     "units": 1,
+     "charged": 8947.4,
+     "label": "above_published",
+     "posted": 4312.0,
+     "multiple": 2.075,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85025",
+     "description": "HCHG CORE CBC AUTO W AUTO DIFF WBC",
+     "units": 1,
+     "charged": 217.0,
+     "label": "at_published",
+     "posted": 217.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80061",
+     "description": "HCHG CORE LIPID PNL",
+     "units": 2,
+     "charged": 3824.45,
+     "label": "above_published",
+     "posted": 343.0,
+     "multiple": 5.575,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "12001",
+     "description": "HCHG SIMPLE REPAIR WOUND 2.5CM OR LESS",
+     "units": 1,
+     "charged": 1199.97,
+     "label": "just_inside_tolerance",
+     "posted": 1194.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "74177",
+     "description": "HCHG CT ABD & PELVIS W/CON",
+     "units": 15,
+     "charged": 124305.0,
+     "label": "quantity",
+     "posted": 8287.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "G0378",
+     "description": "HCHG OBS PER HOUR",
+     "units": 1,
+     "charged": 268.0,
+     "label": "at_published",
+     "posted": 268.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_010",
+   "hospital_name": "BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH",
+   "line_items": [
+    {
+     "code": "20610",
+     "description": "HC ARTHR ASP INJ MJ JNT BURS",
+     "units": 1,
+     "charged": 1192.29,
+     "label": "at_published",
+     "posted": 1192.29,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80061",
+     "description": "HC LIPID PANEL",
+     "units": 2,
+     "charged": 2724.95,
+     "label": "above_published",
+     "posted": 328.07,
+     "multiple": 4.153,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0378",
+     "description": "HC OBSERVATION PER HOUR",
+     "units": 2,
+     "charged": 1658.9,
+     "label": "above_published",
+     "posted": 179.69,
+     "multiple": 4.616,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "71046",
+     "description": "HC X-RAY EXAM CHEST 2 VIEWS",
+     "units": 1,
+     "charged": 3447.26,
+     "label": "above_published",
+     "posted": 656.37,
+     "multiple": 5.252,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT HEAD/BRAIN SCAN W/O CONTRAST",
+     "units": 1,
+     "charged": 3178.59,
+     "label": "at_published",
+     "posted": 3178.59,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_011",
+   "hospital_name": "Community Hospital of Stokes",
+   "line_items": [
+    {
+     "code": "72148",
+     "description": "ITEM 72148",
+     "units": 1,
+     "charged": 388.88,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "99284",
+     "description": "FAC FEE LEVEL IV",
+     "units": 1,
+     "charged": 2626.65,
+     "label": "above_published",
+     "posted": 1484.82,
+     "multiple": 1.769,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99285",
+     "description": "FAC FEE LEVEL V",
+     "units": 1,
+     "charged": 10081.35,
+     "label": "above_published",
+     "posted": 2194.46,
+     "multiple": 4.594,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "74177",
+     "description": "CT ABD & PELVIS W/CONTRAST",
+     "units": 24,
+     "charged": 78000.0,
+     "label": "quantity",
+     "posted": 3250.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "99283",
+     "description": "FAC FEE LEVEL III",
+     "units": 1,
+     "charged": 4300.95,
+     "label": "above_published",
+     "posted": 924.34,
+     "multiple": 4.653,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "12001",
+     "description": "REP SIMP SCLP TRNK XTRM",
+     "units": 2,
+     "charged": 1134.52,
+     "label": "at_published",
+     "posted": 567.26,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_012",
+   "hospital_name": "Doylestown Hospital",
+   "line_items": [
+    {
+     "code": "99281",
+     "description": "E/R VISIT LEVEL I",
+     "units": 1,
+     "charged": 3348.03,
+     "label": "above_published",
+     "posted": 1605.0,
+     "multiple": 2.086,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99284",
+     "description": "E/R VISIT LEVEL IV",
+     "units": 1,
+     "charged": 1613.02,
+     "label": "just_inside_tolerance",
+     "posted": 1605.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80061",
+     "description": "LIPID PANEL (CARDIOVASCULAR)",
+     "units": 2,
+     "charged": 1280.02,
+     "label": "above_published",
+     "posted": 244.0,
+     "multiple": 2.623,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96365",
+     "description": "INFUSION DIAG IV FIRST HR",
+     "units": 1,
+     "charged": 554.0,
+     "label": "at_published",
+     "posted": 554.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99281",
+     "description": "E/R VISIT LEVEL I",
+     "units": 19,
+     "charged": 30495.0,
+     "label": "quantity",
+     "posted": 1605.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "80053",
+     "description": "COMPREHENSIVE METABOLIC PANEL",
+     "units": 1,
+     "charged": 2244.74,
+     "label": "above_published",
+     "posted": 415.0,
+     "multiple": 5.409,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "76700",
+     "description": "U/S ABDOMEN COMPLETE",
+     "units": 1,
+     "charged": 1373.0,
+     "label": "at_published",
+     "posted": 1373.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_013",
+   "hospital_name": "Inova Alexandria Hospital",
+   "line_items": [
+    {
+     "code": "99284",
+     "description": "HC LEVEL 4 E&M ED",
+     "units": 1,
+     "charged": 2917.0,
+     "label": "at_published",
+     "posted": 2917.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "81001",
+     "description": "HC URINALYSIS AUTO W/MICRO",
+     "units": 2,
+     "charged": 758.46,
+     "label": "above_published",
+     "posted": 89.0,
+     "multiple": 4.261,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96365",
+     "description": "HC IV INF THER INITIAL UP TO 1 HR",
+     "units": 1,
+     "charged": 957.76,
+     "label": "just_inside_tolerance",
+     "posted": 953.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "72148",
+     "description": "HC MRI LUMB SPINE WO IV CONT",
+     "units": 1,
+     "charged": 6224.09,
+     "label": "above_published",
+     "posted": 1670.0,
+     "multiple": 3.727,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 443.62,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_014",
+   "hospital_name": "Jefferson Abington Hospital",
+   "line_items": [
+    {
+     "code": "70486",
+     "description": "11-OFFICE-COMPUTERIZED AXIAL TOMOGRAPH",
+     "units": 2,
+     "charged": 6580.5,
+     "label": "above_published",
+     "posted": 1230.0,
+     "multiple": 2.675,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 616.33,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "20610",
+     "description": "0-DRAIN INJECT JOINT BURSA",
+     "units": 2,
+     "charged": 2595.9,
+     "label": "above_published",
+     "posted": 425.0,
+     "multiple": 3.054,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85027",
+     "description": "Bld cnt; cmplt (CBC) atmtd",
+     "units": 1,
+     "charged": 20.1,
+     "label": "just_inside_tolerance",
+     "posted": 20.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "20610",
+     "description": "0-DRAIN INJECT JOINT BURSA",
+     "units": 1,
+     "charged": 425.0,
+     "label": "duplicate",
+     "posted": 425.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "99285",
+     "description": "02-Telehealth Provided Other than in P",
+     "units": 1,
+     "charged": 12354.41,
+     "label": "above_published",
+     "posted": 3754.0,
+     "multiple": 3.291,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "J1885",
+     "description": "HC Ketorolac tromethamine inj",
+     "units": 2,
+     "charged": 40.0,
+     "label": "at_published",
+     "posted": 20.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_015",
+   "hospital_name": "Leonard J. Chabert Medical Center",
+   "line_items": [
+    {
+     "code": "J2405",
+     "description": "ONDANSETRON HCL (PF) 4 MG/2 ML INJ SOL",
+     "units": 1,
+     "charged": 36.27,
+     "label": "above_published",
+     "posted": 10.0,
+     "multiple": 3.627,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "84443",
+     "description": "HC TSH",
+     "units": 1,
+     "charged": 96.48,
+     "label": "just_inside_tolerance",
+     "posted": 96.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT HEAD W/O CONTRAST",
+     "units": 1,
+     "charged": 1645.57,
+     "label": "above_published",
+     "posted": 539.0,
+     "multiple": 3.053,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "72148",
+     "description": "HC MRI SPINE LUMBAR WITHOUT CONTRAST",
+     "units": 1,
+     "charged": 964.0,
+     "label": "at_published",
+     "posted": 964.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "83036",
+     "description": "HC GLYCOSYLATED HB",
+     "units": 1,
+     "charged": 315.95,
+     "label": "above_published",
+     "posted": 56.0,
+     "multiple": 5.642,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT HEAD W/O CONTRAST",
+     "units": 1,
+     "charged": 539.0,
+     "label": "duplicate",
+     "posted": 539.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    }
+   ]
+  },
+  {
+   "id": "bench_016",
+   "hospital_name": "Scripps Green Hospital",
+   "line_items": [
+    {
+     "code": "71046",
+     "description": "HC Chest 2 Views",
+     "units": 16,
+     "charged": 15593.44,
+     "label": "quantity",
+     "posted": 974.59,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "J1200",
+     "description": "DIPHENHYDRAMINE 50 MG/ML INJECTION SOL",
+     "units": 2,
+     "charged": 60.0,
+     "label": "at_published",
+     "posted": 30.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "G0379",
+     "description": "ITEM G0379",
+     "units": 1,
+     "charged": 246.12,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "83036",
+     "description": "HC Hemoglobin; Glycated",
+     "units": 2,
+     "charged": 498.91,
+     "label": "above_published",
+     "posted": 51.84,
+     "multiple": 4.812,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99282",
+     "description": "HC ER Level II",
+     "units": 2,
+     "charged": 7141.97,
+     "label": "above_published",
+     "posted": 1312.38,
+     "multiple": 2.721,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_017",
+   "hospital_name": "Sharp Chula Vista Medical Center",
+   "line_items": [
+    {
+     "code": "96374",
+     "description": "HC INJ IV PUSH SNGL/INITIAL",
+     "units": 1,
+     "charged": 876.0,
+     "label": "duplicate",
+     "posted": 876.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "70486",
+     "description": "HC CT SCANMAXILLOFACIAL W/O CONTRAST -",
+     "units": 1,
+     "charged": 3800.0,
+     "label": "at_published",
+     "posted": 3800.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "36415",
+     "description": "HC CHG COLLECTION VENOUS BLOODVENIPUNC",
+     "units": 1,
+     "charged": 172.72,
+     "label": "above_published",
+     "posted": 29.0,
+     "multiple": 5.956,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99284",
+     "description": "HC EMERGENCY DEPARTMENT LEVEL 4 VISIT ",
+     "units": 1,
+     "charged": 5200.0,
+     "label": "at_published",
+     "posted": 5200.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "20610",
+     "description": "HC INJ MAJOR JOINT",
+     "units": 1,
+     "charged": 5301.35,
+     "label": "above_published",
+     "posted": 1999.0,
+     "multiple": 2.652,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0379",
+     "description": "HC DIRECT ADMIT TO OBSERVATION",
+     "units": 1,
+     "charged": 8786.61,
+     "label": "above_published",
+     "posted": 1890.0,
+     "multiple": 4.649,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "74177",
+     "description": "HC CT ABD & PELV W/CONTRAST - CT ABDOM",
+     "units": 22,
+     "charged": 146476.0,
+     "label": "quantity",
+     "posted": 6658.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    }
+   ]
+  },
+  {
+   "id": "bench_018",
+   "hospital_name": "ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS",
+   "line_items": [
+    {
+     "code": "G0379",
+     "description": "HCHG OBS DIRECT ADMIT",
+     "units": 2,
+     "charged": 9550.31,
+     "label": "above_published",
+     "posted": 1099.0,
+     "multiple": 4.345,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96374",
+     "description": "HCHG IV PUSH INITIAL DRUG",
+     "units": 1,
+     "charged": 650.23,
+     "label": "just_inside_tolerance",
+     "posted": 647.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85025",
+     "description": "HCHG CORE CBC AUTO W AUTO DIFF WBC",
+     "units": 1,
+     "charged": 217.0,
+     "label": "at_published",
+     "posted": 217.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 762.26,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "99283",
+     "description": "HCHG ED LEVEL 3",
+     "units": 1,
+     "charged": 3093.0,
+     "label": "at_published",
+     "posted": 3093.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J2405",
+     "description": "ONDANSETRON HCL 4 MG/2ML IJ SOLN",
+     "units": 2,
+     "charged": 105.84,
+     "label": "above_published",
+     "posted": 14.4,
+     "multiple": 3.675,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_019",
+   "hospital_name": "BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH",
+   "line_items": [
+    {
+     "code": "71046",
+     "description": "HC X-RAY EXAM CHEST 2 VIEWS",
+     "units": 1,
+     "charged": 656.37,
+     "label": "at_published",
+     "posted": 656.37,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85027",
+     "description": "HC COMPLETE CBC AUTOMATED W/OUT DIFF",
+     "units": 1,
+     "charged": 150.59,
+     "label": "just_inside_tolerance",
+     "posted": 149.84,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "G0378",
+     "description": "HC OBSERVATION PER HOUR",
+     "units": 21,
+     "charged": 3773.49,
+     "label": "quantity",
+     "posted": 179.69,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "84443",
+     "description": "HC THYROID STIMULATING HORMONE",
+     "units": 1,
+     "charged": 498.7,
+     "label": "above_published",
+     "posted": 285.79,
+     "multiple": 1.745,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99284",
+     "description": "HC EMERGENCY CARE LEVEL IV",
+     "units": 2,
+     "charged": 6856.64,
+     "label": "above_published",
+     "posted": 2122.8,
+     "multiple": 1.615,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 337.69,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_020",
+   "hospital_name": "Community Hospital of Stokes",
+   "line_items": [
+    {
+     "code": "72148",
+     "description": "ITEM 72148",
+     "units": 1,
+     "charged": 188.86,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "96374",
+     "description": "TX/PROPH/DX INJ IV PUSH SGL/IN",
+     "units": 1,
+     "charged": 448.4,
+     "label": "above_published",
+     "posted": 187.3,
+     "multiple": 2.394,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99285",
+     "description": "FAC FEE LEVEL V",
+     "units": 10,
+     "charged": 21944.6,
+     "label": "quantity",
+     "posted": 2194.46,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "99284",
+     "description": "FAC FEE LEVEL IV",
+     "units": 1,
+     "charged": 6478.27,
+     "label": "above_published",
+     "posted": 1484.82,
+     "multiple": 4.363,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96374",
+     "description": "TX/PROPH/DX INJ IV PUSH SGL/IN",
+     "units": 1,
+     "charged": 187.3,
+     "label": "duplicate",
+     "posted": 187.3,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "99281",
+     "description": "FAC FEE LEVEL I",
+     "units": 1,
+     "charged": 341.26,
+     "label": "at_published",
+     "posted": 341.26,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_021",
+   "hospital_name": "Doylestown Hospital",
+   "line_items": [
+    {
+     "code": "96374",
+     "description": "IV PUSH SINGLE/INITIAL",
+     "units": 2,
+     "charged": 6238.04,
+     "label": "above_published",
+     "posted": 554.0,
+     "multiple": 5.63,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99282",
+     "description": "E/R VISIT LEVEL II",
+     "units": 18,
+     "charged": 28890.0,
+     "label": "quantity",
+     "posted": 1605.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "80061",
+     "description": "LIPID PANEL (CARDIOVASCULAR)",
+     "units": 1,
+     "charged": 244.0,
+     "label": "at_published",
+     "posted": 244.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99283",
+     "description": "E/R LIMITED CARE I",
+     "units": 2,
+     "charged": 1370.0,
+     "label": "at_published",
+     "posted": 685.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85025",
+     "description": "COMPLETE BLOOD COUNT/DIFF",
+     "units": 1,
+     "charged": 154.77,
+     "label": "just_inside_tolerance",
+     "posted": 154.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "84443",
+     "description": "LAB CHEM TSH",
+     "units": 1,
+     "charged": 487.27,
+     "label": "above_published",
+     "posted": 257.0,
+     "multiple": 1.896,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_022",
+   "hospital_name": "Inova Alexandria Hospital",
+   "line_items": [
+    {
+     "code": "80048",
+     "description": "HC PANEL CHEM BASIC W/TOTAL CA",
+     "units": 1,
+     "charged": 860.56,
+     "label": "above_published",
+     "posted": 301.0,
+     "multiple": 2.859,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70486",
+     "description": "HC CT MAXILLOFAC-SINUS WO IV CONT",
+     "units": 17,
+     "charged": 21352.0,
+     "label": "quantity",
+     "posted": 1256.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT HEAD-BRAIN WO IV CONT",
+     "units": 1,
+     "charged": 1255.0,
+     "label": "at_published",
+     "posted": 1255.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J2405",
+     "description": "ondansetron 4 MG/2ML Soln 2 mL Vial",
+     "units": 1,
+     "charged": 8.93,
+     "label": "above_published",
+     "posted": 5.01,
+     "multiple": 1.783,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99281",
+     "description": "HC LEVEL 1 E&M ED",
+     "units": 1,
+     "charged": 775.86,
+     "label": "just_inside_tolerance",
+     "posted": 772.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "83036",
+     "description": "HC HEMOGLOBIN GLYCOSYLATED (A1C)",
+     "units": 1,
+     "charged": 218.0,
+     "label": "at_published",
+     "posted": 218.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "96365",
+     "description": "HC IV INF THER INITIAL UP TO 1 HR",
+     "units": 1,
+     "charged": 1711.59,
+     "label": "above_published",
+     "posted": 953.0,
+     "multiple": 1.796,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_023",
+   "hospital_name": "Jefferson Abington Hospital",
+   "line_items": [
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 738.67,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "84443",
+     "description": "11-OFFICE-THYROID STIMULATING HORMONE ",
+     "units": 1,
+     "charged": 196.52,
+     "label": "above_published",
+     "posted": 40.0,
+     "multiple": 4.913,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "J1885",
+     "description": "HC Ketorolac tromethamine inj",
+     "units": 2,
+     "charged": 114.76,
+     "label": "above_published",
+     "posted": 20.0,
+     "multiple": 2.869,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "83036",
+     "description": "11-OFFICE-Hemoglobin glycosylated a1c",
+     "units": 2,
+     "charged": 60.0,
+     "label": "at_published",
+     "posted": 30.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "70450",
+     "description": "11-OFFICE-COMPUTERIZED AXIAL TOMOGRAPH",
+     "units": 1,
+     "charged": 1339.2,
+     "label": "above_published",
+     "posted": 800.0,
+     "multiple": 1.674,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80061",
+     "description": "11-OFFICE-LIPID PANEL",
+     "units": 1,
+     "charged": 45.0,
+     "label": "at_published",
+     "posted": 45.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_024",
+   "hospital_name": "Leonard J. Chabert Medical Center",
+   "line_items": [
+    {
+     "code": "85025",
+     "description": "HC COMPL CBC W/PLT W/AUTOM DIFF",
+     "units": 1,
+     "charged": 83.79,
+     "label": "above_published",
+     "posted": 45.0,
+     "multiple": 1.862,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 207.61,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "12001",
+     "description": "HC SIM REP S/N/A/G/TR/E <2.5CM",
+     "units": 1,
+     "charged": 252.0,
+     "label": "at_published",
+     "posted": 252.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT HEAD W/O CONTRAST",
+     "units": 22,
+     "charged": 11858.0,
+     "label": "quantity",
+     "posted": 539.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "J7030",
+     "description": "SODIUM CHLORIDE 0.9 % IV SOLP",
+     "units": 1,
+     "charged": 41.13,
+     "label": "above_published",
+     "posted": 10.0,
+     "multiple": 4.113,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "84443",
+     "description": "HC TSH",
+     "units": 2,
+     "charged": 764.74,
+     "label": "above_published",
+     "posted": 96.0,
+     "multiple": 3.983,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85025",
+     "description": "HC COMPL CBC W/PLT W/AUTOM DIFF",
+     "units": 1,
+     "charged": 45.0,
+     "label": "duplicate",
+     "posted": 45.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    }
+   ]
+  },
+  {
+   "id": "bench_025",
+   "hospital_name": "Scripps Green Hospital",
+   "line_items": [
+    {
+     "code": "96365",
+     "description": "HC IV Inf Therapy Upto 1hr",
+     "units": 2,
+     "charged": 14643.63,
+     "label": "above_published",
+     "posted": 1869.24,
+     "multiple": 3.917,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "J1885",
+     "description": "KETOROLAC 15 MG/ML INJECTION SOLUTION",
+     "units": 2,
+     "charged": 134.4,
+     "label": "above_published",
+     "posted": 30.0,
+     "multiple": 2.24,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT Head WO",
+     "units": 1,
+     "charged": 14255.77,
+     "label": "above_published",
+     "posted": 3457.62,
+     "multiple": 4.123,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "81001",
+     "description": "HC Urinalysis-Complete",
+     "units": 1,
+     "charged": 141.43,
+     "label": "at_published",
+     "posted": 141.43,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "70486",
+     "description": "HC CT Maxillofacial WO",
+     "units": 13,
+     "charged": 95292.34,
+     "label": "quantity",
+     "posted": 7330.18,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "70450",
+     "description": "HC CT Head WO",
+     "units": 2,
+     "charged": 6915.24,
+     "label": "duplicate",
+     "posted": 3457.62,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    }
+   ]
+  },
+  {
+   "id": "bench_026",
+   "hospital_name": "Sharp Chula Vista Medical Center",
+   "line_items": [
+    {
+     "code": "71046",
+     "description": "HC RADIOLOGIC EXAM CHEST 2 VIEWS - XR ",
+     "units": 1,
+     "charged": 713.55,
+     "label": "just_inside_tolerance",
+     "posted": 710.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "36415",
+     "description": "HC CHG COLLECTION VENOUS BLOODVENIPUNC",
+     "units": 1,
+     "charged": 122.21,
+     "label": "above_published",
+     "posted": 29.0,
+     "multiple": 4.214,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0378",
+     "description": "HC OBSERVATION CARVE-OUT - RESPIRATORY",
+     "units": 2,
+     "charged": 880.0,
+     "label": "at_published",
+     "posted": 440.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "84443",
+     "description": "HC ASSAY THYROID STIM HORMONE - THYROI",
+     "units": 1,
+     "charged": 975.18,
+     "label": "above_published",
+     "posted": 207.0,
+     "multiple": 4.711,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0378",
+     "description": "HC OBSERVATION CARVE-OUT - RESPIRATORY",
+     "units": 16,
+     "charged": 7040.0,
+     "label": "quantity",
+     "posted": 440.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "G0378",
+     "description": "HC OBSERVATION CARVE-OUT - RESPIRATORY",
+     "units": 2,
+     "charged": 880.0,
+     "label": "duplicate",
+     "posted": 440.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    }
+   ]
+  },
+  {
+   "id": "bench_027",
+   "hospital_name": "ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS",
+   "line_items": [
+    {
+     "code": "85025",
+     "description": "HCHG CORE CBC AUTO W AUTO DIFF WBC",
+     "units": 2,
+     "charged": 434.0,
+     "label": "at_published",
+     "posted": 217.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "84443",
+     "description": "HCHG CORE TSH",
+     "units": 1,
+     "charged": 553.7,
+     "label": "above_published",
+     "posted": 313.0,
+     "multiple": 1.769,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96374",
+     "description": "HCHG IV PUSH INITIAL DRUG",
+     "units": 1,
+     "charged": 647.0,
+     "label": "at_published",
+     "posted": 647.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99285",
+     "description": "HCHG ED LEVEL 5",
+     "units": 1,
+     "charged": 37494.06,
+     "label": "above_published",
+     "posted": 8003.0,
+     "multiple": 4.685,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99283",
+     "description": "HCHG ED LEVEL 3",
+     "units": 1,
+     "charged": 11632.77,
+     "label": "above_published",
+     "posted": 3093.0,
+     "multiple": 3.761,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_028",
+   "hospital_name": "BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH",
+   "line_items": [
+    {
+     "code": "84443",
+     "description": "HC THYROID STIMULATING HORMONE",
+     "units": 1,
+     "charged": 285.79,
+     "label": "duplicate",
+     "posted": 285.79,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80061",
+     "description": "HC LIPID PANEL",
+     "units": 1,
+     "charged": 668.28,
+     "label": "above_published",
+     "posted": 328.07,
+     "multiple": 2.037,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96365",
+     "description": "HC IV INFUSION THER/DIAG/PROPH INITIAL",
+     "units": 1,
+     "charged": 902.11,
+     "label": "at_published",
+     "posted": 902.11,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "70486",
+     "description": "HC CT MAXILLOFACIAL AREA SCAN W/O",
+     "units": 2,
+     "charged": 5681.8,
+     "label": "at_published",
+     "posted": 2840.9,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "96374",
+     "description": "HC INJECTION, IV PUSH SNG/INIT SUBST",
+     "units": 2,
+     "charged": 2355.29,
+     "label": "above_published",
+     "posted": 524.33,
+     "multiple": 2.246,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_029",
+   "hospital_name": "Community Hospital of Stokes",
+   "line_items": [
+    {
+     "code": "96374",
+     "description": "TX/PROPH/DX INJ IV PUSH SGL/IN",
+     "units": 1,
+     "charged": 1059.18,
+     "label": "above_published",
+     "posted": 187.3,
+     "multiple": 5.655,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70486",
+     "description": "CT MAXILLOFACIALW/O CONT",
+     "units": 22,
+     "charged": 38924.6,
+     "label": "quantity",
+     "posted": 1769.3,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "70450",
+     "description": "CT BRAIN W/O CONTRAST",
+     "units": 2,
+     "charged": 10937.81,
+     "label": "above_published",
+     "posted": 1769.3,
+     "multiple": 3.091,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85025",
+     "description": "CBC WITH AUTOMATED DIFFERENTIAL",
+     "units": 1,
+     "charged": 257.64,
+     "label": "at_published",
+     "posted": 257.64,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "G0378",
+     "description": "OBSERVATION PER HOUR",
+     "units": 1,
+     "charged": 214.7,
+     "label": "at_published",
+     "posted": 214.7,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J1885",
+     "description": "KETOROLAC VIAL 30MG",
+     "units": 1,
+     "charged": 87.28,
+     "label": "above_published",
+     "posted": 26.57,
+     "multiple": 3.285,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_030",
+   "hospital_name": "Doylestown Hospital",
+   "line_items": [
+    {
+     "code": "J7030",
+     "description": "NSS1000 - 0.9% SODCHLOR 1000ML",
+     "units": 1,
+     "charged": 186.78,
+     "label": "above_published",
+     "posted": 38.11,
+     "multiple": 4.901,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "81001",
+     "description": "ITEM 81001",
+     "units": 1,
+     "charged": 373.91,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "76700",
+     "description": "U/S ABDOMEN COMPLETE",
+     "units": 1,
+     "charged": 2581.24,
+     "label": "above_published",
+     "posted": 1373.0,
+     "multiple": 1.88,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "83036",
+     "description": "LAB CHEM GLYCOHEMOGLOBIN",
+     "units": 2,
+     "charged": 476.68,
+     "label": "above_published",
+     "posted": 159.0,
+     "multiple": 1.499,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80048",
+     "description": "LAB BASIC METABOLIC PANEL",
+     "units": 1,
+     "charged": 241.0,
+     "label": "at_published",
+     "posted": 241.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_031",
+   "hospital_name": "Inova Alexandria Hospital",
+   "line_items": [
+    {
+     "code": "J7030",
+     "description": "ITEM J7030",
+     "units": 1,
+     "charged": 882.49,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "85025",
+     "description": "HC BLOOD COUNT COMP AUTO DIFF WBC",
+     "units": 1,
+     "charged": 202.0,
+     "label": "just_inside_tolerance",
+     "posted": 201.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "76700",
+     "description": "HC US ABD W/IMAGE DOC COMP",
+     "units": 1,
+     "charged": 1734.0,
+     "label": "at_published",
+     "posted": 1734.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99282",
+     "description": "HC LEVEL 2 E&M ED",
+     "units": 1,
+     "charged": 4979.91,
+     "label": "above_published",
+     "posted": 1013.0,
+     "multiple": 4.916,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70486",
+     "description": "HC CT MAXILLOFAC-SINUS WO IV CONT",
+     "units": 1,
+     "charged": 2159.06,
+     "label": "above_published",
+     "posted": 1256.0,
+     "multiple": 1.719,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_032",
+   "hospital_name": "Jefferson Abington Hospital",
+   "line_items": [
+    {
+     "code": "71046",
+     "description": "11-OFFICE-X-ray exam chest 2 views",
+     "units": 1,
+     "charged": 50.0,
+     "label": "at_published",
+     "posted": 50.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85025",
+     "description": "11-OFFICE-Bld cnt cmplt CBC atmtd atmt",
+     "units": 1,
+     "charged": 90.09,
+     "label": "above_published",
+     "posted": 30.0,
+     "multiple": 3.003,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99282",
+     "description": "02-Telehealth Provided Other than in P",
+     "units": 1,
+     "charged": 6247.29,
+     "label": "above_published",
+     "posted": 2095.0,
+     "multiple": 2.982,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80053",
+     "description": "11-OFFICE-COMPREHENSIVRE METABOLIC PAN",
+     "units": 1,
+     "charged": 80.8,
+     "label": "above_published",
+     "posted": 40.0,
+     "multiple": 2.02,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99284",
+     "description": "02-Telehealth Provided Other than in P",
+     "units": 1,
+     "charged": 3088.0,
+     "label": "at_published",
+     "posted": 3088.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_033",
+   "hospital_name": "Leonard J. Chabert Medical Center",
+   "line_items": [
+    {
+     "code": "96374",
+     "description": "PR INJECTION,THERAP/PROPH/DIAGNOST, IV",
+     "units": 1,
+     "charged": 493.49,
+     "label": "above_published",
+     "posted": 149.0,
+     "multiple": 3.312,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "83036",
+     "description": "HC GLYCOSYLATED HB",
+     "units": 2,
+     "charged": 112.0,
+     "label": "at_published",
+     "posted": 56.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 196.5,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "99282",
+     "description": "HC EMER ROOM LEVEL II",
+     "units": 1,
+     "charged": 1111.57,
+     "label": "above_published",
+     "posted": 231.0,
+     "multiple": 4.812,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85027",
+     "description": "HC HEMATOLOGY PROFILE",
+     "units": 1,
+     "charged": 176.27,
+     "label": "above_published",
+     "posted": 37.0,
+     "multiple": 4.764,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_034",
+   "hospital_name": "Scripps Green Hospital",
+   "line_items": [
+    {
+     "code": "71046",
+     "description": "HC Chest 2 Views",
+     "units": 2,
+     "charged": 1949.18,
+     "label": "at_published",
+     "posted": 974.59,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80048",
+     "description": "HC Basic Metabolic Panel",
+     "units": 2,
+     "charged": 717.36,
+     "label": "above_published",
+     "posted": 244.0,
+     "multiple": 1.47,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "84443",
+     "description": "HC Tsh",
+     "units": 1,
+     "charged": 134.32,
+     "label": "at_published",
+     "posted": 134.32,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J1200",
+     "description": "DIPHENHYDRAMINE 50 MG/ML INJECTION SOL",
+     "units": 1,
+     "charged": 46.47,
+     "label": "above_published",
+     "posted": 30.0,
+     "multiple": 1.549,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80048",
+     "description": "HC Basic Metabolic Panel",
+     "units": 2,
+     "charged": 488.0,
+     "label": "duplicate",
+     "posted": 244.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    }
+   ]
+  },
+  {
+   "id": "bench_035",
+   "hospital_name": "Sharp Chula Vista Medical Center",
+   "line_items": [
+    {
+     "code": "99285",
+     "description": "HC ER TYPE CRITICAL LT 30MIN",
+     "units": 1,
+     "charged": 23740.5,
+     "label": "above_published",
+     "posted": 9500.0,
+     "multiple": 2.499,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99283",
+     "description": "HC EMERGENCY DEPARTMENT LEVEL 3 VISIT ",
+     "units": 1,
+     "charged": 2917.0,
+     "label": "at_published",
+     "posted": 2917.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99283",
+     "description": "HC EMERGENCY DEPARTMENT LEVEL 3 VISIT ",
+     "units": 2,
+     "charged": 5834.0,
+     "label": "duplicate",
+     "posted": 2917.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 721.2,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "20610",
+     "description": "HC INJ MAJOR JOINT",
+     "units": 1,
+     "charged": 7664.17,
+     "label": "above_published",
+     "posted": 1999.0,
+     "multiple": 3.834,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_036",
+   "hospital_name": "ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS",
+   "line_items": [
+    {
+     "code": "72148",
+     "description": "HCHG MRI SPINE LUMB WO CONTR",
+     "units": 1,
+     "charged": 5243.08,
+     "label": "just_inside_tolerance",
+     "posted": 5217.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "76700",
+     "description": "HCHG US ABD COMPLETE",
+     "units": 1,
+     "charged": 8759.45,
+     "label": "above_published",
+     "posted": 1887.0,
+     "multiple": 4.642,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "76700",
+     "description": "HCHG US ABD COMPLETE",
+     "units": 1,
+     "charged": 1887.0,
+     "label": "duplicate",
+     "posted": 1887.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "12001",
+     "description": "HCHG SIMPLE REPAIR WOUND 2.5CM OR LESS",
+     "units": 1,
+     "charged": 3099.62,
+     "label": "above_published",
+     "posted": 1194.0,
+     "multiple": 2.596,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "70486",
+     "description": "HCHG CT MAXILLOFACIAL WO CONTR",
+     "units": 10,
+     "charged": 42720.0,
+     "label": "quantity",
+     "posted": 4272.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "83036",
+     "description": "HCHG CORE HEMOGLOBIN GLYCOSYLTD A1C",
+     "units": 1,
+     "charged": 714.56,
+     "label": "above_published",
+     "posted": 203.0,
+     "multiple": 3.52,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "71046",
+     "description": "HCHG XR CHEST FRONTAL AND LATERAL 2 VI",
+     "units": 1,
+     "charged": 804.0,
+     "label": "at_published",
+     "posted": 804.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_037",
+   "hospital_name": "BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH",
+   "line_items": [
+    {
+     "code": "74177",
+     "description": "HC CT ABDOMEN/PELVIS W/CONTRAST",
+     "units": 2,
+     "charged": 20723.98,
+     "label": "above_published",
+     "posted": 6484.35,
+     "multiple": 1.598,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0378",
+     "description": "HC OBSERVATION PER HOUR",
+     "units": 2,
+     "charged": 744.28,
+     "label": "above_published",
+     "posted": 179.69,
+     "multiple": 2.071,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "84443",
+     "description": "HC THYROID STIMULATING HORMONE",
+     "units": 1,
+     "charged": 287.22,
+     "label": "just_inside_tolerance",
+     "posted": 285.79,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 880.98,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "99283",
+     "description": "HC EMERGENCY CARE LEVEL III",
+     "units": 11,
+     "charged": 14117.4,
+     "label": "quantity",
+     "posted": 1283.4,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "71046",
+     "description": "HC X-RAY EXAM CHEST 2 VIEWS",
+     "units": 1,
+     "charged": 656.37,
+     "label": "at_published",
+     "posted": 656.37,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_038",
+   "hospital_name": "Community Hospital of Stokes",
+   "line_items": [
+    {
+     "code": "74177",
+     "description": "CT ABD & PELVIS W/CONTRAST",
+     "units": 10,
+     "charged": 32500.0,
+     "label": "quantity",
+     "posted": 3250.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "85027",
+     "description": "CBC WITHOUT DIFF",
+     "units": 1,
+     "charged": 658.81,
+     "label": "above_published",
+     "posted": 203.4,
+     "multiple": 3.239,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "20610",
+     "description": "ARTHROCENT ASPIR INJ MAJ JNT",
+     "units": 1,
+     "charged": 1241.0,
+     "label": "at_published",
+     "posted": 1241.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99284",
+     "description": "FAC FEE LEVEL IV",
+     "units": 1,
+     "charged": 1484.82,
+     "label": "at_published",
+     "posted": 1484.82,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "93010",
+     "description": "PROF SERV ELECTROCARDIOGRAM(ECG) 12LEA",
+     "units": 2,
+     "charged": 541.72,
+     "label": "above_published",
+     "posted": 56.5,
+     "multiple": 4.794,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_039",
+   "hospital_name": "Doylestown Hospital",
+   "line_items": [
+    {
+     "code": "83036",
+     "description": "LAB CHEM GLYCOHEMOGLOBIN",
+     "units": 1,
+     "charged": 159.79,
+     "label": "just_inside_tolerance",
+     "posted": 159.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "12001",
+     "description": "REPAIR SIMPLE SKIN <2.5 CM",
+     "units": 2,
+     "charged": 3792.29,
+     "label": "above_published",
+     "posted": 537.0,
+     "multiple": 3.531,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "93010",
+     "description": "ITEM 93010",
+     "units": 1,
+     "charged": 572.7,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "99285",
+     "description": "E/R VISIT LEVEL V",
+     "units": 2,
+     "charged": 9302.58,
+     "label": "above_published",
+     "posted": 1605.0,
+     "multiple": 2.898,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85025",
+     "description": "COMPLETE BLOOD COUNT/DIFF",
+     "units": 2,
+     "charged": 308.0,
+     "label": "at_published",
+     "posted": 154.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_040",
+   "hospital_name": "Inova Alexandria Hospital",
+   "line_items": [
+    {
+     "code": "72148",
+     "description": "HC MRI LUMB SPINE WO IV CONT",
+     "units": 2,
+     "charged": 18510.28,
+     "label": "above_published",
+     "posted": 1670.0,
+     "multiple": 5.542,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99282",
+     "description": "HC LEVEL 2 E&M ED",
+     "units": 2,
+     "charged": 2026.0,
+     "label": "at_published",
+     "posted": 1013.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80048",
+     "description": "HC PANEL CHEM BASIC W/TOTAL CA",
+     "units": 1,
+     "charged": 301.0,
+     "label": "at_published",
+     "posted": 301.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J7030",
+     "description": "ITEM J7030",
+     "units": 1,
+     "charged": 593.23,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "96374",
+     "description": "HC IV PUSH 1ST SBST/DRUG",
+     "units": 2,
+     "charged": 4861.54,
+     "label": "above_published",
+     "posted": 534.0,
+     "multiple": 4.552,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85025",
+     "description": "HC BLOOD COUNT COMP AUTO DIFF WBC",
+     "units": 1,
+     "charged": 202.0,
+     "label": "just_inside_tolerance",
+     "posted": 201.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "74177",
+     "description": "HC CT ABD-PEL W IV CONT",
+     "units": 1,
+     "charged": 7279.05,
+     "label": "above_published",
+     "posted": 2129.0,
+     "multiple": 3.419,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_041",
+   "hospital_name": "Jefferson Abington Hospital",
+   "line_items": [
+    {
+     "code": "J2405",
+     "description": "INJECTION ONDANSETRON HCL PER 1 MG",
+     "units": 1,
+     "charged": 20.0,
+     "label": "at_published",
+     "posted": 20.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85025",
+     "description": "11-OFFICE-Bld cnt cmplt CBC atmtd atmt",
+     "units": 1,
+     "charged": 126.66,
+     "label": "above_published",
+     "posted": 30.0,
+     "multiple": 4.222,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80048",
+     "description": "11-OFFICE-Basic metabolic pnl total ca",
+     "units": 1,
+     "charged": 239.34,
+     "label": "above_published",
+     "posted": 60.0,
+     "multiple": 3.989,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0379",
+     "description": "DIRECT ADMIT HOSPITAL OBSERV",
+     "units": 20,
+     "charged": 16900.0,
+     "label": "quantity",
+     "posted": 845.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "80053",
+     "description": "11-OFFICE-COMPREHENSIVRE METABOLIC PAN",
+     "units": 2,
+     "charged": 80.0,
+     "label": "at_published",
+     "posted": 40.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "84443",
+     "description": "11-OFFICE-THYROID STIMULATING HORMONE ",
+     "units": 1,
+     "charged": 40.2,
+     "label": "just_inside_tolerance",
+     "posted": 40.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "83036",
+     "description": "11-OFFICE-Hemoglobin glycosylated a1c",
+     "units": 1,
+     "charged": 125.37,
+     "label": "above_published",
+     "posted": 30.0,
+     "multiple": 4.179,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_042",
+   "hospital_name": "Leonard J. Chabert Medical Center",
+   "line_items": [
+    {
+     "code": "96365",
+     "description": "HC IV INFUSION, THER/PROPH/DIAG - UP T",
+     "units": 1,
+     "charged": 351.75,
+     "label": "just_inside_tolerance",
+     "posted": 350.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "G0378",
+     "description": "HC HOURLY OBSERVATION BED CHARGE",
+     "units": 1,
+     "charged": 89.45,
+     "label": "above_published",
+     "posted": 23.0,
+     "multiple": 3.889,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80061",
+     "description": "HC LIPID PROFILE",
+     "units": 1,
+     "charged": 69.0,
+     "label": "at_published",
+     "posted": 69.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "76700",
+     "description": "HC US, ABD, B-SCAN, COMPLETE",
+     "units": 2,
+     "charged": 2868.08,
+     "label": "above_published",
+     "posted": 269.0,
+     "multiple": 5.331,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "84443",
+     "description": "HC TSH",
+     "units": 1,
+     "charged": 463.39,
+     "label": "above_published",
+     "posted": 96.0,
+     "multiple": 4.827,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_043",
+   "hospital_name": "Scripps Green Hospital",
+   "line_items": [
+    {
+     "code": "72148",
+     "description": "HC MR Lumbar WO",
+     "units": 1,
+     "charged": 3013.0,
+     "label": "at_published",
+     "posted": 3013.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "96374",
+     "description": "HC Therapeutic IV Push Initl",
+     "units": 1,
+     "charged": 1812.53,
+     "label": "at_published",
+     "posted": 1812.53,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "80053",
+     "description": "HC Comprehensive Panel",
+     "units": 1,
+     "charged": 659.72,
+     "label": "above_published",
+     "posted": 391.99,
+     "multiple": 1.683,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "72148",
+     "description": "HC MR Lumbar WO",
+     "units": 2,
+     "charged": 6026.0,
+     "label": "duplicate",
+     "posted": 3013.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "99285",
+     "description": "HC ER Level V Trauma",
+     "units": 1,
+     "charged": 103373.15,
+     "label": "above_published",
+     "posted": 23622.75,
+     "multiple": 4.376,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "J1200",
+     "description": "DIPHENHYDRAMINE 50 MG/ML INJECTION SOL",
+     "units": 1,
+     "charged": 30.15,
+     "label": "just_inside_tolerance",
+     "posted": 30.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_044",
+   "hospital_name": "Sharp Chula Vista Medical Center",
+   "line_items": [
+    {
+     "code": "96374",
+     "description": "HC INJ IV PUSH SNGL/INITIAL",
+     "units": 2,
+     "charged": 9558.91,
+     "label": "above_published",
+     "posted": 876.0,
+     "multiple": 5.456,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99284",
+     "description": "HC EMERGENCY DEPARTMENT LEVEL 4 VISIT ",
+     "units": 1,
+     "charged": 5226.0,
+     "label": "just_inside_tolerance",
+     "posted": 5200.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J7030",
+     "description": "ABIRATERONE 250 MG TABLET",
+     "units": 1,
+     "charged": 6.94,
+     "label": "above_published",
+     "posted": 1.39,
+     "multiple": 4.993,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "G0379",
+     "description": "HC DIRECT ADMIT TO OBSERVATION",
+     "units": 1,
+     "charged": 9822.33,
+     "label": "above_published",
+     "posted": 1890.0,
+     "multiple": 5.197,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85027",
+     "description": "HC HEMOGRAM",
+     "units": 2,
+     "charged": 318.0,
+     "label": "at_published",
+     "posted": 159.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85027",
+     "description": "HC HEMOGRAM",
+     "units": 1,
+     "charged": 159.0,
+     "label": "duplicate",
+     "posted": 159.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "J1200",
+     "description": "DIPHENHYDRAMINE 50 MG/ML INJECTION SOL",
+     "units": 1,
+     "charged": 39.46,
+     "label": "at_published",
+     "posted": 39.46,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_045",
+   "hospital_name": "ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS",
+   "line_items": [
+    {
+     "code": "99283",
+     "description": "HCHG ED LEVEL 3",
+     "units": 2,
+     "charged": 6186.0,
+     "label": "at_published",
+     "posted": 3093.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "12001",
+     "description": "HCHG SIMPLE REPAIR WOUND 2.5CM OR LESS",
+     "units": 1,
+     "charged": 3097.24,
+     "label": "above_published",
+     "posted": 1194.0,
+     "multiple": 2.594,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99285",
+     "description": "HCHG ED LEVEL 5",
+     "units": 1,
+     "charged": 8043.01,
+     "label": "just_inside_tolerance",
+     "posted": 8003.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J1885",
+     "description": "KETOROLAC TROMETHAMINE 15 MG/ML IJ SOL",
+     "units": 2,
+     "charged": 752.22,
+     "label": "above_published",
+     "posted": 74.64,
+     "multiple": 5.039,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "99282",
+     "description": "HCHG ED LEVEL 2",
+     "units": 1,
+     "charged": 2744.02,
+     "label": "above_published",
+     "posted": 1527.0,
+     "multiple": 1.797,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_046",
+   "hospital_name": "BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH",
+   "line_items": [
+    {
+     "code": "81001",
+     "description": "HC URINALYSIS, AUTO, W/SCOPE",
+     "units": 1,
+     "charged": 668.11,
+     "label": "above_published",
+     "posted": 129.78,
+     "multiple": 5.148,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "20610",
+     "description": "HC ARTHR ASP INJ MJ JNT BURS",
+     "units": 1,
+     "charged": 1192.29,
+     "label": "at_published",
+     "posted": 1192.29,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J7030",
+     "description": "HC NORMAL SALINE 1000CC IV",
+     "units": 1,
+     "charged": 56.56,
+     "label": "above_published",
+     "posted": 31.44,
+     "multiple": 1.799,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "83036",
+     "description": "HC GLYCOSYLATED HEMOGLOBIN",
+     "units": 1,
+     "charged": 185.85,
+     "label": "at_published",
+     "posted": 185.85,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "99282",
+     "description": "HC EMERGENCY CARE LEVEL II",
+     "units": 20,
+     "charged": 15646.2,
+     "label": "quantity",
+     "posted": 782.31,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "80053",
+     "description": "HC COMPREHENSIVE METABOLIC PANEL",
+     "units": 2,
+     "charged": 3041.52,
+     "label": "above_published",
+     "posted": 392.86,
+     "multiple": 3.871,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_047",
+   "hospital_name": "Community Hospital of Stokes",
+   "line_items": [
+    {
+     "code": "J7030",
+     "description": "0.45% NS 1000ML W/20MEQ (1/2 NS-20MEQ ",
+     "units": 1,
+     "charged": 30.0,
+     "label": "duplicate",
+     "posted": 30.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "84443",
+     "description": "TSH (THYROID STIMULATING HORMONE)",
+     "units": 1,
+     "charged": 266.19,
+     "label": "above_published",
+     "posted": 106.22,
+     "multiple": 2.506,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "80053",
+     "description": "COMPREHENSIVE METABOLIC PANEL (CMP)",
+     "units": 1,
+     "charged": 352.56,
+     "label": "at_published",
+     "posted": 352.56,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "72148",
+     "description": "ITEM 72148",
+     "units": 1,
+     "charged": 808.45,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "70486",
+     "description": "CT MAXILLOFACIALW/O CONT",
+     "units": 1,
+     "charged": 3690.76,
+     "label": "above_published",
+     "posted": 1769.3,
+     "multiple": 2.086,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "96374",
+     "description": "TX/PROPH/DX INJ IV PUSH SGL/IN",
+     "units": 1,
+     "charged": 187.3,
+     "label": "at_published",
+     "posted": 187.3,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    }
+   ]
+  },
+  {
+   "id": "bench_048",
+   "hospital_name": "Doylestown Hospital",
+   "line_items": [
+    {
+     "code": "70486",
+     "description": "CT SCAN FACIAL BONES W/O CONTR",
+     "units": 1,
+     "charged": 2527.0,
+     "label": "at_published",
+     "posted": 2527.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J7030",
+     "description": "NSS1000 - 0.9% SODCHLOR 1000ML",
+     "units": 2,
+     "charged": 237.35,
+     "label": "above_published",
+     "posted": 38.11,
+     "multiple": 3.114,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "72148",
+     "description": "MRI LUMBAR WITHOUT",
+     "units": 24,
+     "charged": 144216.0,
+     "label": "quantity",
+     "posted": 6009.0,
+     "multiple": 1.0,
+     "expect": "QUANTITY_SUSPECT"
+    },
+    {
+     "code": "80048",
+     "description": "LAB BASIC METABOLIC PANEL",
+     "units": 1,
+     "charged": 242.2,
+     "label": "just_inside_tolerance",
+     "posted": 241.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "J2405",
+     "description": "ITEM J2405",
+     "units": 1,
+     "charged": 576.13,
+     "label": "not_posted",
+     "posted": null,
+     "multiple": null,
+     "expect": "NOT_POSTED"
+    },
+    {
+     "code": "80048",
+     "description": "LAB BASIC METABOLIC PANEL",
+     "units": 1,
+     "charged": 241.0,
+     "label": "duplicate",
+     "posted": 241.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "85027",
+     "description": "CBC - NO DIFF",
+     "units": 2,
+     "charged": 1171.63,
+     "label": "above_published",
+     "posted": 154.0,
+     "multiple": 3.804,
+     "expect": "ABOVE_POSTED"
+    }
+   ]
+  },
+  {
+   "id": "bench_049",
+   "hospital_name": "Inova Alexandria Hospital",
+   "line_items": [
+    {
+     "code": "96374",
+     "description": "HC IV PUSH 1ST SBST/DRUG",
+     "units": 1,
+     "charged": 534.0,
+     "label": "at_published",
+     "posted": 534.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "96374",
+     "description": "HC IV PUSH 1ST SBST/DRUG",
+     "units": 1,
+     "charged": 534.0,
+     "label": "duplicate",
+     "posted": 534.0,
+     "multiple": 1.0,
+     "expect": "DUPLICATE"
+    },
+    {
+     "code": "85025",
+     "description": "HC BLOOD COUNT COMP AUTO DIFF WBC",
+     "units": 1,
+     "charged": 201.0,
+     "label": "at_published",
+     "posted": 201.0,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "36415",
+     "description": "HC VENIPUNCTURE",
+     "units": 1,
+     "charged": 125.87,
+     "label": "above_published",
+     "posted": 21.0,
+     "multiple": 5.994,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "76700",
+     "description": "HC US ABD W/IMAGE DOC COMP",
+     "units": 1,
+     "charged": 3197.5,
+     "label": "above_published",
+     "posted": 1734.0,
+     "multiple": 1.844,
+     "expect": "ABOVE_POSTED"
+    },
+    {
+     "code": "85027",
+     "description": "HC BLOOD COUNT COMP AUTO",
+     "units": 1,
+     "charged": 165.82,
+     "label": "just_inside_tolerance",
+     "posted": 165.0,
+     "multiple": 1.005,
+     "expect": "VERIFIED"
+    }
+   ]
+  }
+ ]
+}

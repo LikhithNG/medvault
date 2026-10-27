@@ -1,0 +1,12 @@
+INOVA ALEXANDRIA HOSPITAL
+Patient Financial Services    Account 00000000
+*** SYNTHETIC BENCHMARK BILL - NOT A REAL STATEMENT ***
+
+DATE        CODE    DESCRIPTION                      QTY       AMOUNT
+2026-03-14  71046   HC XR CHEST 2 VIEWS              10     4,940.00
+2026-03-14  12001   HC REPAIR SIMPLE S/N/A/G/T/EXT    2     7,591.06
+2026-03-14  70486   HC CT MAXILLOFAC-SINUS WO IV C    1     1,256.00
+2026-03-14  J1885   ketorolac tromethamine per 15     2        30.44
+2026-03-14  76700   HC US ABD W/IMAGE DOC COMP        1     5,238.41
+
+                                                 TOTAL DUE    19,055.91

@@ -23,6 +23,42 @@ file on 26 October 2026 by a second implementation written from the data's side
 the first page). All nine hospitals' counts agree exactly — and the same check found two
 zeros that are failed name joins rather than clean records, which CAVEATS §9 names.
 
+**The four success metrics, measured.** The Assignment 2 PRD set four targets and none
+of them had a number. `tools/accuracy_test.py` builds a labelled corpus and reports:
+
+| Metric | Target | Measured |
+|---|---|---|
+| Precision of the overcharge flag | ≥90% | **100%** · 95% CI [97.0%, 100%] · 123 flags |
+| Extraction, code **and** amount | ≥85% | **100%** · 95% CI [98.7%, 100%] · 296 lines |
+| Upload to annotated bill | <60 s | **0.11 ms** p99, deterministic path |
+| Flags carrying a receipt | 100% | **100%**, enforced by `receipts.py` |
+
+The labels are **by construction, not by hand** — a line is built as "this code, at 3.4×
+the price this hospital publishes for it, 1 unit", so what it is, is a fact about how it
+was made. That is stronger than hand-labelling for this purpose and weaker in a way worth
+stating: it measures whether the Checker agrees with the published table, not whether the
+table is right or whether a billing office would agree.
+
+**The benchmark can fail, and proves it.** `--mutate` re-introduces real defects and
+checks the measurement notices:
+
+| Defect introduced | Precision | Recall | Verdict |
+|---|---|---|---|
+| none (as shipped) | 100% | 100% | clean |
+| units forced to 1 — *the bug that shipped* | 75.9% | 100% | caught |
+| cash price used as the basis | 61.8% | 100% | caught |
+| every bill priced against one hospital | 67.6% | 74.6% | caught |
+| tolerance widened to 2.0× | 100% | 83.3% | caught |
+
+A first version of the corpus used Doylestown alone — and Doylestown is one of only two
+hospitals here whose gross charge and cash price are identical on every row, so the
+wrong-basis mutation passed silently at 100%. The corpus spans all nine because of that.
+
+**The model reader is measured separately and does not meet the target.** Two bills,
+12 of 12 lines correct — but the 95% interval is [75.7%, 100%], whose lower bound is
+below 85%. The sample is small on purpose: 20 requests per day per model. The ≥85% above
+is the deterministic parser's number, not the reader's.
+
 **Measured, not estimated.** `tools/scale_test.py` runs the deterministic path at 1, 10,
 50, 100, 500 and 1,000 bills: **~10,000 bills per second, p99 0.11 ms**, flat across the
 range, with zero receipt failures at every volume. What breaks is the half that leaves the
@@ -33,8 +69,7 @@ machine — Gemini's free tier allows 20 requests per day *per model*, which is 
 **The honest limits.** The published-price table is **nine hospitals and 31 codes**,
 collected by hand on 2 October 2026; everything else falls back to the national Medicare
 benchmark, which is not a price cap. A clinician account can currently read every
-patient's records. The question box sends your records to a model to answer. None of the
-four success metrics in the Assignment 2 PRD have been measured. **Read
+patient's records. The question box sends your records to a model to answer. **Read
 [CAVEATS.md](CAVEATS.md) before relying on anything this says.**
 
 You photograph a prescription or a discharge summary once. MedVault reads it, files it, and
