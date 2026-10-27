@@ -1,0 +1,293 @@
+{
+  "id": "MedVaultCollect",
+  "name": "MedVault - reference data collection",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "when-you-click-run",
+      "name": "When you click Run",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -220,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// One place that says what this collection covers. Every node downstream reads the list\n// from here rather than carrying its own copy, so the scope cannot drift between sources.\nconst hospitals = [\n  {\n    \"name\": \"ALTA BATES SUMMIT MEDICAL CENTER ALTA BATES CAMPUS\",\n    \"state\": \"CA\",\n    \"domain\": \"www.sutterhealth.org\"\n  },\n  {\n    \"name\": \"BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH\",\n    \"state\": \"TX\",\n    \"domain\": \"www.bswhealth.com\"\n  },\n  {\n    \"name\": \"Community Hospital of Stokes\",\n    \"state\": \"NC\",\n    \"domain\": \"www.novanthealth.org\"\n  },\n  {\n    \"name\": \"Doylestown Hospital\",\n    \"state\": \"PA\",\n    \"domain\": \"www.pennmedicine.org\"\n  },\n  {\n    \"name\": \"Inova Alexandria Hospital\",\n    \"state\": \"VA\",\n    \"domain\": \"www.inova.org\"\n  },\n  {\n    \"name\": \"Jefferson Abington Hospital\",\n    \"state\": \"PA\",\n    \"domain\": \"www.jeffersonhealth.org\"\n  },\n  {\n    \"name\": \"Leonard J. Chabert Medical Center\",\n    \"state\": \"LA\",\n    \"domain\": \"www.ochsner.org\"\n  },\n  {\n    \"name\": \"Scripps Green Hospital\",\n    \"state\": \"CA\",\n    \"domain\": \"www.scripps.org\"\n  },\n  {\n    \"name\": \"Sharp Chula Vista Medical Center\",\n    \"state\": \"CA\",\n    \"domain\": \"www.sharp.com\"\n  }\n];\n\nconst codes = [\"12001\", \"20610\", \"36415\", \"70450\", \"70486\", \"71046\", \"72148\", \"74177\", \"76700\", \"80048\", \"80053\", \"80061\", \"81001\", \"83036\", \"84443\", \"85025\", \"85027\", \"93010\", \"96365\", \"96374\", \"99281\", \"99282\", \"99283\", \"99284\", \"99285\", \"G0378\", \"G0379\", \"J1200\", \"J1885\", \"J2405\", \"J7030\"];\n\n// A plain ?size=5000 on this dataset returns the first 5,000 codes ALPHABETICALLY, which\n// is almost none of the ones we want - the filter has to be server-side. CMS uses the\n// Drupal-style IN condition for that.\nconst qs = ['filter[c][condition][path]=HCPCS_Cd',\n            'filter[c][condition][operator]=IN'];\ncodes.forEach((c, i) => qs.push(`filter[c][condition][value][${i}]=${c}`));\nqs.push('filter[g][condition][path]=Rndrng_Prvdr_Geo_Lvl',\n        'filter[g][condition][operator]==',\n        'filter[g][condition][value]=National',\n        'size=500');\n\nreturn [{ json: {\n  hospitals,\n  codes,\n  pfsUrl: 'https://data.cms.gov/data-api/v1/dataset/6fea9d79-0129-4e4c-b1b8-23cd86a4f435/data?' + qs.join('&'),\n  collected_date: new Date().toISOString().slice(0, 10),\n}}];"
+      },
+      "id": "scope",
+      "name": "Scope",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ],
+      "notes": "The nine hospitals and 31 codes this collection covers.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "https://data.cms.gov/data-api/v1/dataset/6a3aa708-3c9d-411a-a1a4-e046d3ade7ef/data",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "size",
+              "value": "5000"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "updateAParameterInEachRequest",
+              "parameters": {
+                "parameters": [
+                  {
+                    "type": "qs",
+                    "name": "offset",
+                    "value": "={{ $pageCount * 5000 }}"
+                  }
+                ]
+              },
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $response.body.length < 5000 }}",
+              "limitPagesFetched": true,
+              "maxRequests": 20
+            }
+          },
+          "timeout": 120000
+        }
+      },
+      "id": "cms-enforcement-actions",
+      "name": "CMS enforcement actions",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        220,
+        300
+      ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "notes": "Source 1. Paginated to exhaustion - a single ?size=5000 sees 5,000 of 13,355.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $('Scope').first().json.pfsUrl }}",
+        "options": {
+          "timeout": 120000
+        }
+      },
+      "id": "medicare-fee-schedule",
+      "name": "Medicare fee schedule",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        440,
+        300
+      ],
+      "executeOnce": true,
+      "retryOnFail": true,
+      "maxTries": 3,
+      "waitBetweenTries": 2000,
+      "onError": "continueRegularOutput",
+      "notes": "Source 2. Server-side IN filter: a plain size=5000 returns the first 5,000 codes alphabetically.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Source 3. 45 CFR 180 requires every US hospital to host cms-hpt.txt at its web root\n// containing a direct link to its machine-readable price file - so the location of a\n// hospital's own prices is discoverable programmatically rather than by hand.\nconst scope = $('Scope').first().json;\nreturn scope.hospitals.map(h => ({\n  json: { ...h, url: `https://${h.domain}/cms-hpt.txt` }\n}));"
+      },
+      "id": "price-file-discovery-urls",
+      "name": "Price-file discovery URLs",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        660,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.url }}",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": true,
+              "responseFormat": "text"
+            }
+          },
+          "timeout": 30000
+        }
+      },
+      "id": "fetch-cms-hpttxt",
+      "name": "Fetch cms-hpt.txt",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        880,
+        300
+      ],
+      "retryOnFail": true,
+      "maxTries": 2,
+      "waitBetweenTries": 1000,
+      "onError": "continueRegularOutput",
+      "alwaysOutputData": true,
+      "notes": "Source 3. One hospital failing costs that hospital's URL, not the run.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Join the three sources into one row per hospital per code, then check the result\n// before letting it out.\nconst scope = $('Scope').first().json;\nconst today = scope.collected_date;\nconst warnings = [];\n\nconst norm = s => String(s || '').toUpperCase().replace(/[^A-Z0-9 ]+/g, ' ')\n                                 .replace(/\\s+/g, ' ').trim();\nconst stripCity = s => String(s || '').split(/\\s+-\\s+/)[0];\n\n// ---- source 1: CMS enforcement actions, all of them ------------------------\n// A3's node read ?size=5000 with no offset loop and therefore saw 5,000 of 13,355. This\n// one paginates; if it comes back short, that is said out loud rather than absorbed.\nconst actions = $('CMS enforcement actions').all().map(i => i.json)\n                  .filter(a => a && a.Hosp_Name);\nif (!actions.length) warnings.push('enforcement source returned nothing');\nelse if (actions.length < 10000) warnings.push(`only ${actions.length} enforcement actions`);\n\n// ---- source 2: the national fee schedule -----------------------------------\nconst pfs = $('Medicare fee schedule').all().map(i => i.json).filter(r => r && r.HCPCS_Cd);\nif (!pfs.length) warnings.push('fee schedule returned nothing');\nconst medicare = {};\nfor (const r of pfs) {\n  // One row per place of service. Keep the busier one rather than whichever arrived last.\n  const code = String(r.HCPCS_Cd).trim();\n  const volume = parseInt(r.Tot_Srvcs || '0', 10);\n  if (!medicare[code] || volume > medicare[code].volume) {\n    medicare[code] = { volume,\n      payment: parseFloat(r.Avg_Mdcr_Pymt_Amt),\n      submitted: parseFloat(r.Avg_Sbmtd_Chrg),\n      description: r.HCPCS_Desc || '' };\n  }\n}\n\n// ---- source 3: each hospital's published price file ------------------------\n// A failed fetch is one blank cell, not a dead run: the node is set to continue on error,\n// so a hospital that is slow or down costs that hospital's URL and nothing else.\nconst asked = $('Price-file discovery URLs').all().map(i => i.json);\nconst got = $('Fetch cms-hpt.txt').all().map(i => i.json);\n\n// Sutter serves this file as UTF-16 with a byte-order mark, so decoded as text it arrives\n// as \"h t t p s\" with NULs between the letters and every pattern misses. Strip them.\nconst readable = s => String(s || '').replace(/\\u0000/g, '').replace(/^\ufeff/, '');\n\n// A system's file lists every hospital it operates, one block per location. Taking the\n// first mrf-url in the file hands Alta Bates the price file for Sutter North Valley.\n// Blocks are keyed by location-name and matched to the hospital we are actually asking\n// about; the first URL is a fallback, and the row says which happened.\nfunction priceFileFor(text, hospitalName) {\n  const body = readable(text);\n  const wanted = norm(hospitalName);\n  const blocks = body.split(/location-name\\s*:/i).slice(1);\n  const urlIn = b => (b.match(/mrf-url\\s*:\\s*(\\S+)/i) || [])[1] ||\n                     (b.match(/https?:\\/\\/\\S+?\\.(?:csv|json|xml)\\b/i) || [])[0] || '';\n\n  let best = null;\n  for (const b of blocks) {\n    const name = norm((b.split(/\\r?\\n/)[0] || ''));\n    const url = urlIn(b);\n    if (!url) continue;\n    const overlap = name.split(' ').filter(w => w.length > 3 && wanted.includes(w)).length;\n    if (!best || overlap > best.overlap) best = { url, overlap, name };\n  }\n  if (best && best.overlap > 0) return { url: best.url, how: 'location-name match' };\n  if (best) return { url: best.url, how: 'first file in the system list' };\n  const any = (body.match(/https?:\\/\\/\\S+?\\.(?:csv|json|xml)\\b/i) || [])[0] || '';\n  return { url: any, how: any ? 'bare url in file' : '' };\n}\n\nconst discovery = {};\nasked.forEach((h, i) => {\n  const res = got[i] || {};\n  const found = priceFileFor(typeof res.body === 'string' ? res.body : res.data, h.name);\n  if (!found.url) warnings.push(`no price file found for ${h.name}`);\n  discovery[h.name] = {\n    mrf_source_url: found.url,\n    mrf_match: found.how,\n    discovery_file: h.url,\n    http_status: res.statusCode || '',\n    last_modified: (res.headers || {})['last-modified'] || '',\n  };\n});\n\n// ---- matching a hospital to its enforcement record -------------------------\n// Name and state alone missed two of these nine: \"... MEDICAL CENTER - FORT WORTH\" is\n// listed by CMS without the city, and \"Community Hospital of Stokes\" is listed as\n// \"LIFEBRITE COMMUNITY HOSPITAL OF STOKES\". Both misses were recorded as a count of zero,\n// which reads as a clean record and is not one. Three strategies, and the row says which\n// one answered - a zero from 'none' means NOT FOUND, never NOTHING HAPPENED.\nfunction enforcementFor(name, state) {\n  const inState = actions.filter(a => norm(a.State) === norm(state));\n  const pick = (rows, method) => ({ rows, method });\n\n  let hit = inState.filter(a => norm(a.Hosp_Name) === norm(name));\n  if (hit.length) return pick(hit, 'name+state');\n\n  const trimmed = norm(stripCity(name));\n  hit = inState.filter(a => norm(a.Hosp_Name) === trimmed);\n  if (hit.length) return pick(hit, 'name-without-city+state');\n\n  hit = inState.filter(a => norm(a.Hosp_Name).includes(trimmed) ||\n                            trimmed.includes(norm(a.Hosp_Name)));\n  const distinct = new Set(hit.map(a => norm(a.Hosp_Name)));\n  if (hit.length && distinct.size === 1) return pick(hit, 'name-contained+state');\n\n  return pick([], actions.length ? 'none' : 'source-unavailable');\n}\n\n// ---- the rows ---------------------------------------------------------------\nconst rows = [];\nconst seen = new Set();\nfor (const h of scope.hospitals) {\n  const e = enforcementFor(h.name, h.state);\n  const byDate = e.rows.slice().sort((a, b) =>\n    String(a.Date_of_Action).localeCompare(String(b.Date_of_Action)));\n  const latest = byDate[byDate.length - 1];\n  const d = discovery[h.name] || {};\n\n  for (const code of scope.codes) {\n    const key = `${norm(h.name)}|${code}`;\n    if (seen.has(key)) continue;            // duplicates removed, by construction\n    seen.add(key);\n    const m = medicare[code];\n    rows.push({\n      record_id: String(rows.length + 1).padStart(4, '0'),\n      collected_date: today,\n      hospital_name: h.name,\n      hospital_state: h.state,\n      hospital_domain: h.domain,\n      code,\n      code_type: /^[A-Z]/i.test(code) ? 'HCPCS' : 'CPT',\n      description: m ? m.description : '',\n      medicare_avg_payment: m && isFinite(m.payment) ? m.payment.toFixed(2) : '',\n      medicare_avg_submitted_charge: m && isFinite(m.submitted) ? m.submitted.toFixed(2) : '',\n      cms_enforcement_actions: e.rows.length,\n      cms_enforcement_match: e.method,\n      cms_latest_action: latest ? latest.Action : '',\n      cms_latest_action_date: latest ? latest.Date_of_Action : '',\n      mrf_source_url: d.mrf_source_url || '',\n      mrf_discovered: d.mrf_source_url ? 'yes' : 'no',\n      mrf_match: d.mrf_match || '',\n      mrf_last_modified: d.last_modified || '',\n      discovery_file: d.discovery_file || '',\n      discovery_http_status: d.http_status || '',\n    });\n  }\n}\n\n// ---- checks that catch mistakes before the file is written -----------------\n// These throw. A source being slow degrades a column; a dataset that is the wrong SHAPE\n// is a wrong answer, and writing it would be worse than failing here.\nconst ISO = /^\\d{4}-\\d{2}-\\d{2}$/;\nconst badDates = rows.filter(r => !ISO.test(r.collected_date) ||\n  (r.cms_latest_action_date && !ISO.test(r.cms_latest_action_date)));\nif (rows.length < 50)  throw new Error(`only ${rows.length} rows - the floor is 50`);\nif (rows.length > 300) throw new Error(`${rows.length} rows - the ceiling is 300`);\nif (badDates.length)   throw new Error(`${badDates.length} rows have a non-ISO date`);\nif (new Set(rows.map(r => `${r.hospital_name}|${r.code}`)).size !== rows.length)\n  throw new Error('duplicate hospital+code pair survived');\n\nconst ESSENTIAL = ['collected_date', 'hospital_name', 'code', 'description'];\nconst complete = rows.filter(r => ESSENTIAL.every(k => String(r[k] || '').trim() !== ''));\nconst unmatched = rows.filter(r => r.cms_enforcement_match === 'none')\n                      .map(r => r.hospital_name);\n\nconsole.log(`rows: ${rows.length}`);\nconsole.log(`complete on ${ESSENTIAL.join(', ')}: ${complete.length}` +\n            ` (${(100 * complete.length / rows.length).toFixed(1)}%)`);\nconsole.log(`hospitals: ${scope.hospitals.length}  codes: ${scope.codes.length}`);\nconsole.log(`enforcement actions read: ${actions.length}`);\nconsole.log(`hospitals with no enforcement match: ${[...new Set(unmatched)].join(', ') || 'none'}`);\nif (warnings.length) console.log('warnings: ' + warnings.join(' | '));\n\nreturn rows.map(json => ({ json }));"
+      },
+      "id": "clean-and-join",
+      "name": "Clean and join",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1100,
+        300
+      ],
+      "notes": "Joins the three sources, removes duplicates, checks the result before it is written.",
+      "notesInFlow": true
+    },
+    {
+      "parameters": {
+        "operation": "csv",
+        "options": {
+          "fileName": "medvault_reference.csv"
+        }
+      },
+      "id": "to-csv",
+      "name": "To CSV",
+      "type": "n8n-nodes-base.convertToFile",
+      "typeVersion": 1.1,
+      "position": [
+        1320,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "write",
+        "fileName": "={{ $env.MEDVAULT_DATA || '/tmp' }}/medvault_reference_{{ $now.toFormat('yyyy-LL-dd') }}.csv",
+        "dataPropertyName": "data",
+        "options": {}
+      },
+      "id": "save-the-file",
+      "name": "Save the file",
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1,
+      "position": [
+        1540,
+        300
+      ],
+      "notes": "Set MEDVAULT_DATA, and start n8n with N8N_RESTRICT_FILE_ACCESS_TO pointing at it.",
+      "notesInFlow": true
+    }
+  ],
+  "connections": {
+    "When you click Run": {
+      "main": [
+        [
+          {
+            "node": "Scope",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Scope": {
+      "main": [
+        [
+          {
+            "node": "CMS enforcement actions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "CMS enforcement actions": {
+      "main": [
+        [
+          {
+            "node": "Medicare fee schedule",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Medicare fee schedule": {
+      "main": [
+        [
+          {
+            "node": "Price-file discovery URLs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Price-file discovery URLs": {
+      "main": [
+        [
+          {
+            "node": "Fetch cms-hpt.txt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fetch cms-hpt.txt": {
+      "main": [
+        [
+          {
+            "node": "Clean and join",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Clean and join": {
+      "main": [
+        [
+          {
+            "node": "To CSV",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "To CSV": {
+      "main": [
+        [
+          {
+            "node": "Save the file",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "pinData": {},
+  "tags": []
+}
