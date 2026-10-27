@@ -730,13 +730,28 @@ def screen_check():
         # Attached to every flag since the Checker was written and never shown until now.
         # The PRD promised it as what this screen says when a price file cannot settle a
         # line: how often CMS has already had to act against this hospital.
+        #
+        # Three states, not two. A hospital the enforcement file was never joined to is
+        # not a hospital with a clean record, and saying "0 actions" for one would be the
+        # same mistake this app refuses to make about a missing medical record.
+        matched = next((l.get("enforcement_match") for l in priced["lines"]
+                        if l.get("enforcement_match")), "none")
         actions = max((l.get("hospital_enforcement_actions") or 0)
                       for l in priced["lines"]) if priced["lines"] else 0
-        if actions:
+        if matched == "none":
+            st.caption("This hospital could not be matched to CMS's price-transparency "
+                       "enforcement file by name and state, so this project holds no "
+                       "enforcement history for it. **That is not the same as a clean "
+                       "record** — it usually means CMS lists the hospital under a "
+                       "slightly different name.")
+        elif actions:
             st.caption(f"CMS has recorded **{actions} price-transparency enforcement "
                        f"action(s)** against this hospital. That is about whether it "
                        f"published properly, not about your bill — but it is context for "
                        f"how much weight the file above deserves.")
+        else:
+            st.caption("CMS has recorded no price-transparency enforcement actions "
+                       "against this hospital.")
 
         flagged_lines = [l for l in priced["lines"] if l["verdict"] != "VERIFIED"]
         if flagged_lines:

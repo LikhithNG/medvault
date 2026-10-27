@@ -17,6 +17,12 @@ it never produces a number. A line that asserts a dollar comparison carries the 
 figure, the basis it was compared on, the file URL and the date that file was collected,
 or it is not quoted at all — `receipts.py` enforces that rather than asking for it.
 
+**Checked rather than asserted.** The reference data was verified against the live CMS
+file on 26 October 2026 by a second implementation written from the data's side
+(`tools/verify_enforcement.py`, which paginates all 13,355 enforcement actions rather than
+the first page). All nine hospitals' counts agree exactly — and the same check found two
+zeros that are failed name joins rather than clean records, which CAVEATS §9 names.
+
 **The honest limits.** The published-price table is **nine hospitals and 31 codes**,
 collected by hand on 2 October 2026; everything else falls back to the national Medicare
 benchmark, which is not a price cap. A clinician account can currently read every

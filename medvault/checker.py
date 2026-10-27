@@ -56,6 +56,12 @@ def check_line(item, hospital, table, seen_codes):
         # so the receipt has to say which one was used rather than leave it inferred.
         'basis': None,
         'hospital_enforcement_actions': None,
+        # How that count was arrived at. 'none' means the hospital was not found in the
+        # enforcement file by name and state, which is NOT the same as a hospital with no
+        # actions against it - and the table contains two of exactly that: a city suffix
+        # and an operator prefix each broke a join and the miss was recorded as a zero.
+        # tools/verify_enforcement.py is what found them.
+        'enforcement_match': None,
     }
 
     if charged is None:
@@ -90,6 +96,7 @@ def check_line(item, hospital, table, seen_codes):
         'collected_date': ref.get('collected_date'),
         'basis': 'hospital gross charge' if posted is not None else None,
         'hospital_enforcement_actions': int(ref['hospital_cms_enforcement_actions'] or 0),
+        'enforcement_match': ref.get('enforcement_match_method') or 'none',
         'posted_description': ref['description'],
     }
 

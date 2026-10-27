@@ -10,8 +10,9 @@ it gives information and not advice (1); "no record found" is a question, not a 
 four federal protections and no state law (4); a model reads documents and can misread
 them (5); a verified NPI confirms the number, never the person typing it (6); a clinician
 account can read every patient's records and there is no grant mechanism yet (7); the
-question box sends your records to a model and does not check drug interactions (8); and
-none of this is a medical record (9).
+question box sends your records to a model and does not check drug interactions (8); two
+hospitals' enforcement counts are failed joins recorded as zeros (9); and none of this is
+a medical record (10).
 
 **The one added since the Assignment 2 PRD.** That PRD said the MVP "processes in memory,
 persists nothing, and never sends a name, MRN or date of birth to a model — only the code
@@ -155,7 +156,31 @@ allergies yourself.
 **Your question and your records are sent to the model to answer it.** That is the one
 place in this app where record text leaves the server other than a document being read.
 
-## 9. This is not a medical record
+## 9. Two zeros in the enforcement data that are not zeros
+
+The reference table records, per hospital, how many price-transparency enforcement actions
+CMS has taken against it. Those counts were verified against the full live CMS file on
+26 October 2026 — all 13,355 actions, not the first page — and **all nine hospitals agree
+exactly**. `tools/verify_enforcement.py` is that check, and it can be re-run.
+
+The same check found something the build did not: **two of the nine are recorded as 0, and
+both are failed joins rather than clean records.**
+
+| The table says | CMS lists it as | Actual actions |
+|---|---|---|
+| `BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH` → 0 | `BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER` | **2** |
+| `Community Hospital of Stokes` → 0 | `LIFEBRITE COMMUNITY HOSPITAL OF STOKES` | **5** |
+
+A city suffix and an operator prefix each broke a name-and-state match, and the miss was
+written down as a count. The data is left as it was collected rather than hand-patched —
+it is a submitted artifact — but the app no longer reads those zeros as findings: a
+hospital whose match method is `none` is reported as *not matched*, in those words, and
+never as a hospital with nothing against it.
+
+This is the same distinction as section 2. "Not found" is not "did not happen", and a tool
+that blurs the two on a medical record has no business making the claim on a hospital.
+
+## 10. This is not a medical record
 
 MedVault holds a copy of paperwork you chose to upload. It is not a clinical system, it is
 not interoperable with any hospital, nothing in it is authoritative, and no clinician is

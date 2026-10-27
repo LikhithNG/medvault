@@ -109,6 +109,31 @@ def test_a_line_without_a_receipt_is_withheld_out_loud_not_dropped():
     assert "could not trace a published figure" in text
 
 
+def test_an_unmatched_hospital_is_not_reported_as_having_no_actions():
+    """A zero that means "not found in the enforcement file" and a zero that means
+    "nothing happened" are different claims. The table holds two of the first kind:
+    a city suffix and an operator prefix each broke a join, and the miss was written
+    down as a count. tools/verify_enforcement.py found them against the live CMS file."""
+    line = checker.check_bill(
+        {"hospital_name": "Community Hospital of Stokes",
+         "line_items": [{"code": "36415", "units": 1, "charged": 90.0}]},
+        checker.load_reference())["lines"][0]
+
+    assert line["hospital_enforcement_actions"] == 0
+    assert line["enforcement_match"] == "none", (
+        "a zero from a failed join must be distinguishable from a real zero")
+
+
+def test_a_matched_hospital_says_how_it_was_matched():
+    line = checker.check_bill(
+        {"hospital_name": HOSPITAL,
+         "line_items": [{"code": "70450", "units": 1, "charged": 3076.10}]},
+        checker.load_reference())["lines"][0]
+
+    assert line["enforcement_match"] == "name+state"
+    assert line["hospital_enforcement_actions"] == 2
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
