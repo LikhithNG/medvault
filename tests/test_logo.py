@@ -79,9 +79,20 @@ def test_stylesheet_has_no_unreplaced_placeholders():
 
 
 def test_every_navigation_position_gets_an_icon():
-    for count in (5, 2):
+    """Six for a patient, two for a clinician."""
+    for count in (6, 2):
         for i in range(1, count + 1):
-            assert f"button:nth-child({i})::before" in ui.CSS
+            assert f'[role="tab"]:nth-child({i})::before' in ui.CSS
+
+
+def test_the_navigation_is_found_by_role_not_by_streamlit_internals():
+    """The bar was found through BaseWeb's data-baseweb="tab-list". Streamlit 1.5x+ builds
+    tabs with react-aria and has no such attribute, and on the live site the rail and the
+    bottom bar vanished - plain tabs across the top, no icons. Both versions set the ARIA
+    roles, because a screen reader needs them, so those are what the stylesheet keys on."""
+    assert 'data-baseweb="tab-list"' not in ui.CSS
+    assert 'data-baseweb="tab-panel"' not in ui.CSS
+    assert '[role="tablist"]' in ui.CSS and '[role="tabpanel"]' in ui.CSS
 
 
 if __name__ == "__main__":

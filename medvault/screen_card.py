@@ -248,4 +248,5 @@ def sign_out():
         # the Ask conversation and a half-filed document in the session, and the next
         # person to sign in on the same phone could see them.
         st.session_state.clear()
+        st.session_state["arrived"] = True                 # see ui.to_top()
         st.rerun()

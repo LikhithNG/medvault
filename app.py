@@ -119,6 +119,8 @@ con = vault()
 account = st.session_state.get("account")
 if not account:
     screen_signin()
+    if st.session_state.pop("arrived", False):
+        ui.to_top()
     st.stop()
 
 # The header count is scoped like everything else. It used to be the whole server for a
@@ -153,6 +155,9 @@ else:
     with tabs[3]: screen_medicines()
     with tabs[4]: screen_check()
     with tabs[5]: screen_ask()
+
+if st.session_state.pop("arrived", False):
+    ui.to_top()
 
 if st.query_params.get("diag"):
     st.divider()

@@ -73,6 +73,7 @@ def auth_panel():
                     st.error(problem)
                 else:
                     st.session_state["account"] = acct
+                    st.session_state["arrived"] = True     # see ui.to_top()
                     st.rerun()
 
     else:
@@ -129,4 +130,5 @@ def auth_panel():
             else:
                 st.session_state["account"] = acct
                 st.session_state.pop("npi_record", None)
+                st.session_state["arrived"] = True         # see ui.to_top()
                 st.rerun()

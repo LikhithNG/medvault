@@ -34,6 +34,14 @@ def test_one_typeface_reaches_streamlit_own_elements():
     # inside it, and the first version of this rule reached that div and set the letter
     # in proportional type, so its columns of figures stopped lining up.
     assert ':not([data-testid="stText"] *)' in rule.group(1)
+    # Whitespace anywhere in that tail is a descendant combinator, which turns "these
+    # elements, except icons" into "anything inside any element" - icons included.
+    depth, top = 0, []
+    for ch in rule.group(1):
+        depth += (ch == "(") - (ch == ")")
+        if depth == 0:
+            top.append(ch)
+    assert not re.search(r"\s", "".join(top)), "the rule has split into a descendant selector"
 
 
 def test_download_buttons_look_like_the_other_buttons():

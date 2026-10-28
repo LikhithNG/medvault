@@ -1,3 +1,8 @@
-streamlit>=1.37,<2
+# Pinned exactly. The stylesheet reaches into Streamlit's own page structure, which
+# changes between releases: "any 1.x" let Streamlit Cloud install 1.66.1, whose tabs,
+# inputs and columns are built differently from the 1.37 this was written on, and the
+# navigation and the input boxes disappeared from the live site. Move this on purpose,
+# after checking every screen, never by accident at deploy time.
+streamlit==1.66.1
 pypdf>=5.0,<6
 pillow>=10.0,<12

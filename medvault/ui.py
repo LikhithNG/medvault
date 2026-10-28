@@ -49,7 +49,7 @@ h1,h2,h3,h4{font-family:var(--sans);color:var(--ink);letter-spacing:-.025em}
 /* The signed-out page is the shop window, so it gets a wash of brand colour behind the
    headline. The selector is "there is no navigation on this page", which is true of the
    landing page and of nothing else. */
-.stApp:not(:has(div[data-baseweb="tab-list"])){
+.stApp:not(:has([role="tablist"])){
   background:
     radial-gradient(900px 460px at 12% -12%,rgba(59,140,255,.16),transparent 62%),
     radial-gradient(760px 420px at 92% 2%,rgba(15,111,222,.10),transparent 60%),
@@ -121,7 +121,9 @@ h1,h2,h3,h4{font-family:var(--sans);color:var(--ink);letter-spacing:-.025em}
 .panelmark{display:none}
 div[data-testid="stVerticalBlockBorderWrapper"]:has(> div >
   div[data-testid="stVerticalBlock"] > div[data-testid="element-container"] >
-  div[data-testid="stMarkdown"] .panelmark){
+  div[data-testid="stMarkdown"] .panelmark),
+div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrapper"] *):has(
+  > .element-container .panelmark){
   background:var(--card);border:1px solid var(--line)!important;border-radius:var(--r-xl);
   box-shadow:var(--sh-lg);padding:1.35rem 1.25rem 1.1rem!important}
 .panelhead{font-size:19px;font-weight:800;letter-spacing:-.03em;color:var(--ink);
@@ -174,6 +176,10 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(> div >
    made the card look broken. The cells share the width evenly and clip rather than wrap. */
 .idcard .cell .v{font-size:15px;font-weight:700;margin-top:.12rem;white-space:nowrap;
   overflow:hidden;text-overflow:ellipsis}
+/* On a phone the three cells are about 75px of text each, and the date of birth - the
+   longest thing on the card and the one a desk most needs - was cut to "1998-0...". It
+   gets the room; "O+" and a record count do not need theirs. */
+@media (max-width: 480px){ .idcard .cell:nth-child(2){flex-grow:1.8} }
 
 /* a red band, because an allergy is the one thing that must not be missed */
 .alert{background:var(--danger-soft);border:1px solid #F6C9C4;border-left:4px solid var(--danger);
@@ -273,6 +279,14 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(> div >
 :is(.stButton,.stDownloadButton)>button:hover{border-color:#C9D6E6;box-shadow:var(--sh-sm);
   color:var(--accent)}
 :is(.stButton,.stDownloadButton)>button:active{transform:translateY(1px)}
+/* Streamlit 1.5x+ sets a button's label on one line and cuts it with an ellipsis, which
+   turned the example questions on the Ask screen into "What is each of my medici...". A
+   button that says less than it does is worse than a taller one. */
+:is(.stButton,.stDownloadButton,[data-testid="stFormSubmitButton"]) button
+  [data-testid="stMarkdownContainer"]{white-space:normal!important;overflow:visible!important;
+  text-overflow:clip!important;height:auto!important}
+:is(.stButton,.stDownloadButton,[data-testid="stFormSubmitButton"]) button p{
+  white-space:normal!important;line-height:1.35}
 :is(.stButton,.stDownloadButton)>button[kind="primary"],
 button[kind="primaryFormSubmit"]{
   background:linear-gradient(135deg,var(--accent-bright),var(--accent-deep));
@@ -292,11 +306,17 @@ div[data-testid="stAlert"] *{color:#0B4F9E!important}
 /* Inputs. Streamlit inherits the viewer's dark-mode preference, which turned the paste box
    black with black text on a page that is otherwise light. Pinned explicitly. */
 textarea,input[type="text"],input[type="password"],div[data-baseweb="textarea"],
-div[data-baseweb="input"],div[data-baseweb="select"]>div{
+div[data-baseweb="input"],div[data-baseweb="select"]>div,
+[data-testid="stTextInputRootElement"],[data-testid="stTextAreaRootElement"],
+[data-testid="stTimeInputTimeDisplay"],div[role="group"]:has(> input[role="combobox"]){
   background:var(--card)!important;color:var(--ink)!important;border-radius:11px!important;
   border-color:var(--line)!important;font-family:var(--sans)!important;
   font-size:14.5px!important}
-div[data-baseweb="input"]:focus-within,div[data-baseweb="textarea"]:focus-within{
+div[data-baseweb="input"]:focus-within,div[data-baseweb="textarea"]:focus-within,
+[data-testid="stTextInputRootElement"]:focus-within,
+[data-testid="stTextAreaRootElement"]:focus-within,
+[data-testid="stTimeInputTimeDisplay"]:focus-within,
+div[role="group"]:has(> input[role="combobox"]):focus-within{
   border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(15,111,222,.14)}
 textarea::placeholder,input::placeholder{color:var(--faint)!important}
 
@@ -312,9 +332,10 @@ label p{color:var(--soft)!important;font-size:13px!important;font-weight:600!imp
    reads as two products. The icon font and the letter's fixed-width text are left alone -
    the letter lines its figures up with spaces, so it is excluded with everything inside
    it, not only its wrapper (the fixed-width font is on an inner div). */
-.stApp :is(p,li,span,div,label,b,strong,em,small,a,h1,h2,h3,h4,h5,h6,summary,button,
-  input,textarea):not([data-testid="stIconMaterial"]):not([data-testid="stText"])
-  :not([data-testid="stText"] *){
+/* One compound selector, on one line on purpose: a line break between two :not()s is a
+   descendant combinator, and that version matched everything inside any element - the
+   password field's eye icon included, which printed the word "visibility". */
+.stApp :is(p,li,span,div,label,b,strong,em,small,a,h1,h2,h3,h4,h5,h6,summary,button,input,textarea):not([data-testid="stIconMaterial"]):not([data-testid="stText"]):not([data-testid="stText"] *){
   font-family:var(--sans)}
 
 /* The three totals on a checked bill. Streamlit draws a metric as a 36px number in a
@@ -336,37 +357,42 @@ div[data-testid="stMetricValue"]{font-size:23px!important;font-weight:800!import
    Fixed to the bottom with an icon above each label, it reads as an app - and on a phone
    it also puts the controls where a thumb already is. The icons are masks rather than
    background images so they take their colour from the active state. */
-div[data-baseweb="tab-list"]{
+[role="tablist"]{
   position:fixed;left:0;right:0;bottom:0;z-index:999;
   display:flex;gap:0;padding:.35rem .25rem calc(.35rem + env(safe-area-inset-bottom));
   background:rgba(255,255,255,.92);backdrop-filter:saturate(180%) blur(14px);
   -webkit-backdrop-filter:saturate(180%) blur(14px);
   border-top:1px solid var(--line);border-radius:0;margin:0;
-  box-shadow:0 -2px 18px rgba(16,21,28,.06)}
-div[data-baseweb="tab-list"] button{
+  box-shadow:0 -2px 18px rgba(16,21,28,.06);
+  /* Streamlit 1.5x+ makes the tab list a scroll box and scrolls it to keep the chosen
+     tab in view - which scrolled the brand drawn at the top of the rail half out of
+     sight. Six tabs always fit, so there is nothing to scroll. */
+  overflow:visible!important}
+[role="tablist"] [role="tab"]{
   flex:1 1 0;min-width:0;border-radius:10px;background:transparent!important;
   padding:.3rem .1rem .25rem!important;display:flex;flex-direction:column;
   align-items:center;gap:.18rem}
-div[data-baseweb="tab-list"] button p{
+[role="tablist"] [role="tab"] p{
   font-family:var(--sans)!important;font-size:10.5px!important;font-weight:600!important;
   color:var(--faint)!important;margin:0;letter-spacing:-.01em;white-space:nowrap}
-div[data-baseweb="tab-list"] button[aria-selected="true"] p{color:var(--accent)!important}
+[role="tablist"] [role="tab"][aria-selected="true"] p{color:var(--accent)!important}
 /* Six labels across a phone is 62px each, and at 10.5px "Records" and "Medicines" met in
    the middle with no space between them. Smaller, and clipped rather than overlapping. */
-div[data-baseweb="tab-list"]:has(button:nth-child(6)) button p{
+[role="tablist"]:has([role="tab"]:nth-child(6)) [role="tab"] p{
   font-size:9.5px!important;letter-spacing:-.02em;max-width:100%;overflow:hidden;
   text-overflow:ellipsis}
-div[data-baseweb="tab-highlight"],div[data-baseweb="tab-border"]{display:none}
+div[data-baseweb="tab-highlight"],div[data-baseweb="tab-border"],
+.react-aria-SelectionIndicator,[role="tablist"]::after{display:none}
 
 /* one icon per position, drawn above the label */
-div[data-baseweb="tab-list"] button::before{
+[role="tablist"] [role="tab"]::before{
   content:"";width:21px;height:21px;display:block;background:var(--faint);
   -webkit-mask-size:contain;mask-size:contain;-webkit-mask-repeat:no-repeat;
   mask-repeat:no-repeat;-webkit-mask-position:center;mask-position:center}
-div[data-baseweb="tab-list"] button[aria-selected="true"]::before{background:var(--accent)}
+[role="tablist"] [role="tab"][aria-selected="true"]::before{background:var(--accent)}
 
 /* the panel has to clear the bar, or the last record sits underneath it */
-div[data-baseweb="tab-panel"]{padding-bottom:4.6rem}
+[role="tabpanel"]{padding-bottom:4.6rem}
 
 /* There is exactly one tab group in this app and it is the navigation. The sign-in screen
    uses a radio precisely so that stays true - a second group would be pinned to the bottom
@@ -380,38 +406,48 @@ __ICONS__
    900px up the bar becomes a left rail with the brand at the top of it, and the content
    moves over beside it. Nothing about the phone layout changes. */
 @media (min-width: 900px){
-  div[data-baseweb="tab-list"]{
+  [role="tablist"]{
     top:0;bottom:0;right:auto;width:228px;height:100vh;
     flex-direction:column;justify-content:flex-start;gap:.2rem;
     padding:4.9rem .75rem 1.3rem;border-top:none;border-right:1px solid var(--line);
     background:var(--card);backdrop-filter:none;-webkit-backdrop-filter:none;
     box-shadow:none}
   /* the brand, drawn into the top of the rail: the mark as a mask, the name as text */
-  div[data-baseweb="tab-list"]::before{
+  [role="tablist"]::before{
     content:"";position:absolute;top:1.5rem;left:1.1rem;width:30px;height:30px;
     background:linear-gradient(135deg,var(--accent-bright),var(--accent-deep));
     -webkit-mask-image:__MARK__;mask-image:__MARK__;
     -webkit-mask-size:contain;mask-size:contain;
     -webkit-mask-repeat:no-repeat;mask-repeat:no-repeat}
-  div[data-baseweb="tab-list"]::after{
+  /* Streamlit 1.5x+ draws its tab underline as this same ::after - 2px high, full width,
+     grey - and it showed as a line struck through the name. Every box property is reset,
+     not only the ones the name needs. */
+  [role="tablist"]::after{
     content:"MedVault";position:absolute;top:1.78rem;left:3.45rem;font-weight:800;
-    font-size:19px;letter-spacing:-.035em;color:var(--ink);line-height:1}
-  div[data-baseweb="tab-list"] button{
+    font-size:19px;letter-spacing:-.035em;color:var(--ink);line-height:1;
+    right:auto;bottom:auto;width:auto;height:auto;background:none!important;border:0;
+    display:block}
+  [role="tablist"] [role="tab"]{
     flex:0 0 auto;width:100%;flex-direction:row;justify-content:flex-start;
     gap:.7rem;padding:.62rem .7rem!important;border-radius:11px}
-  div[data-baseweb="tab-list"] button:hover{background:var(--line-soft)}
-  div[data-baseweb="tab-list"] button[aria-selected="true"]{background:var(--accent-soft)}
-  div[data-baseweb="tab-list"] button p{font-size:14px!important}
-  div[data-baseweb="tab-list"] button::before{width:19px;height:19px}
+  /* !important because the phone rules above set these with it - which is also why, for
+     as long as this rail has existed, the chosen tab had no highlight and the labels
+     stayed at the phone's 9.5px */
+  [role="tablist"] [role="tab"]:hover{background:var(--line-soft)!important}
+  [role="tablist"] [role="tab"][aria-selected="true"]{background:var(--accent-soft)!important}
+  [role="tablist"] [role="tab"] p,
+  [role="tablist"]:has([role="tab"]:nth-child(6)) [role="tab"] p{
+    font-size:14px!important;max-width:none;overflow:visible}
+  [role="tablist"] [role="tab"]::before{width:19px;height:19px}
 
   /* The rail is fixed, so the page has to be moved out from under it - but only when
      there is a rail. The landing page draws no tabs, and indenting it by 228px left the
      hero floating off to one side of an empty page. */
-  .stApp:has(div[data-baseweb="tab-list"]) .block-container{
+  .stApp:has([role="tablist"]) .block-container{
     max-width:880px!important;padding:1.6rem 2rem 2rem calc(228px + 2rem)!important}
-  .stApp:not(:has(div[data-baseweb="tab-list"])) .block-container{
+  .stApp:not(:has([role="tablist"])) .block-container{
     max-width:1060px!important;padding:2.2rem 2rem 2rem!important}
-  div[data-baseweb="tab-panel"]{padding-bottom:1rem}
+  [role="tabpanel"]{padding-bottom:1rem}
 
   /* the lockup in the page header is the rail's job up here */
   .appbar .top{display:none}
@@ -430,9 +466,9 @@ __ICONS__
    hero is told to. Scoped to the landing page: the button pairs inside the app are two
    columns on purpose and should stay side by side. */
 @media (max-width: 899px){
-  .stApp:not(:has(div[data-baseweb="tab-list"])) div[data-testid="stHorizontalBlock"]{
+  .stApp:not(:has([role="tablist"])) div[data-testid="stHorizontalBlock"]{
     flex-direction:column;gap:.6rem}
-  .stApp:not(:has(div[data-baseweb="tab-list"])) div[data-testid="column"]{
+  .stApp:not(:has([role="tablist"])) :is(div[data-testid="column"],div[data-testid="stColumn"]){
     width:100%!important;flex:1 1 100%!important;min-width:0!important}
   .hero h1{font-size:33px}
 }
@@ -440,7 +476,7 @@ __ICONS__
 /* A little more room again on a wide screen. The record list stays one column: each card
    is its own st.markdown call, so there is no single element a grid could live on. */
 @media (min-width: 1200px){
-  .stApp:has(div[data-baseweb="tab-list"]) .block-container{max-width:1000px!important}
+  .stApp:has([role="tablist"]) .block-container{max-width:1000px!important}
 }
 
 </style>
@@ -475,11 +511,11 @@ def _nav_css():
     for count, icons in _NAV.items():
         # six tabs means a patient, two means a clinician; the stylesheet can tell them
         # apart by asking whether a sixth button exists.
-        scope = ('div[data-baseweb="tab-list"]:has(button:nth-child(6))' if count == 6
-                 else 'div[data-baseweb="tab-list"]:not(:has(button:nth-child(3)))')
+        scope = ('[role="tablist"]:has([role="tab"]:nth-child(6))' if count == 6
+                 else '[role="tablist"]:not(:has([role="tab"]:nth-child(3)))')
         for i, body in enumerate(icons, start=1):
             url = logo.css_url(_stroke_svg(body))
-            out.append(f'{scope} button:nth-child({i})::before'
+            out.append(f'{scope} [role="tab"]:nth-child({i})::before'
                        f'{{-webkit-mask-image:{url};mask-image:{url}}}')
     return "\n".join(out)
 
@@ -506,6 +542,31 @@ def section(label):
 
 def empty(message):
     return f"<div class='empty'>{message}</div>"
+
+
+_TO_TOP = """<script>
+(function () {
+  var doc = window.parent.document;
+  function settle() {
+    if (doc.activeElement && doc.activeElement !== doc.body) doc.activeElement.blur();
+    doc.querySelectorAll("*").forEach(function (el) { if (el.scrollTop > 0) el.scrollTop = 0; });
+  }
+  settle(); setTimeout(settle, 250); setTimeout(settle, 800);
+})();
+</script>"""
+
+
+def to_top():
+    """Start the next screen at its top, with nothing focused.
+
+    Signing in swaps the whole page. React kept the focused password box and reused it as
+    a text field further down the new screen, so the browser scrolled there: the Card
+    screen opened halfway down, past the emergency card - and on a phone, with the
+    keyboard up. Signing out did the same to the landing page. Called once, on the run
+    after either.
+    """
+    import streamlit.components.v1 as components
+    components.html(_TO_TOP, height=0, width=0)
 
 
 def safe(text):
