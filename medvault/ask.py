@@ -141,23 +141,21 @@ _PER_UNIT = {"day": 1, "week": 7, "month": 30}
 
 
 def course_ended(med, today=None):
-    """When a medicine's own record says the course is already over.
+    """The last day of a course whose own record says it is already over, else None.
 
-    Returns the end date, or None when either half of the sum is missing. A course with no
-    stated duration is not overdue; it is unknown, and the two are not the same.
+    Delegates to schedule.course_end so the Companion and the Scheduler cannot disagree
+    about when a course stops. They did: this function computed start + length, which is
+    the day AFTER the last dose, so a 7-day course from 14 March "finished on 21 March"
+    and was only flagged from the 22nd - while the Scheduler, correctly, stopped ringing
+    after the 20th. Two agents giving a patient two different end dates for one
+    prescription is worse than either being slightly wrong alone.
+
+    A course with no stated duration is not overdue; it is unknown, and the two are not
+    the same.
     """
-    started, duration = med.get("service_date"), med.get("duration")
-    if not started or not duration:
-        return None
-    m = _DURATION.search(duration)
-    if not m:
-        return None
-    try:
-        begin = datetime.date.fromisoformat(started[:10])
-    except ValueError:
-        return None
-    end = begin + datetime.timedelta(days=int(m.group(1)) * _PER_UNIT[m.group(2).lower()])
-    return end if end < (today or datetime.date.today()) else None
+    import schedule
+    last = schedule.course_end(med)
+    return last if last and last < (today or datetime.date.today()) else None
 
 
 def _norm(name):

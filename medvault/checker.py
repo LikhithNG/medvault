@@ -25,8 +25,12 @@ def load_reference(path=None):
     # The table lives in data/ at the repo root here, not beside this module.
     path = path or os.path.join(HERE, '..', 'data', 'a3_reference_table.csv')
     table = {}
-    for r in csv.DictReader(open(path, encoding='utf-8-sig')):
-        table[(r['hospital_name'].strip().lower(), r['code'].strip())] = r
+    # Closed explicitly. The original opened the file inside the DictReader call and never
+    # closed it, which leaks one file handle per call - harmless in a script that exits,
+    # and a slow leak in a server that does not.
+    with open(path, encoding='utf-8-sig') as fh:
+        for r in csv.DictReader(fh):
+            table[(r['hospital_name'].strip().lower(), r['code'].strip())] = r
     return table
 
 def _f(v):

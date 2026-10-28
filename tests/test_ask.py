@@ -79,8 +79,10 @@ def test_a_dose_decision_is_relabelled_whatever_the_model_called_it():
 # ---- the checks that run before it -----------------------------------------
 
 def test_a_finished_course_is_worked_out_from_the_prescription_itself():
+    # A 7-day course from 14 March is 14-20 March. This test used to assert 21 March,
+    # which encoded the off-by-one rather than catching it.
     med = {"service_date": "2026-03-14", "duration": "7 days"}
-    assert ask.course_ended(med, TODAY) == datetime.date(2026, 3, 21)
+    assert ask.course_ended(med, TODAY) == datetime.date(2026, 3, 20)
 
 
 def test_a_course_still_running_is_not_flagged():

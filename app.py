@@ -84,6 +84,7 @@ import landing                 # noqa: E402
 import ask                     # noqa: E402
 import npi                     # noqa: E402
 import paste                   # noqa: E402
+import schedule                # noqa: E402
 import store                   # noqa: E402
 import ui                      # noqa: E402
 from schema import (BLOOD_TYPES, KINDS, KIND_ORDER, kind_label,   # noqa: E402
@@ -427,7 +428,98 @@ def screen_records():
                                key=f"dl{r['id']}", use_container_width=True)
 
 
+def screen_today():
+    """The Scheduler on screen: what is due today, and a calendar that rings without us.
+
+    Streamlit cannot wake a phone, and a reminder that only works while this tab is open is
+    not a reminder. So the thing that actually reminds is the calendar file: imported once,
+    it rings from the phone's own calendar whether or not anyone opens MedVault again.
+    """
+    profile = db.get_profile(con, my_id())
+    day_start = profile.get("day_start") or schedule.DEFAULT_DAY_START
+    meds = db.list_medications(con, active_only=True, owner_id=my_id())
+    day = schedule.plan(meds, day_start=day_start)
+
+    st.markdown(ui.section(f"Today · {len(day['doses'])} dose(s)"), unsafe_allow_html=True)
+    if not meds:
+        st.markdown(ui.empty("Nothing to take.<br>Medicines appear here once a "
+                             "prescription is filed."), unsafe_allow_html=True)
+        return
+
+    coming = schedule.next_due(day)
+    if coming:
+        st.markdown(f"<div class='hit ok'><span class='amt'>{coming['at']}</span>"
+                    f"<div class='h'>Next: {coming['med']['name']}</div>"
+                    f"<div class='b'>{coming['med'].get('dose') or 'as prescribed'}"
+                    + (f" · {schedule.note(coming['parsed'])}"
+                       if schedule.note(coming["parsed"]) else "")
+                    + "</div></div>", unsafe_allow_html=True)
+
+    for dose in day["doses"]:
+        extra = schedule.note(dose["parsed"])
+        ends = (f" · last dose {dose['ends']:%-d %b}" if dose["ends"] else "")
+        st.markdown(f"<div class='med'><div class='n'>{dose['at']} · {dose['med']['name']}"
+                    f"</div><div class='d'>{dose['med'].get('dose') or 'as prescribed'}"
+                    + (f" · {extra}" if extra else "") + ends + "</div></div>",
+                    unsafe_allow_html=True)
+
+    # The groups that are deliberately NOT on a clock, each said out loud rather than
+    # dropped. Silently omitting a medicine from a reminder list looks like "nothing to
+    # take", which for the as-needed ones is fine and for the unreadable ones is not.
+    if day["as_needed"]:
+        st.markdown(ui.section("Only when you need it — no alarm"), unsafe_allow_html=True)
+        for e in day["as_needed"]:
+            gap = (f"Not more often than every {e['parsed']['every_hours']} hours."
+                   if e["parsed"]["every_hours"] else "Follow the label for how often.")
+            st.markdown(f"<div class='med'><div class='n'>{e['med']['name']}</div>"
+                        f"<div class='d'>{e['med'].get('dose') or ''} · {gap}</div>"
+                        f"<div class='why'>Prescribed as needed, so it is not scheduled. "
+                        f"Taking it on a timetable is not what the prescription says.</div>"
+                        f"</div>", unsafe_allow_html=True)
+    if day["weekly"]:
+        st.markdown(ui.section("Weekly"), unsafe_allow_html=True)
+        for e in day["weekly"]:
+            st.markdown(f"<div class='med'><div class='n'>{e['med']['name']}</div>"
+                        f"<div class='d'>{e['parsed']['text']} — pick the day with your "
+                        f"pharmacist; it is not on the daily calendar.</div></div>",
+                        unsafe_allow_html=True)
+    if day["unreadable"]:
+        st.markdown(ui.section("Could not be timed"), unsafe_allow_html=True)
+        for e in day["unreadable"]:
+            st.markdown(f"<div class='hit warn'><div class='h'>{e['med']['name']}</div>"
+                        f"<div class='b'>The prescription says "
+                        f"“{e['parsed']['text'] or 'nothing about how often'}”, which "
+                        f"does not say when. Ask the pharmacist rather than guessing — "
+                        f"this is not on your calendar.</div></div>",
+                        unsafe_allow_html=True)
+    if day["finished"]:
+        st.caption("Finished courses not shown: "
+                   + ", ".join(f"{e['med']['name']} (last dose {e['ends']:%-d %b})"
+                               for e in day["finished"])
+                   + ". Switch them off below so your card is right.")
+
+    st.caption("Times are a suggestion from MedVault, not part of the prescription — a "
+               "prescription that says “twice daily” says how often, not when. They move "
+               "with the time your day starts.")
+    with st.form("daystart", border=False):
+        chosen = st.time_input("My day starts at",
+                               value=datetime.time.fromisoformat(day_start), step=900)
+        if st.form_submit_button("Move my times", use_container_width=True):
+            db.save_profile(con, my_id(), {"day_start": chosen.strftime("%H:%M")})
+            st.rerun()
+
+    if day["doses"]:
+        st.download_button(
+            "Add these reminders to my phone's calendar",
+            data=schedule.calendar(day, account_label=me().get("display_name") or "MedVault"),
+            file_name="medvault-reminders.ics", mime="text/calendar",
+            use_container_width=True, type="primary")
+        st.caption("Open the file on your phone and it rings from your own calendar — "
+                   "MedVault does not need to be open. As-needed medicines are not in it.")
+
+
 def screen_medicines():
+    screen_today()
     meds = db.list_medications(con, active_only=False, owner_id=my_id())
     st.markdown(ui.section(f"Medicines · {len(meds)}"), unsafe_allow_html=True)
     if not meds:
