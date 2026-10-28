@@ -93,6 +93,8 @@ from schema import (BLOOD_TYPES, KINDS, KIND_ORDER, kind_label,   # noqa: E402
                     missing_essentials)
 
 st.markdown(ui.CSS, unsafe_allow_html=True)
+import agentsui                # noqa: E402
+st.markdown(agentsui.CSS, unsafe_allow_html=True)
 
 import pwa                     # noqa: E402
 pwa.install()                  # home-screen icon and standalone launch on a phone
@@ -337,18 +339,23 @@ def screen_add():
 
     if st.button("Read this document", type="primary", use_container_width=True):
         from extract import read_document, pdf_text
-        with st.status("Reading…", expanded=False) as status:
-            text, note = (None, None)
-            if is_pdf:
-                import io as _io
-                text, note = pdf_text(_io.BytesIO(data))
-            if is_pdf and text:
-                status.write(f"Read the text layer · {note}")
-                rec, meta = read_document(text=text)
-            else:
-                status.write("Looking at the page…")
-                rec, meta = read_document(image=(up.type or "image/jpeg", data))
-            status.update(label="Read", state="complete")
+        # The Reader at work, saying which step it is on, then replaced by what it read.
+        slot = st.empty()
+        def reading(step):
+            slot.markdown(agentsui.working("Reader", "Reading your document", step),
+                          unsafe_allow_html=True)
+        reading("Opening it…")
+        text, note = (None, None)
+        if is_pdf:
+            import io as _io
+            text, note = pdf_text(_io.BytesIO(data))
+        if is_pdf and text:
+            reading(f"Read the text layer · {note}")
+            rec, meta = read_document(text=text)
+        else:
+            reading("Looking at the page — a photograph takes a few seconds")
+            rec, meta = read_document(image=(up.type or "image/jpeg", data))
+        slot.empty()
 
         if not meta.get("ok"):
             st.error("**That document could not be read just now**\n\nThe reading service "
@@ -364,7 +371,8 @@ def screen_add():
     if not draft:
         return
 
-    st.markdown(ui.section("Check this before filing"), unsafe_allow_html=True)
+    st.markdown(ui.section("Check this before filing") + agentsui.badge("Reader"),
+                unsafe_allow_html=True)
     st.caption("Read off the page by a model. Correct anything it got wrong — it is your "
                "record, and a wrong dose is worse than no dose.")
     c1, c2 = st.columns(2)
@@ -454,7 +462,8 @@ def screen_today():
     meds = db.list_medications(con, active_only=True, owner_id=my_id())
     day = schedule.plan(meds, day_start=day_start)
 
-    st.markdown(ui.section(f"Today · {len(day['doses'])} dose(s)"), unsafe_allow_html=True)
+    st.markdown(ui.section(f"Today · {len(day['doses'])} dose(s)")
+                + agentsui.badge("Scheduler"), unsafe_allow_html=True)
     if not meds:
         st.markdown(ui.empty("Nothing to take.<br>Medicines appear here once a "
                              "prescription is filed."), unsafe_allow_html=True)
@@ -462,17 +471,18 @@ def screen_today():
 
     coming = schedule.next_due(day)
     if coming:
-        st.markdown(f"<div class='hit ok'><span class='amt'>{coming['at']}</span>"
+        st.markdown(f"<div class='hit ok ag-next ag-in'><span class='amt'>{coming['at']}</span>"
                     f"<div class='h'>Next: {coming['med']['name']}</div>"
                     f"<div class='b'>{coming['med'].get('dose') or 'as prescribed'}"
                     + (f" · {schedule.note(coming['parsed'])}"
                        if schedule.note(coming["parsed"]) else "")
                     + "</div></div>", unsafe_allow_html=True)
 
-    for dose in day["doses"]:
+    for i, dose in enumerate(day["doses"], start=1):
         extra = schedule.note(dose["parsed"])
         ends = (f" · last dose {dose['ends']:%-d %b}" if dose["ends"] else "")
-        st.markdown(f"<div class='med'><div class='n'>{dose['at']} · {dose['med']['name']}"
+        st.markdown(f"<div class='med ag-in'{agentsui.arrive(i)}>"
+                    f"<div class='n'>{dose['at']} · {dose['med']['name']}"
                     f"</div><div class='d'>{dose['med'].get('dose') or 'as prescribed'}"
                     + (f" · {extra}" if extra else "") + ends + "</div></div>",
                     unsafe_allow_html=True)
@@ -654,21 +664,28 @@ def screen_check():
         from extract import read_bill_verified, pdf_text
         data = upload.getvalue()
         is_pdf = (upload.type or "").endswith("pdf") or upload.name.lower().endswith(".pdf")
-        with st.status("Reading the bill…", expanded=False) as status:
-            text = None
-            if is_pdf:
-                import io as _io
-                text, note = pdf_text(_io.BytesIO(data))
-                if text:
-                    status.write(f"Read the text layer · {note}")
-            if not text:
-                status.write("Looking at the page…")
-            lines, meta = (read_bill_verified(text=text) if text
-                           else read_bill_verified(
-                               image=(upload.type or "image/jpeg", data)))
-            if meta.get("attempts", 1) > 1:
-                status.write(f"Read again to check it added up ({meta['attempts']} passes)")
-            status.update(label="Read", state="complete")
+        slot = st.empty()
+        def reading(step):
+            slot.markdown(agentsui.working("Reader", "Reading the bill", step),
+                          unsafe_allow_html=True)
+        reading("Opening it…")
+        text = None
+        if is_pdf:
+            import io as _io
+            text, note = pdf_text(_io.BytesIO(data))
+            if text:
+                reading(f"Read the text layer · {note}")
+        if not text:
+            reading("Looking at the page, then checking the lines add up to its total")
+        lines, meta = (read_bill_verified(text=text) if text
+                       else read_bill_verified(image=(upload.type or "image/jpeg", data)))
+        slot.empty()
+        # The step log used to sit in a collapsed status box. The one line in it worth
+        # keeping is the one that says the bill was read twice, because that is the
+        # reconciliation working - so it survives as a caption.
+        if meta.get("attempts", 1) > 1:
+            st.caption(f"Read {meta['attempts']} times to check the lines added up to the "
+                       "total printed on the bill.")
 
         if not meta.get("ok"):
             st.error("**That bill could not be read just now**\n\nThe reading service did "
@@ -759,8 +776,8 @@ def screen_check():
     named = {c: b for c, b in bench.items() if b.get("found")}
 
     if named:
-        st.markdown(ui.section("Against the national Medicare allowance"),
-                    unsafe_allow_html=True)
+        st.markdown(ui.section("Against the national Medicare allowance")
+                    + agentsui.badge("Checker"), unsafe_allow_html=True)
         st.caption("What the federal programme allows for the same code. **A Medicare rate "
                    "is not a price cap** — a hospital may charge a commercial patient more, "
                    "and usually does. This is context for the conversation, not evidence of "
@@ -773,12 +790,13 @@ def screen_check():
             mult = medicare.multiple_of_medicare(l.get("charged"), l.get("units"),
                                                  b["medicare_rate"])
             rows.append((mult or 0, l, b, mult))
-        for _, l, b, mult in sorted(rows, key=lambda t: -t[0]):
+        for i, (_, l, b, mult) in enumerate(sorted(rows, key=lambda t: -t[0])):
             tone = "bad" if (mult or 0) >= 10 else "warn" if (mult or 0) >= 3 else "ok"
             times = (f"<b>{mult:g}× the Medicare allowance</b>" if mult
                      else "could not be compared")
             st.markdown(
-                f"<div class='hit {tone}'><span class='amt'>{_m(l.get('charged'))}</span>"
+                f"<div class='hit {tone} ag-in'{agentsui.arrive(i)}>"
+                f"<span class='amt'>{_m(l.get('charged'))}</span>"
                 f"<div class='h'>{b['name']}</div><div class='b'>"
                 f"<b>{l.get('code')}</b> · billed as “{(l.get('description') or '')[:40]}”"
                 f"{f' · qty {l["units"]}' if (l.get('units') or 1) > 1 else ''}<br>"
@@ -953,7 +971,8 @@ def screen_check():
                               rights_findings=protections,
                               record_gaps=[c for c in checked
                                            if c["verdict"] in ("NO_RECORD", "DATE_NO_MATCH")])
-        st.markdown(ui.section("A letter you can send"), unsafe_allow_html=True)
+        st.markdown(ui.section("A letter you can send") + agentsui.badge("Advocate"),
+                    unsafe_allow_html=True)
         st.caption("Built from the figures above directly — not written by a model, so "
                    "nothing in it can drift from what this screen showed you.")
         with st.expander("Read it"):
@@ -987,7 +1006,7 @@ EXAMPLE_QUESTIONS = [
 
 def _render_turn(turn):
     """One question and its answer, with the badge that says where the answer came from."""
-    st.markdown(f"<div class='qa'><div class='bubble q'>{turn['q']}</div>",
+    st.markdown(f"<div class='qa'><div class='bubble q ag-in'>{turn['q']}</div>",
                 unsafe_allow_html=True)
     a = turn["a"]
     if a.get("kind") == "error":
@@ -1006,7 +1025,7 @@ def _render_turn(turn):
             f"<b>{r.get('title')}</b> ({r.get('service_date') or 'undated'})"
             for r in a["sources"].values())
         srcs = f"<div class='srcs'>Read out of: {items}</div>"
-    st.markdown(f"<div class='bubble a'><span class='badge {tone}'>{label}</span>"
+    st.markdown(f"<div class='bubble a ag-in' style='--i:2'><span class='badge {tone}'>{label}</span>"
                 f"{body}{srcs}</div></div>", unsafe_allow_html=True)
 
 
@@ -1016,8 +1035,8 @@ def screen_ask():
     # untimeable doses - showing both would put the same finding on screen twice, which
     # is the mistake this project has made three times already.
     findings = liaison.update(con, my_id())
-    st.markdown(ui.section(f"What your own records say is outstanding · {len(findings)}"),
-                unsafe_allow_html=True)
+    st.markdown(ui.section(f"What your own records say is outstanding · {len(findings)}")
+                + agentsui.badge("Liaison"), unsafe_allow_html=True)
     st.caption("Worked out here, from your records, by arithmetic — no model is involved, "
                "nothing leaves this server, and nothing here is a judgement about your "
                "health. It is what your own paperwork says and has not been followed up.")
@@ -1026,8 +1045,9 @@ def screen_ask():
                              "medicine, no finished course still marked current, nothing "
                              "that collides with your recorded allergies."),
                     unsafe_allow_html=True)
-    for f in findings:
-        st.markdown(f"<div class='hit {f['tone']}'><div class='h'>{f['title']}</div>"
+    for i, f in enumerate(findings):
+        st.markdown(f"<div class='hit {f['tone']} ag-in'{agentsui.arrive(i)}>"
+                    f"<div class='h'>{f['title']}</div>"
                     f"<div class='b'>{f['body']}</div></div>", unsafe_allow_html=True)
 
     doctors = careteam.team(con, my_id())
@@ -1045,7 +1065,8 @@ def screen_ask():
                            file_name="medvault-update-for-my-doctor.txt",
                            use_container_width=True)
 
-    st.markdown(ui.section("Ask about your medicines and treatment"), unsafe_allow_html=True)
+    st.markdown(ui.section("Ask about your medicines and treatment")
+                + agentsui.badge("Companion"), unsafe_allow_html=True)
     ready, why = reader_ready()
     if not ready:
         st.info(f"The question box needs a reading key, and {why}. The checks above do "
@@ -1063,9 +1084,14 @@ def screen_ask():
         _render_turn(turn)
 
     def run(question):
-        with st.spinner("Reading your records…"):
-            st.session_state["ask_log"].append(
-                {"q": question, "a": ask.answer(con, my_id(), question)})
+        slot = st.empty()
+        slot.markdown(agentsui.working("Companion", "Reading your records",
+                                       "Checking first whether this is a question a model "
+                                       "should not answer at all"),
+                      unsafe_allow_html=True)
+        st.session_state["ask_log"].append(
+            {"q": question, "a": ask.answer(con, my_id(), question)})
+        slot.empty()
         st.rerun()
 
     with st.form("askform", border=False, clear_on_submit=True):
@@ -1113,6 +1139,12 @@ def screen_signin():
     st.markdown(ui.section("What it does"), unsafe_allow_html=True)
     for col, feature in zip(st.columns(3, gap="medium"), landing.FEATURES):
         col.markdown(landing.feature(*feature), unsafe_allow_html=True)
+
+    st.markdown(ui.section("Six agents, one job each"), unsafe_allow_html=True)
+    st.caption("Green means no model is involved — the answer is arithmetic over a "
+               "published file. Amber means a model reads or answers, inside limits that "
+               "are written down.")
+    st.markdown(agentsui.roster(), unsafe_allow_html=True)
 
     st.markdown(ui.section("How it works"), unsafe_allow_html=True)
     st.markdown(landing.steps(), unsafe_allow_html=True)
@@ -1208,7 +1240,8 @@ def your_patients(account):
     lists about the same records.
     """
     mine = careteam.patients(con, account["id"])
-    st.markdown(ui.section(f"Your patients · {len(mine)}"), unsafe_allow_html=True)
+    st.markdown(ui.section(f"Your patients · {len(mine)}") + agentsui.badge("Liaison"),
+                unsafe_allow_html=True)
     if not mine:
         st.markdown(ui.empty("No patient has added you to their care team yet.<br>They do "
                              "it from their Card screen with your MedVault email."),
@@ -1226,8 +1259,9 @@ def your_patients(account):
         with st.expander(label, expanded=(worst == "bad")):
             if not items:
                 st.caption("Nothing in this patient's records is outstanding.")
-            for item in items:
-                st.markdown(f"<div class='hit {item['tone']}'><div class='h'>{item['title']}"
+            for i, item in enumerate(items):
+                st.markdown(f"<div class='hit {item['tone']} ag-in'{agentsui.arrive(i)}>"
+                            f"<div class='h'>{item['title']}"
                             f"</div><div class='b'>{item['body']}</div></div>",
                             unsafe_allow_html=True)
 
