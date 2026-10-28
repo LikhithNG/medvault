@@ -273,12 +273,20 @@ def test_no_clinician_screen_in_the_app_reaches_for_every_record():
     the whole server. So this looks for the shape, not the spelling: any of the three
     record queries called with a bare None for its owner."""
     import re
-    source = (pathlib.Path(__file__).resolve().parent.parent / "app.py").read_text()
-    unscoped = re.findall(
-        r"(?:counts_by_kind|list_records|pending_verification)\(\s*con\s*(?:,\s*None\b|\))"
-        r"|owner_id\s*=\s*None|None if (?:clinician_view|accounts\.is_verified_clinician)",
-        source)
-    assert not unscoped, f"unscoped record queries in app.py: {unscoped}"
+    root = pathlib.Path(__file__).resolve().parent.parent
+    # The screens moved out of app.py into their own modules; a scan of app.py alone
+    # would now pass while reading almost none of the code it was written to guard.
+    screens = [root / "app.py", root / "medvault" / "session.py",
+               root / "medvault" / "bill_render.py",
+               *sorted((root / "medvault").glob("screen_*.py"))]
+    assert len(screens) >= 9, "the screen modules have moved again"
+    for path in screens:
+        unscoped = re.findall(
+            r"(?:counts_by_kind|list_records|pending_verification)\(\s*con\s*"
+            r"(?:,\s*None\b|\))"
+            r"|owner_id\s*=\s*None|None if (?:clinician_view|accounts\.is_verified_clinician)",
+            path.read_text())
+        assert not unscoped, f"unscoped record queries in {path.name}: {unscoped}"
 
 
 if __name__ == "__main__":

@@ -1,0 +1,371 @@
+#!/usr/bin/env python3
+"""The Bill screen: the form, and the run that hands a bill from agent to agent.
+
+The drawing of the findings lives in bill_render.py, so this file is about what happens
+when somebody presses Check it, and that one is about what they see after.
+"""
+import time
+
+import streamlit as st
+
+import agentsui
+import db
+import paste
+import ui
+from bill_render import render_bill, render_bill_read
+from session import my_id, reader_ready, vault
+
+
+# The three agents a bill passes through, in the order it reaches them.
+BILL_RELAY = ("Reader", "Checker", "Advocate")
+
+
+RELAY_INTRO = ("Press Check it and three agents take it from here: the Reader reads a photo "
+               "of the bill, the Checker prices every line, and the Advocate writes the "
+               "letter if anything is flagged.")
+
+
+# A step that finished this long before the run did was on screen long enough to be seen
+# finishing. Anything faster shows its work once more in the final frame, in turn.
+SEEN_SECONDS = 0.4
+
+
+@st.cache_resource
+def price_table():
+    """Pricing a bill needs to know whose published file to price it against."""
+    import checker
+    return checker.load_reference()
+
+
+def bill_form():
+    """Everything the patient tells the Bill screen. Returns a dict; draws the widgets."""
+    import rights
+    # Pasting was the only way in, which meant retyping a bill that arrived as a PDF or
+    # sits on the kitchen table. A photo is how a patient actually has this document.
+    how = st.radio("Where is the bill?", ["Photograph or PDF", "Paste the lines"],
+                   horizontal=True, label_visibility="collapsed", key="bill_source")
+
+    pasted, upload = "", None
+    if how == "Paste the lines":
+        pasted = st.text_area(
+            "Paste the bill's lines", height=150,
+            placeholder="2026-03-14  70450  CT HEAD/BRAIN WO CONTRAST   1   3,100.00")
+        st.caption("One line per charge: a date, a description and an amount.")
+    else:
+        upload = st.file_uploader("Photo or PDF of the bill",
+                                  type=["jpg", "jpeg", "png", "webp", "pdf"],
+                                  label_visibility="collapsed", key="bill_file")
+        st.caption("On a phone this opens the camera. The bill is read once to pull out "
+                   "the codes, quantities and amounts. It is not stored unless you file it "
+                   "as a record from the Add screen.")
+        if upload:
+            st.caption(f"{upload.name} · {len(upload.getvalue())/1024:,.0f} KB")
+
+    # A few questions about the patient's situation unlock protections worth far more than
+    # any rate difference on the bill - and none of them need a price file to answer.
+    with st.expander("Four questions that may be worth more than the prices"):
+        st.caption("Federal law gives patients rights that depend on the situation, not on "
+                   "the amounts. Leave anything blank that you are not sure of — unanswered "
+                   "is treated as unknown, never as no.")
+        cov = st.radio("Were you insured for this care?",
+                       ["Not sure", "I have insurance", "Uninsured or self-pay"],
+                       key="rt_cov")
+        c1, c2 = st.columns(2)
+        emg = c1.selectbox("Was it emergency care?", ["Not sure", "Yes", "No"], key="rt_emg")
+        npf = c2.selectbox("Is the hospital non-profit?", ["Not sure", "Yes", "No"],
+                           key="rt_npf")
+        inn = st.selectbox("Was the hospital itself in your network?",
+                           ["Not sure", "Yes", "No"], key="rt_inn")
+        gfe_raw = st.text_input("If you were given a written estimate, what did it say?",
+                                placeholder="e.g. 1200.00", key="rt_gfe")
+
+    known = sorted({h for h, _ in price_table()})
+    pretty = {h: h.title() for h in known}
+    hospital = st.selectbox(
+        "Which hospital issued this bill?", ["— not listed —"] + known,
+        format_func=lambda h: h if h.startswith("—") else pretty[h], key="bill_hosp")
+    st.caption("Nine hospitals have published price files collected for this project. "
+               "If yours is not one of them, leave it unset — every line is still checked "
+               "against the national Medicare allowance, which covers any CPT code.")
+
+    tri = {"Not sure": None, "Yes": True, "No": False}
+    try:
+        gfe_val = float((gfe_raw or "").replace("$", "").replace(",", "").strip() or 0) or None
+    except ValueError:
+        gfe_val = None
+    ctx = rights.context(
+        coverage={"I have insurance": "insured",
+                  "Uninsured or self-pay": "self_pay"}.get(cov, rights.UNKNOWN),
+        emergency=tri[emg], nonprofit_hospital=tri[npf], in_network_facility=tri[inn],
+        gfe_amount=gfe_val)
+    listed = hospital != "— not listed —"
+    return {"pasting": how == "Paste the lines", "pasted": pasted, "upload": upload,
+            "ctx": ctx,
+            "hospital": hospital if listed else None,
+            "hospital_name": pretty.get(hospital) if listed else None,
+            "answers": (cov, emg, npf, inn, gfe_raw)}
+
+
+def bill_key(form, records):
+    """Everything a checked bill was computed from. A different key is a different bill.
+
+    The form is not all of it. The cross-check reads the records, the letter is signed
+    with the name on the card, and both belong to one account - so all three are in the
+    key. Without them, filing the very record a line was missing redrew the old "nothing
+    behind it" finding, and a letter saying so, next to a count that had gone up by one.
+    """
+    con = vault()
+    import hashlib
+    upload = form["upload"]
+    content = (hashlib.sha256(upload.getvalue()).hexdigest() if upload is not None
+               else form["pasted"])
+    held = tuple((r["id"], r.get("added_at"), r.get("service_date"), r.get("title"),
+                  r.get("summary")) for r in records)
+    signed = db.get_profile(con, my_id()).get("full_name")
+    return hashlib.sha256(repr((my_id(), upload is not None, content, form["hospital"],
+                                form["answers"], held, signed)).encode()).hexdigest()
+
+
+def idle_relay(form):
+    """The three agents before anything has happened, so nobody is surprised by them."""
+    reader = (agentsui.step("Reader", "skip", "You paste it") if form["pasting"]
+              else agentsui.step("Reader", "wait", "Reads the photo"))
+    return [reader, agentsui.step("Checker", "wait", "Prices each line"),
+            agentsui.step("Advocate", "wait", "Writes the letter")]
+
+
+def read_bill_upload(upload, steps, show):
+    """The Reader's turn. Returns (lines, read, problem, steps)."""
+    import hashlib
+    ok, why = reader_ready()
+    if not ok:
+        return None, None, ("This bill cannot be read here",
+                            f"The reader is not set up — {why}. Paste the lines instead "
+                            f"and everything else still works.", None), \
+            agentsui.advance(steps, "Reader", "fail", "Not set up")
+
+    data = upload.getvalue()
+    sig = hashlib.sha256(data).hexdigest()
+    # Changing the hospital or an answer after a check used to mean reading the photo
+    # again - a second model call for a bill that had not changed.
+    held = st.session_state.get("bill_read")
+    if held and held["sig"] == sig:
+        return held["lines"], held["read"], None, \
+            agentsui.advance(steps, "Reader", "done", "Read already")
+
+    from extract import read_bill_verified, pdf_text
+    is_pdf = (upload.type or "").endswith("pdf") or upload.name.lower().endswith(".pdf")
+    steps = agentsui.advance(steps, "Reader", "work", "Reading…")
+    show(steps, "Reader · opening it…")
+    started = time.perf_counter()
+    text = None
+    if is_pdf:
+        import io as _io
+        text, note = pdf_text(_io.BytesIO(data))
+        if text:
+            show(steps, f"Reader · read the text layer · {note}")
+    if not text:
+        show(steps, "Reader · looking at the page, then checking the lines add up to its "
+                    "total")
+    lines, meta = (read_bill_verified(text=text) if text
+                   else read_bill_verified(image=(upload.type or "image/jpeg", data)))
+    spent = agentsui.took(time.perf_counter() - started)
+
+    if not meta.get("ok"):
+        return None, None, ("That bill could not be read just now",
+                            "The reading service did not answer. Nothing was stored. Paste "
+                            "the lines instead, or try again in a moment.",
+                            str(meta.get("error"))[:160]), \
+            agentsui.advance(steps, "Reader", "fail", "Did not answer")
+    if not lines:
+        return None, None, ("No charges could be read from that bill",
+                            "Every line of an itemised bill carries a code, a quantity and "
+                            "an amount. None were found — this may be a summary rather than "
+                            "an itemised statement. Ask the hospital for the itemised "
+                            "version.", None), \
+            agentsui.advance(steps, "Reader", "fail", "No charges found")
+
+    read = {"took": spent, "attempts": meta.get("attempts", 1),
+            "reconciled": meta.get("reconciled"), "provider": meta.get("provider"),
+            "hospital": meta.get("hospital")}
+    st.session_state["bill_read"] = {"sig": sig, "lines": lines, "read": read}
+    return lines, read, None, agentsui.advance(steps, "Reader", "done", f"Read in {spent}")
+
+
+def unreadable_as_itemised(lines):
+    """Why these lines cannot be checked, or None when they can.
+
+    A statement with no billing codes cannot be checked against anything. Itemized
+    rejected these before the Checker ever saw them, which is why a latent defect in its
+    duplicate rule never surfaced there: two lines with an empty code match each other and
+    are reported as the same code billed twice. Guarding at the boundary fixes the
+    behaviour and leaves checker.py byte-identical to the module that produced the
+    Assignment 4 figures.
+    """
+    if not lines:
+        return ("No charges found", "Nothing in what you pasted looks like a charge. Put "
+                "one charge on each line: a date, a code, a description and an amount.",
+                None)
+    if not any((l.get("code") or "").strip() for l in lines):
+        return ("No billing codes found", "Every line of an itemised bill carries a "
+                "procedure code, like 74177 or J1885. None were found here — this may be a "
+                "summary statement rather than an itemised one. Ask the hospital for the "
+                "itemised version; you cannot check what you cannot see.", None)
+    return None
+
+
+def check_bill_run(form, key, records, slot):
+    """Hand the bill along the relay, showing each agent as it works. Returns the run.
+
+    Everything is worked out before anything is drawn, so the relay above the button is
+    the one thing moving while the agents work, and the findings arrive together after.
+    """
+    con = vault()
+    import billchecks
+    import checker
+    import crosscheck
+    import medicare
+    import rights
+
+    def show(steps, now):
+        slot.markdown(agentsui.relay(steps, now), unsafe_allow_html=True)
+
+    steps = [agentsui.step(n) for n in BILL_RELAY]
+    finished = {}
+
+    def stop(steps, problem, lines=None, read=None):
+        steps = [agentsui.step(s["name"], "skip" if s["state"] == "wait" else s["state"],
+                               s["note"] if s["state"] != "wait" else "Stopped")
+                 for s in steps]
+        show(steps, problem[0])
+        return {"key": key, "steps": steps, "now": problem[0], "problem": problem,
+                "lines": lines, "read": read}
+
+    # ---- the Reader, unless the patient typed the lines themselves
+    if form["upload"] is None:
+        steps = agentsui.advance(steps, "Reader", "skip", "You pasted it")
+        lines, read = paste.lines(form["pasted"]), None
+    else:
+        lines, read, problem, steps = read_bill_upload(form["upload"], steps, show)
+        if problem:
+            return stop(steps, problem)
+        finished["Reader"] = time.perf_counter()
+
+    problem = unreadable_as_itemised(lines)
+    if problem:
+        # What was read stays on screen: a Reader that missed the codes on an itemised
+        # bill looks exactly like a summary statement, and only the lines show which.
+        return stop(steps, problem, lines, read)
+
+    # ---- the Checker: every line against Medicare, and against the hospital's own file
+    hospital = form["hospital_name"]
+    steps = agentsui.advance(steps, "Checker", "work", "Pricing…")
+    show(steps, f"Checker · pricing {len(lines)} line(s) against the national Medicare "
+                f"allowance" + (f" and {hospital}'s published prices" if hospital else ""))
+    started = time.perf_counter()
+    bench = medicare.lookup_many([l.get("code") for l in lines])
+    priced = None
+    if hospital:
+        # The table is keyed on a lowercased name; the letter must not be addressed to it.
+        priced = checker.check_bill(
+            {"hospital_name": hospital,
+             "line_items": [{"code": l.get("code") or "", "description": l["description"],
+                             "units": l.get("units") or 1, "charged": l["charged"]}
+                            for l in lines]},
+            price_table())
+    checker_took = agentsui.took(time.perf_counter() - started)
+    flagged = (priced.get("flagged_count") or 0) if priced else 0
+    steps = agentsui.advance(steps, "Checker", "done",
+                             f"{flagged} flagged · {checker_took}" if priced
+                             else f"Priced in {checker_took}")
+    finished["Checker"] = time.perf_counter()
+
+    # ---- the checks that are not an agent's: the law, the bill's own face, your records
+    bill_total = round(sum(float(l.get("charged") or 0) for l in lines), 2)
+    protections = rights.evaluate(lines, bill_total, form["ctx"])
+    face = [f for _, f in billchecks.run(lines)]
+    checked, summary = crosscheck.check_bill(lines, records)
+
+    # ---- the Advocate, when there is something to put in a letter
+    letter, letter_took = None, None
+    if flagged:
+        import dispute
+        steps = agentsui.advance(steps, "Advocate", "work", "Writing…")
+        show(steps, "Advocate · ranking the flagged lines by the money at stake and "
+                    "writing the letter")
+        started = time.perf_counter()
+        letter = dispute.letter(
+            priced, patient_name=db.get_profile(con, my_id()).get("full_name"),
+            rights_findings=protections,
+            record_gaps=[c for c in checked if c["verdict"] in ("NO_RECORD", "DATE_NO_MATCH")])
+        letter_took = agentsui.took(time.perf_counter() - started)
+        steps = agentsui.advance(steps, "Advocate", "done", f"Letter · {letter_took}")
+        finished["Advocate"] = time.perf_counter()
+    else:
+        steps = agentsui.advance(steps, "Advocate", "skip",
+                                 "Nothing flagged" if priced else "Needs the hospital")
+
+    # Agents that finished faster than a frame could show them get to show their work
+    # once in the final frame, in the order they did it. One that was visibly seen
+    # finishing - a Reader that took four seconds - is not made to do it twice.
+    end = time.perf_counter()
+    steps = agentsui.finale(steps, {n for n, t in finished.items() if end - t < SEEN_SECONDS})
+    now = (f"Done. {len(lines)} line(s) checked against Medicare and your records"
+           + (f"; {flagged} flagged against {hospital}'s published prices" if priced else
+              ". Choose the hospital above to compare against its own published prices")
+           + ("; the letter is below." if letter else "."))
+    show(steps, now)
+    return {"key": key, "steps": steps, "now": now, "problem": None, "lines": lines,
+            "read": read, "protections": protections,
+            "still_open": rights.unanswered(form["ctx"]), "face": face, "bench": bench,
+            "priced": priced, "checker_took": checker_took, "checked": checked,
+            "summary": summary, "letter": letter, "letter_took": letter_took}
+
+
+def screen_check():
+    """The reason this app and a bill checker belong to the same person."""
+    con = vault()
+    st.markdown(ui.section("Check a bill against your records"), unsafe_allow_html=True)
+    st.caption("A price check asks whether a charge was the right amount. This asks "
+               "something a price list cannot: does your own paperwork show it happened?")
+
+    records = db.list_records(con, limit=2000, owner_id=my_id())
+    if not records:
+        st.markdown(ui.empty("File a few records first.<br>"
+                             "With an empty vault there is nothing to check a bill against."),
+                    unsafe_allow_html=True)
+        return
+
+    st.info(f"Checking against **{len(records)} record(s)** you have filed.")
+    form = bill_form()
+    ready = bool(form["pasted"].strip()) or form["upload"] is not None
+
+    # The relay sits directly above the button, so the agents are on screen - waiting,
+    # then working - in the one place somebody who has just pressed it is looking.
+    slot = st.empty()
+    clicked = st.button("Check it", type="primary", use_container_width=True)
+
+    # The findings used to exist only on the run in which the button was pressed. Asking
+    # a question underneath them, or downloading the letter, is another run - and it wiped
+    # the screen, so the question box under a checked bill could never answer anything.
+    # The finished run is kept now, keyed on everything it was worked out from.
+    key = bill_key(form, records)
+    run = st.session_state.get("bill_run")
+    if clicked and ready:
+        run = check_bill_run(form, key, records, slot)
+        st.session_state["bill_run"] = run
+    elif run and run["key"] == key:
+        slot.markdown(agentsui.relay(run["steps"], run["now"]), unsafe_allow_html=True)
+    else:
+        slot.markdown(agentsui.relay(idle_relay(form), RELAY_INTRO), unsafe_allow_html=True)
+        return
+
+    if run["problem"]:
+        if run.get("read"):
+            render_bill_read(run["read"], run["lines"])
+        title, body, detail = run["problem"]
+        st.error(f"**{title}**\n\n{body}")
+        if detail:
+            st.caption(f"For the maintainer: {detail}")
+        return
+    render_bill(run)
