@@ -51,16 +51,24 @@ def _key():
         raise GroqError("GROQ_API_KEY is not set (env var or .env at the project root)")
     return k
 
-def _post(payload):
+MIN_CALL_SECONDS = 2.0      # see gemini.py: a call is not started that can only time out
+
+
+def _post(payload, timeout=None):
     req = urllib.request.Request(
         BASE, data=json.dumps(payload).encode(),
         headers={'Content-Type': 'application/json', 'User-Agent': UA,
                  'Accept': 'application/json',
                  'Authorization': f'Bearer {_key()}'}, method='POST')
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+    with urllib.request.urlopen(req, timeout=timeout or TIMEOUT) as r:
         return json.loads(r.read())
 
-def _one(prompt, schema, temperature, model):
+
+def _out_of_time(attempts, budget):
+    return {'ok': False, 'timed_out': True, 'attempts': attempts,
+            'error': f'deadline reached ({budget:.0f}s budget)'}
+
+def _one(prompt, schema, temperature, model, stop_at=None, budget=None):
     body = {'model': model, 'temperature': temperature,
             'messages': [{'role': 'user', 'content': prompt}]}
     if schema:
@@ -68,8 +76,11 @@ def _one(prompt, schema, temperature, model):
 
     last = None
     for attempt in range(1, ATTEMPTS + 1):
+        left = None if stop_at is None else stop_at - time.time()
+        if left is not None and left < MIN_CALL_SECONDS:
+            return _out_of_time(attempt - 1, budget or 0)
         try:
-            raw = _post(body)
+            raw = _post(body, timeout=min(TIMEOUT, left) if left else None)
             choice = (raw.get('choices') or [{}])[0]
             text = ((choice.get('message') or {}).get('content')) or ''
             u = raw.get('usage') or {}
@@ -97,19 +108,29 @@ def _one(prompt, schema, temperature, model):
             last = f'{type(ex).__name__}: {ex}'
             if attempt == ATTEMPTS:
                 return {'ok': False, 'error': last, 'attempts': attempt}
-        time.sleep(BACKOFF * (2 ** (attempt - 1)))
+        pause = BACKOFF * (2 ** (attempt - 1))
+        if stop_at is not None and stop_at - time.time() - pause < MIN_CALL_SECONDS:
+            return {**_out_of_time(attempt, budget or 0), 'error': f'{last} · then out of time'}
+        time.sleep(pause)
     return {'ok': False, 'error': last or 'exhausted retries', 'attempts': ATTEMPTS}
 
-def generate(prompt, schema=None, temperature=0.0, model=None):
-    """Calls the pool in order, retiring any model that reports a daily quota failure."""
+def generate(prompt, schema=None, temperature=0.0, model=None, deadline=None):
+    """Calls the pool in order, retiring any model that reports a daily quota failure.
+
+    `deadline` is the caller's whole budget in seconds; no request outlasts it.
+    """
     global _exhausted
+    stop_at = None if deadline is None else time.time() + deadline
     if model:
-        return _one(prompt, schema, temperature, model)
+        return _one(prompt, schema, temperature, model, stop_at, deadline)
     last = {'ok': False, 'error': 'no models available', 'attempts': 0}
     for m in POOL:
         if pool_state.is_retired(_exhausted, m):
             continue
-        r = _one(prompt, schema, temperature, m)
+        if stop_at is not None and stop_at - time.time() < MIN_CALL_SECONDS:
+            return {**last, 'timed_out': True, 'model': None,
+                    'error': f"gave up after {deadline:.0f}s · last: {last.get('error')}"}
+        r = _one(prompt, schema, temperature, m, stop_at, deadline)
         if r['ok']:
             r['model'] = m
             return r

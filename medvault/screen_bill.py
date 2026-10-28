@@ -11,6 +11,7 @@ import streamlit as st
 import agentsui
 import db
 import paste
+import runtime
 import ui
 from bill_render import render_bill, render_bill_read
 from session import my_id, reader_ready, vault
@@ -170,8 +171,13 @@ def read_bill_upload(upload, steps, show):
     if not text:
         show(steps, "Reader · looking at the page, then checking the lines add up to its "
                     "total")
-    lines, meta = (read_bill_verified(text=text) if text
-                   else read_bill_verified(image=(upload.type or "image/jpeg", data)))
+    with runtime.span("Reader", trace=vault()) as span:
+        lines, meta = (read_bill_verified(text=text, deadline=span.left()) if text
+                       else read_bill_verified(image=(upload.type or "image/jpeg", data),
+                                               deadline=span.left()))
+        span.saw(meta)
+        if meta.get("ok") and not lines:
+            span.fail("no charges")
     spent = agentsui.took(time.perf_counter() - started)
 
     if not meta.get("ok"):
@@ -220,20 +226,17 @@ def unreadable_as_itemised(lines):
 def check_bill_run(form, key, records, slot):
     """Hand the bill along the relay, showing each agent as it works. Returns the run.
 
-    Everything is worked out before anything is drawn, so the relay above the button is
-    the one thing moving while the agents work, and the findings arrive together after.
+    The Reader runs here, because it needs the upload and this session's cache of what it
+    read. Everything after it is pipeline.check_lines, which knows nothing about screens:
+    this function only turns its events into the relay above the button.
     """
     con = vault()
-    import billchecks
-    import checker
-    import crosscheck
-    import medicare
-    import rights
+    import pipeline
 
     def show(steps, now):
         slot.markdown(agentsui.relay(steps, now), unsafe_allow_html=True)
 
-    steps = [agentsui.step(n) for n in BILL_RELAY]
+    state = {"steps": [agentsui.step(n) for n in BILL_RELAY]}
     finished = {}
 
     def stop(steps, problem, lines=None, read=None):
@@ -246,83 +249,74 @@ def check_bill_run(form, key, records, slot):
 
     # ---- the Reader, unless the patient typed the lines themselves
     if form["upload"] is None:
-        steps = agentsui.advance(steps, "Reader", "skip", "You pasted it")
+        state["steps"] = agentsui.advance(state["steps"], "Reader", "skip", "You pasted it")
         lines, read = paste.lines(form["pasted"]), None
     else:
-        lines, read, problem, steps = read_bill_upload(form["upload"], steps, show)
+        lines, read, problem, state["steps"] = read_bill_upload(form["upload"],
+                                                                state["steps"], show)
         if problem:
-            return stop(steps, problem)
+            return stop(state["steps"], problem)
         finished["Reader"] = time.perf_counter()
 
     problem = unreadable_as_itemised(lines)
     if problem:
         # What was read stays on screen: a Reader that missed the codes on an itemised
         # bill looks exactly like a summary statement, and only the lines show which.
-        return stop(steps, problem, lines, read)
+        return stop(state["steps"], problem, lines, read)
 
-    # ---- the Checker: every line against Medicare, and against the hospital's own file
     hospital = form["hospital_name"]
-    steps = agentsui.advance(steps, "Checker", "work", "Pricing…")
-    show(steps, f"Checker · pricing {len(lines)} line(s) against the national Medicare "
-                f"allowance" + (f" and {hospital}'s published prices" if hospital else ""))
-    started = time.perf_counter()
-    bench = medicare.lookup_many([l.get("code") for l in lines])
-    priced = None
-    if hospital:
-        # The table is keyed on a lowercased name; the letter must not be addressed to it.
-        priced = checker.check_bill(
-            {"hospital_name": hospital,
-             "line_items": [{"code": l.get("code") or "", "description": l["description"],
-                             "units": l.get("units") or 1, "charged": l["charged"]}
-                            for l in lines]},
-            price_table())
-    checker_took = agentsui.took(time.perf_counter() - started)
-    flagged = (priced.get("flagged_count") or 0) if priced else 0
-    steps = agentsui.advance(steps, "Checker", "done",
-                             f"{flagged} flagged · {checker_took}" if priced
-                             else f"Priced in {checker_took}")
-    finished["Checker"] = time.perf_counter()
 
-    # ---- the checks that are not an agent's: the law, the bill's own face, your records
-    bill_total = round(sum(float(l.get("charged") or 0) for l in lines), 2)
-    protections = rights.evaluate(lines, bill_total, form["ctx"])
-    face = [f for _, f in billchecks.run(lines)]
-    checked, summary = crosscheck.check_bill(lines, records)
+    def on_step(e):
+        """pipeline.check_lines' events, drawn as the relay."""
+        name, kind = e["agent"], e["state"]
+        if kind == "work" and name == "Checker":
+            note, now = "Pricing…", (f"Checker · pricing {e['lines']} line(s) against the "
+                                     f"national Medicare allowance"
+                                     + (f" and {hospital}'s published prices"
+                                        if hospital else ""))
+        elif kind == "work":
+            note, now = "Writing…", ("Advocate · ranking the flagged lines by the money at "
+                                     "stake and writing the letter")
+        elif kind == "done" and name == "Checker":
+            took = agentsui.took(e["seconds"])
+            note = f"{e['flagged']} flagged · {took}" if e["priced"] else f"Priced in {took}"
+            now = None
+        elif kind == "done":
+            note, now = f"Letter · {agentsui.took(e['seconds'])}", None
+        else:
+            note, now = ("Nothing flagged" if e.get("priced") else "Needs the hospital"), None
+        state["steps"] = agentsui.advance(state["steps"], name, kind, note)
+        if kind == "done":
+            finished[name] = time.perf_counter()
+        if now:
+            show(state["steps"], now)
 
-    # ---- the Advocate, when there is something to put in a letter
-    letter, letter_took = None, None
-    if flagged:
-        import dispute
-        steps = agentsui.advance(steps, "Advocate", "work", "Writing…")
-        show(steps, "Advocate · ranking the flagged lines by the money at stake and "
-                    "writing the letter")
-        started = time.perf_counter()
-        letter = dispute.letter(
-            priced, patient_name=db.get_profile(con, my_id()).get("full_name"),
-            rights_findings=protections,
-            record_gaps=[c for c in checked if c["verdict"] in ("NO_RECORD", "DATE_NO_MATCH")])
-        letter_took = agentsui.took(time.perf_counter() - started)
-        steps = agentsui.advance(steps, "Advocate", "done", f"Letter · {letter_took}")
-        finished["Advocate"] = time.perf_counter()
-    else:
-        steps = agentsui.advance(steps, "Advocate", "skip",
-                                 "Nothing flagged" if priced else "Needs the hospital")
+    result = pipeline.check_lines(
+        lines, hospital=hospital, ctx=form["ctx"], records=records,
+        patient_name=db.get_profile(con, my_id()).get("full_name"),
+        price_table=price_table(), on_step=on_step, trace=con)
 
     # Agents that finished faster than a frame could show them get to show their work
     # once in the final frame, in the order they did it. One that was visibly seen
     # finishing - a Reader that took four seconds - is not made to do it twice.
     end = time.perf_counter()
-    steps = agentsui.finale(steps, {n for n, t in finished.items() if end - t < SEEN_SECONDS})
+    steps = agentsui.finale(state["steps"],
+                            {n for n, t in finished.items() if end - t < SEEN_SECONDS})
+    priced, letter = result["priced"], result["letter"]
     now = (f"Done. {len(lines)} line(s) checked against Medicare and your records"
-           + (f"; {flagged} flagged against {hospital}'s published prices" if priced else
+           + (f"; {result['flagged']} flagged against {hospital}'s published prices"
+              if priced else
               ". Choose the hospital above to compare against its own published prices")
            + ("; the letter is below." if letter else "."))
     show(steps, now)
     return {"key": key, "steps": steps, "now": now, "problem": None, "lines": lines,
-            "read": read, "protections": protections,
-            "still_open": rights.unanswered(form["ctx"]), "face": face, "bench": bench,
-            "priced": priced, "checker_took": checker_took, "checked": checked,
-            "summary": summary, "letter": letter, "letter_took": letter_took}
+            "read": read, "protections": result["protections"],
+            "still_open": result["still_open"], "face": result["face"],
+            "bench": result["bench"], "priced": priced,
+            "checker_took": agentsui.took(result["checker_seconds"]),
+            "checked": result["checked"], "summary": result["summary"], "letter": letter,
+            "letter_took": (agentsui.took(result["letter_seconds"])
+                            if result["letter_seconds"] is not None else None)}
 
 
 def screen_check():

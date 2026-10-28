@@ -7,6 +7,7 @@ import streamlit as st
 import accounts
 import agentsui
 import db
+import runtime
 import ui
 from schema import KIND_ORDER, kind_label
 from session import clinician_view, me, reader_ready, vault, visible_owners, when
@@ -46,15 +47,18 @@ def screen_add():
         reading("Opening it…")
         started = time.perf_counter()
         text, note = (None, None)
-        if is_pdf:
-            import io as _io
-            text, note = pdf_text(_io.BytesIO(data))
-        if is_pdf and text:
-            reading(f"Read the text layer · {note}")
-            rec, meta = read_document(text=text)
-        else:
-            reading("Looking at the page — a photograph takes a few seconds")
-            rec, meta = read_document(image=(up.type or "image/jpeg", data))
+        with runtime.span("Reader", trace=con) as span:
+            if is_pdf:
+                import io as _io
+                text, note = pdf_text(_io.BytesIO(data))
+            if is_pdf and text:
+                reading(f"Read the text layer · {note}")
+                rec, meta = read_document(text=text, deadline=span.left())
+            else:
+                reading("Looking at the page — a photograph takes a few seconds")
+                rec, meta = read_document(image=(up.type or "image/jpeg", data),
+                                          deadline=span.left())
+            span.saw(meta)
         slot.empty()
         st.session_state["draft_took"] = agentsui.took(time.perf_counter() - started)
 

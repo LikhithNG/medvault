@@ -8,6 +8,7 @@ import agentsui
 import ask
 import careteam
 import liaison
+import runtime
 import ui
 from session import me, my_id, reader_ready, vault
 
@@ -38,7 +39,9 @@ def _render_turn(turn):
     srcs = ""
     if a.get("sources"):
         items = " · ".join(
-            f"<b>{ui.safe(r.get('title'))}</b> ({ui.safe(r.get('service_date') or 'undated')})"
+            f"<b>{ui.safe(r.get('title'))}</b>"
+            + ("" if r.get("kind") == "card"
+               else f" ({ui.safe(r.get('service_date') or 'undated')})")
             for r in a["sources"].values())
         srcs = f"<div class='srcs'>Read out of: {items}</div>"
     # Who answered, and how long it took - the Companion's mark plays once as the answer
@@ -119,7 +122,8 @@ def screen_ask():
                                        "should not answer at all"),
                       unsafe_allow_html=True)
         started = time.perf_counter()
-        reply = ask.answer(con, my_id(), question)
+        with runtime.span("Companion", trace=con) as span:
+            reply = span.saw(ask.answer(con, my_id(), question, deadline=span.left()))
         st.session_state["ask_log"].append(
             {"q": question, "a": reply,
              "took": agentsui.took(time.perf_counter() - started)})

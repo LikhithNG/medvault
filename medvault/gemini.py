@@ -71,31 +71,57 @@ def _key():
         raise GeminiError("GEMINI_API_KEY is not set (env var or .env at the project root)")
     return k
 
-def _post(url, payload):
+# A call is not started with less than this left of its deadline: it would only time out.
+MIN_CALL_SECONDS = 2.0
+
+
+def _post(url, payload, timeout=None):
     req = urllib.request.Request(
         url, data=json.dumps(payload).encode(),
         headers={'Content-Type': 'application/json'}, method='POST')
-    with urllib.request.urlopen(req, timeout=TIMEOUT) as r:
+    with urllib.request.urlopen(req, timeout=timeout or TIMEOUT) as r:
         return json.loads(r.read())
 
+
+def _remaining(stop_at):
+    return None if stop_at is None else stop_at - time.time()
+
+
+def _out_of_time(attempts, budget):
+    return {'ok': False, 'timed_out': True, 'attempts': attempts,
+            'error': f'deadline reached ({budget:.0f}s budget)'}
+
 def generate(prompt, schema=None, temperature=0.0, model=None, image=None,
-             deadline=None):
-    global _exhausted
+             deadline=None, request_timeout=None):
     """Calls the pool in order, skipping models already known to be out of daily quota.
-    Returns the first success, or the last failure if every model is exhausted."""
+    Returns the first success, or the last failure if every model is exhausted.
+
+    `request_timeout` caps any one request, so a model that hangs is left for the next
+    one in the pool rather than waited on for the whole budget.
+
+    `deadline` is the caller's whole budget in seconds, and it is a budget for the call,
+    not a hint: no HTTP request is given longer than what is left of it. It used to cap
+    only the loop between models, while each request kept its own 45-second timeout and
+    up to four retries - so a question asked of the Companion could wait minutes, and one
+    took 46 seconds to answer.
+    """
+    global _exhausted
+    budget = DEADLINE if deadline is None else deadline
+    stop_at = time.time() + budget
     if model:
-        return _generate_one(prompt, schema, temperature, model, image)
-    stop_at = time.time() + (DEADLINE if deadline is None else deadline)
+        return _generate_one(prompt, schema, temperature, model, image, stop_at=stop_at,
+                             budget=budget, request_timeout=request_timeout)
     last = {'ok': False, 'error': 'no models available', 'attempts': 0}
     for m in POOL:
         if pool_state.is_retired(_exhausted, m):
             continue
-        if time.time() >= stop_at:
+        if _remaining(stop_at) < MIN_CALL_SECONDS:
             last = {**last, 'timed_out': True,
-                    'error': f"gave up after {DEADLINE}s · last: {last.get('error')}"}
+                    'error': f"gave up after {budget:.0f}s · last: {last.get('error')}"}
             break
         r = _generate_one(prompt, schema, temperature, m, image,
-                          attempts=POOL_ATTEMPTS)
+                          attempts=POOL_ATTEMPTS, stop_at=stop_at, budget=budget,
+                          request_timeout=request_timeout)
         if r['ok']:
             r['model'] = m
             return r
@@ -111,12 +137,15 @@ def generate(prompt, schema=None, temperature=0.0, model=None, image=None,
         # up after one model while five others were available and working.
         if any(code in err for code in ('HTTP 503', 'HTTP 502', 'HTTP 500', 'UNAVAILABLE')):
             continue                   # overloaded, not broken - the next model may serve
+        if r.get('timed_out'):
+            break                      # the budget is spent; another model cannot help
         return r                       # a malformed request is not fixed by another model
     last['model'] = None
     last['pool_exhausted'] = True
     return last
 
-def _generate_one(prompt, schema, temperature, model, image=None, attempts=None):
+def _generate_one(prompt, schema, temperature, model, image=None, attempts=None,
+                  stop_at=None, budget=None, request_timeout=None):
     """One model, with bounded retries and exponential backoff.
 
     `image` is an optional (mime_type, base64_data) pair. A photograph of a bill has no
@@ -138,8 +167,12 @@ def _generate_one(prompt, schema, temperature, model, image=None, attempts=None)
     attempts = attempts or ATTEMPTS
     last = None
     for attempt in range(1, attempts + 1):
+        left = _remaining(stop_at)
+        if left is not None and left < MIN_CALL_SECONDS:
+            return _out_of_time(attempt - 1, budget or 0)
         try:
-            raw = _post(url, payload)
+            raw = _post(url, payload,
+                        timeout=min(t for t in (TIMEOUT, left, request_timeout) if t))
             cand = (raw.get('candidates') or [{}])[0]
             parts = (cand.get('content') or {}).get('parts') or [{}]
             text = parts[0].get('text', '')
@@ -169,7 +202,11 @@ def _generate_one(prompt, schema, temperature, model, image=None, attempts=None)
             last = f'{type(ex).__name__}: {ex}'
             if attempt == attempts:
                 return {'ok': False, 'error': last, 'attempts': attempt}
-        time.sleep(BACKOFF * (2 ** (attempt - 1)))
+        pause = BACKOFF * (2 ** (attempt - 1))
+        left = _remaining(stop_at)
+        if left is not None and left - pause < MIN_CALL_SECONDS:
+            return {**_out_of_time(attempt, budget or 0), 'error': f'{last} · then out of time'}
+        time.sleep(pause)
     return {'ok': False, 'error': last or 'exhausted retries', 'attempts': attempts}
 
 def list_models():

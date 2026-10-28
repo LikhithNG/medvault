@@ -174,8 +174,26 @@ if st.query_params.get("diag"):
                "Every entry point below is resolved by `tests/test_agents.py`, so this "
                "cannot drift from the code without the suite failing.")
     import agents as agent_registry
+    import runtime
     for line in agent_registry.roster():
         st.text(line)
+
+    # How the agents have actually behaved, from runtime.span's trace. Timing and outcome
+    # only - the trace holds nothing about whose run it was or what it read.
+    st.markdown("#### Agent runs")
+    report = runtime.summary(con)
+    if not report:
+        st.caption("No agent runs recorded yet on this server.")
+    for row in report:
+        st.text(f"{row['agent']:<10} {row['runs']:>5} runs · {row['ok_rate']:.0%} ok · "
+                f"p50 {row['p50']:.2f}s · p95 {row['p95']:.2f}s of {row['budget_s']}s · "
+                f"{row['over_budget']} over budget"
+                + (f" · last failure: {row['last_failure']}" if row['last_failure'] else "")
+                + (f" · {', '.join(row['models'])}" if row['models'] else ""))
+
+    st.markdown("#### What leaves this server")
+    for agent in agent_registry.AGENTS:
+        st.text(f"{agent['name']:<10} " + ("; ".join(agent["egress"]) or "nothing"))
 
     st.markdown("#### Server diagnostics")
     for note in CRED_TRACE:

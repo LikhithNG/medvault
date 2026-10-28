@@ -42,6 +42,11 @@ AGENTS = (
         "input": "an image or a text layer",
         "output": "line_items[] · kind, date, provider, title, summary, medications[]",
         "generative": True,
+        "budget_s": 90,
+        "request_s": 45,
+        "egress": ("Google Gemini: the page image, or its text layer",
+                   "Groq: a bill's text layer, when a Groq key is set"),
+        "traced": True,
     },
     {
         "name": "Checker",
@@ -56,6 +61,9 @@ AGENTS = (
         "input": "line_items[] + the reference table",
         "output": "verdict · amount_over · basis · source_url · collected_date",
         "generative": False,
+        "budget_s": 20,
+        "egress": ("CMS fee schedule API: CPT codes only, nothing about the patient",),
+        "traced": True,
     },
     {
         "name": "Advocate",
@@ -71,6 +79,9 @@ AGENTS = (
         "input": "a reviewed bill + rights findings + record gaps",
         "output": "a sendable letter, ranked, every figure sourced",
         "generative": False,
+        "budget_s": 2,
+        "egress": (),
+        "traced": True,
     },
     {
         "name": "Companion",
@@ -85,6 +96,10 @@ AGENTS = (
         "input": "a question + that patient's own records",
         "output": "kind · answer · the records it cites",
         "generative": True,
+        "budget_s": 30,
+        "request_s": 12,
+        "egress": ("Google Gemini: the question and the text of the patient's records",),
+        "traced": True,
     },
 )
 
@@ -103,6 +118,9 @@ AGENTS = AGENTS + (
         "input": "the patient's active medicines + the time their day starts",
         "output": "doses[] · as_needed[] · unreadable[] · a .ics calendar",
         "generative": False,
+        "budget_s": 1,
+        "egress": (),
+        "traced": False,
     },
     {
         "name": "Liaison",
@@ -119,8 +137,27 @@ AGENTS = AGENTS + (
         "input": "one patient's records + their care team",
         "output": "items[] each naming its source record · a message the patient sends",
         "generative": False,
+        "budget_s": 1,
+        "egress": (),
+        "traced": False,
     },
 )
+
+# What each field above is for, now that the registry is read at run time and not only
+# by the diagnostics screen:
+#
+#   budget_s  the most time the agent may take, end to end. Model calls are given what is
+#             left of it (gemini.generate's deadline), so a slow provider produces an honest
+#             failure inside the budget instead of a spinner for minutes.
+#   request_s for an agent that calls a model, the longest any single request may take
+#             before the pool moves on to the next model. Measured: the Companion's first
+#             model hung for most of 27 seconds while the next one answered in under one,
+#             so a whole-call budget alone still left a patient waiting.
+#   egress    every third party the agent sends data to, and what. Empty means nothing
+#             leaves the server. This is the list the privacy copy has to agree with.
+#   traced    whether runtime.span records the run. The agents a person starts (reading,
+#             pricing, writing, answering) are; the two that recompute on every redraw are
+#             not, or every click would write a row.
 
 BY_NAME = {a["name"]: a for a in AGENTS}
 MADISON_ROLES = tuple(a["madison"] for a in AGENTS)

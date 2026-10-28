@@ -13,6 +13,8 @@ import json, os, pathlib, sqlite3, time
 DEFAULT_PATH = pathlib.Path(os.environ.get(
     "MEDVAULT_DB", pathlib.Path(__file__).resolve().parent.parent / "vault.db"))
 
+# agent_runs is how each agent run went - see runtime.py. Deliberately nothing about whose
+# run it was or what it read: agent, timing, outcome, model, attempts, kind of failure.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS care_team (
     patient_id   INTEGER NOT NULL,
@@ -50,6 +52,18 @@ CREATE TABLE IF NOT EXISTS profile (
     value      TEXT,
     PRIMARY KEY (account_id, key)
 );
+CREATE TABLE IF NOT EXISTS agent_runs (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    agent       TEXT    NOT NULL,
+    started_at  REAL    NOT NULL,
+    seconds     REAL    NOT NULL,
+    ok          INTEGER NOT NULL,
+    model       TEXT,
+    attempts    INTEGER,
+    error_kind  TEXT,
+    over_budget INTEGER NOT NULL DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS idx_runs_agent ON agent_runs(agent, started_at);
 CREATE INDEX IF NOT EXISTS idx_records_date ON records(service_date);
 CREATE INDEX IF NOT EXISTS idx_meds_record  ON medications(record_id);
 """
