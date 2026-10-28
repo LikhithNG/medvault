@@ -14,6 +14,12 @@ DEFAULT_PATH = pathlib.Path(os.environ.get(
     "MEDVAULT_DB", pathlib.Path(__file__).resolve().parent.parent / "vault.db"))
 
 SCHEMA = """
+CREATE TABLE IF NOT EXISTS care_team (
+    patient_id   INTEGER NOT NULL,
+    clinician_id INTEGER NOT NULL,
+    added_at     REAL    NOT NULL,
+    PRIMARY KEY (patient_id, clinician_id)
+);
 CREATE TABLE IF NOT EXISTS records (
     id           INTEGER PRIMARY KEY AUTOINCREMENT,
     kind         TEXT    NOT NULL,
@@ -144,7 +150,7 @@ def add_record(con, *, kind, title, service_date=None, provider=None, summary=No
     return cur.lastrowid
 
 
-def list_records(con, kind=None, query=None, limit=500, owner_id=None):
+def list_records(con, kind=None, query=None, limit=500, owner_id=None, owner_ids=None):
     """Newest first by the date on the document, falling back to when it was added.
 
     A record with no printed date must not vanish to the bottom of the timeline, which is
@@ -154,10 +160,20 @@ def list_records(con, kind=None, query=None, limit=500, owner_id=None):
            " added_at, read_by, provenance, verified_by, verified_at, verifier_note,"
            " LENGTH(file_bytes) AS file_size FROM records")
     where, args = [], []
-    # owner_id=None means "every record", which is what a clinician's review queue needs.
     # A patient screen must always pass their own id: without this filter every account saw
     # every other account's medical history.
-    if owner_id is not None:
+    #
+    # owner_ids is the clinician's path: the patients who put this clinician on their care
+    # team. An EMPTY list means no records, never all of them - a clinician nobody has
+    # chosen sees nothing. owner_id=None with no owner_ids still means "every record", and
+    # nothing a person signs in to reaches that any more; it used to be how a clinician's
+    # review queue saw every patient on the server.
+    if owner_ids is not None:
+        if not owner_ids:
+            return []
+        where.append(f"owner_id IN ({','.join('?' * len(owner_ids))})")
+        args += list(owner_ids)
+    elif owner_id is not None:
         where.append("owner_id = ?"); args.append(owner_id)
     if kind:
         where.append("kind = ?"); args.append(kind)
@@ -182,10 +198,15 @@ def delete_record(con, record_id):
     con.commit()
 
 
-def counts_by_kind(con, owner_id=None):
+def counts_by_kind(con, owner_id=None, owner_ids=None):
     sql = "SELECT kind, COUNT(*) AS n FROM records"
     args = []
-    if owner_id is not None:
+    if owner_ids is not None:
+        if not owner_ids:
+            return {}
+        sql += f" WHERE owner_id IN ({','.join('?' * len(owner_ids))})"
+        args += list(owner_ids)
+    elif owner_id is not None:
         sql += " WHERE owner_id = ?"; args.append(owner_id)
     return {r["kind"]: r["n"] for r in _rows(con.execute(sql + " GROUP BY kind", args))}
 
@@ -352,12 +373,23 @@ def unverify_record(con, record_id, note=None):
     con.commit()
 
 
-def pending_verification(con, limit=200):
-    """Self-filed records a clinician has not yet looked at, oldest first."""
-    return _rows(con.execute(
-        "SELECT id, kind, service_date, provider, title, summary, added_at, provenance,"
-        " LENGTH(file_bytes) AS file_size FROM records"
-        " WHERE provenance = 'SELF' ORDER BY added_at ASC LIMIT ?", (limit,)))
+def pending_verification(con, limit=200, owner_ids=None):
+    """Self-filed records a clinician has not yet looked at, oldest first.
+
+    owner_ids scopes it to the clinician's care team, and an empty team is an empty
+    queue. Unscoped, this used to list every self-filed record on the server to every
+    verified clinician - including patients who had never heard of them.
+    """
+    sql = ("SELECT id, owner_id, kind, service_date, provider, title, summary, added_at,"
+           " provenance, LENGTH(file_bytes) AS file_size FROM records"
+           " WHERE provenance = 'SELF'")
+    args = []
+    if owner_ids is not None:
+        if not owner_ids:
+            return []
+        sql += f" AND owner_id IN ({','.join('?' * len(owner_ids))})"
+        args += list(owner_ids)
+    return _rows(con.execute(sql + " ORDER BY added_at ASC LIMIT ?", (*args, limit)))
 
 
 def provenance_counts(con):

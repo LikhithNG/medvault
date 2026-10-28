@@ -68,8 +68,8 @@ machine — Gemini's free tier allows 20 requests per day *per model*, which is 
 
 **The honest limits.** The published-price table is **nine hospitals and 31 codes**,
 collected by hand on 2 October 2026; everything else falls back to the national Medicare
-benchmark, which is not a price cap. A clinician account can currently read every
-patient's records. The question box sends your records to a model to answer. **Read
+benchmark, which is not a price cap. A clinician sees only the patients who chose them,
+but nothing logs who looked. The question box sends your records to a model to answer. **Read
 [CAVEATS.md](CAVEATS.md) before relying on anything this says.**
 
 You photograph a prescription or a discharge summary once. MedVault reads it, files it, and
@@ -325,12 +325,27 @@ mapping as data, and `tests/test_agents.py` resolves every entry point in it, so
 | **Checker** | Research | `checker.check_bill` | **no** |
 | **Advocate** | Performance | `dispute.letter` | **no** |
 | **Companion** | Experience | `ask.answer` | yes — a model, inside the fence above |
+| **Scheduler** | Content | `schedule.plan` | **no** |
+| **Liaison** | Performance | `liaison.update` | **no** |
 
 **DOES NOT DO is a field, not a comment.** It was a column on the Assignment 2 board for
 the same reason: it is the half of an agent's description that stops it being asked to do
 the thing it must not. Two of those are enforced by tests that read the source — neither
 `checker.py` nor `dispute.py` may import a model client at all, which is a stronger
 guarantee than a promise in a docstring.
+
+**The Scheduler** turns a prescription's frequency into today's doses and a `.ics` file
+the phone rings from on its own — Streamlit cannot wake a phone, and a reminder that only
+works while a tab is open is not a reminder. It never schedules an *as-needed* medicine:
+the vault's own sample has ibuprofen "every 8 hours as needed", and a naive reminder turns
+that into an NSAID three times a day.
+
+**The Liaison** reports what a patient's records say is outstanding — a follow-up the
+discharge summary asked for whose date has passed, an allergy collision, a dose nobody can
+time — to the care team the patient chose. It does **not** decide anybody needs care:
+whether a symptom warrants a hospital is a clinical judgement, and a test scans every
+sentence it can produce for triage language. The Liaison and the Advocate share
+Performance, honestly: both carry findings out to a third party.
 
 **The fourth agent was not in the plan.** MedVault grew a records vault and a bot that
 answers questions about it. That is Madison's Experience role — the one role of the five

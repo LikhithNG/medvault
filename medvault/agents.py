@@ -11,6 +11,13 @@ resolves every module and entry point listed here, so renaming dispute.letter wi
 updating this file fails the suite rather than quietly making the architecture diagram
 wrong.
 
+Two more followed. The Scheduler takes Madison's **Content** role - the fifth and last
+unused - because it composes something out of the records: a day's plan and a calendar.
+The Liaison takes **Performance**, which it shares with the Advocate, and the sharing is
+honest rather than forced: both carry findings out to a third party - one to a billing
+office, one to a care team. Inventing a sixth role to keep every row unique would have
+been tidier and less true.
+
 A fourth agent exists that Assignment 2 did not plan for. MedVault grew a records vault
 and a bot that answers questions about it, which is Madison's **Experience** role — the
 one role of the five that the original design never used. It is listed here as what it is
@@ -78,6 +85,40 @@ AGENTS = (
         "input": "a question + that patient's own records",
         "output": "kind · answer · the records it cites",
         "generative": True,
+    },
+)
+
+AGENTS = AGENTS + (
+    {
+        "name": "Scheduler",
+        "madison": "Content",
+        "module": "schedule",
+        "entry": "plan",
+        "also": ("parse", "times_for", "calendar", "next_due", "course_end"),
+        "does": "Turn a prescription's frequency into today's doses and a calendar file "
+                "that rings from the patient's own phone.",
+        "does_not": ("schedule an as-needed medicine", "invent clinical timing",
+                     "guess a frequency it cannot read",
+                     "keep ringing after a course ends"),
+        "input": "the patient's active medicines + the time their day starts",
+        "output": "doses[] · as_needed[] · unreadable[] · a .ics calendar",
+        "generative": False,
+    },
+    {
+        "name": "Liaison",
+        "madison": "Performance",
+        "module": "liaison",
+        "entry": "update",
+        "also": ("follow_ups", "message"),
+        "does": "Collect what a patient's own records say is outstanding - an overdue "
+                "follow-up, an allergy collision, an untimeable dose - for the care team "
+                "the patient chose.",
+        "does_not": ("decide anybody needs care", "read a symptom or score a risk",
+                     "report to a clinician the patient did not choose",
+                     "send anything on the patient's behalf"),
+        "input": "one patient's records + their care team",
+        "output": "items[] each naming its source record · a message the patient sends",
+        "generative": False,
     },
 )
 

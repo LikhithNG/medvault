@@ -75,12 +75,7 @@ def test_system_variables_are_not_dragged_in():
     assert "HOME" not in declared()
 
 
-if __name__ == "__main__":
-    n = 0
-    for name, fn in sorted(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            fn(); print(f"  pass · {name}"); n += 1
-    print(f"{n} passed")
+
 
 
 def test_the_landing_page_says_where_the_records_actually_live():
@@ -105,3 +100,11 @@ def test_the_footer_can_be_called_the_old_way():
 
     assert landing.footer()
     assert landing.footer(durable=True) != landing.footer(durable=False)
+
+
+if __name__ == "__main__":
+    n = 0
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            fn(); print(f"  pass · {name}"); n += 1
+    print(f"{n} passed")

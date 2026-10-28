@@ -8,8 +8,8 @@ Read this before relying on anything MedVault tells you.
 it gives information and not advice (1); "no record found" is a question, not a finding
 (2); an unanswered rights question is unknown, never "no" (3); the rights checks cover
 four federal protections and no state law (4); a model reads documents and can misread
-them (5); a verified NPI confirms the number, never the person typing it (6); a clinician
-account can read every patient's records and there is no grant mechanism yet (7); the
+them (5); a verified NPI confirms the number, never the person typing it (6); a clinician sees only
+the patients who put them on their care team, but there is no log of who looked (7); the
 question box sends your records to a model and does not check drug interactions (8); two
 hospitals' enforcement counts are failed joins recorded as zeros (9); hosted, the storage
 is temporary and the way out is a file you download (10); and none of this is a medical
@@ -110,9 +110,20 @@ Records are stored in a SQLite file on whatever machine runs the app. Profiles a
 are scoped per account — a defect where every account shared one health card was found and
 fixed, and `tests/test_isolation.py` holds that line.
 
-**A clinician account can currently read every patient's records.** This is what makes the
-review queue work, and there is no mechanism yet for a patient to grant or revoke that
-access. If you deploy this for more than one real person, that is the first thing to fix.
+**A clinician sees only the patients who chose them.** A patient adds a clinician to their
+care team from the Card screen, by the email on that clinician's MedVault account, and
+only an account whose NPI was checked against the national registry can be added. Removing
+someone takes effect on their next screen.
+
+This used to be the largest hole in the project. Until 28 October every verified clinician
+could read every patient's records - the review queue and the Records tab both listed the
+whole server - while the Card screen was about to tell patients "nobody else can". The
+care team closes it for every clinician screen, not only the new one, and
+`tests/test_liaison.py` holds that an empty team means *no* records rather than all of
+them.
+
+What the care team does not do: confirm that the person signed in as a clinician is that
+clinician (see section 6), or log who looked at what. There is no audit trail of access.
 
 Deployed to a hosted service, the database lives on that server, not on your phone. It is
 not encrypted at rest.

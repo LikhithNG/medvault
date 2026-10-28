@@ -42,8 +42,26 @@ def test_the_fourth_agent_is_declared_rather_than_left_off():
     assert agents.BY_NAME["Companion"]["madison"] == "Experience"
 
 
-def test_no_two_agents_claim_the_same_madison_role():
-    assert len(set(agents.MADISON_ROLES)) == len(agents.AGENTS)
+def test_every_madison_role_is_used():
+    """Five roles: Intelligence, Content, Research, Experience, Performance. All five are
+    held by at least one agent."""
+    assert set(agents.MADISON_ROLES) == {"Intelligence", "Content", "Research",
+                                         "Experience", "Performance"}
+
+
+def test_a_shared_role_is_shared_for_a_stated_reason():
+    """This used to require every agent to hold a different role. The Liaison and the
+    Advocate both carry findings to a third party, so they share Performance - and a test
+    that forced a sixth, invented role would have been asserting tidiness, not truth."""
+    from collections import Counter
+    shared = {role for role, n in Counter(agents.MADISON_ROLES).items() if n > 1}
+    assert shared <= {"Performance"}, f"unexplained shared role: {shared}"
+
+
+def test_the_new_agents_are_deterministic():
+    """A reminder at 2 a.m. and a note to a doctor are not places for a model."""
+    assert agents.BY_NAME["Scheduler"]["generative"] is False
+    assert agents.BY_NAME["Liaison"]["generative"] is False
 
 
 def test_the_checker_and_the_advocate_are_not_generative():

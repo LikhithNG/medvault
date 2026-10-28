@@ -110,12 +110,7 @@ def test_an_old_vault_keeps_its_card_when_accounts_arrive():
     assert kept and kept["value"] == "Legacy Patient", "the existing card was dropped"
 
 
-if __name__ == "__main__":
-    n = 0
-    for name, fn in sorted(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            fn(); print(f"  pass · {name}"); n += 1
-    print(f"{n} passed")
+
 
 
 def test_an_export_holds_one_account_and_not_the_other():
@@ -193,3 +188,11 @@ def test_a_file_that_is_not_an_export_is_refused():
         except ValueError:
             continue
         raise AssertionError(f"accepted {junk}")
+
+
+if __name__ == "__main__":
+    n = 0
+    for name, fn in sorted(globals().items()):
+        if name.startswith("test_") and callable(fn):
+            fn(); print(f"  pass · {name}"); n += 1
+    print(f"{n} passed")

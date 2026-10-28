@@ -84,6 +84,8 @@ import landing                 # noqa: E402
 import ask                     # noqa: E402
 import npi                     # noqa: E402
 import paste                   # noqa: E402
+import liaison                # noqa: E402
+import careteam               # noqa: E402
 import schedule                # noqa: E402
 import store                   # noqa: E402
 import ui                      # noqa: E402
@@ -128,8 +130,20 @@ def _date(iso):
 
 
 def clinician_view():
-    """A clinician reviews across patients; a patient only ever sees their own."""
+    """A clinician reviews their care team's patients; a patient only ever sees their own."""
     return accounts.is_verified_clinician(st.session_state.get("account"))
+
+
+def visible_owners():
+    """Whose records this account may see. Always a list - never "everyone".
+
+    A patient sees their own. A clinician sees the patients who put them on their care
+    team, and nobody else: this used to be None for a clinician, which the storage layer
+    read as every record on the server.
+    """
+    if clinician_view():
+        return [p["id"] for p in careteam.patients(con, my_id())]
+    return [my_id()]
 
 
 def me():
@@ -394,13 +408,13 @@ def screen_records():
     st.markdown(ui.section("Everything you have filed"), unsafe_allow_html=True)
     q = st.text_input("Search", placeholder="tinnitus, amoxicillin, Lahey…",
                       label_visibility="collapsed")
-    counts = db.counts_by_kind(con, None if clinician_view() else my_id())
+    counts = db.counts_by_kind(con, owner_ids=visible_owners())
     options = ["all"] + [k for k in KIND_ORDER if counts.get(k)]
     kind = st.selectbox("Type", options, label_visibility="collapsed",
                         format_func=lambda k: ("Everything" if k == "all"
                                                else f"{kind_label(k)} ({counts.get(k,0)})"))
     rows = db.list_records(con, kind=None if kind == "all" else kind, query=q or None,
-                           owner_id=None if clinician_view() else my_id())
+                           owner_ids=visible_owners())
 
     if not rows:
         st.markdown(ui.empty("Nothing here yet." if not q else f"Nothing matches “{q}”."),
@@ -998,18 +1012,38 @@ def _render_turn(turn):
 
 def screen_ask():
     """A bot for the paperwork, with the checkable things checked before it is asked."""
-    findings = ask.brief(con, my_id())
-    st.markdown(ui.section(f"What your own records already show · {len(findings)}"),
+    # One list, the Liaison's. It is the Companion's checks plus overdue follow-ups and
+    # untimeable doses - showing both would put the same finding on screen twice, which
+    # is the mistake this project has made three times already.
+    findings = liaison.update(con, my_id())
+    st.markdown(ui.section(f"What your own records say is outstanding · {len(findings)}"),
                 unsafe_allow_html=True)
-    st.caption("These are worked out here, from your records, by arithmetic — no model is "
-               "involved and nothing leaves this server to produce them.")
+    st.caption("Worked out here, from your records, by arithmetic — no model is involved, "
+               "nothing leaves this server, and nothing here is a judgement about your "
+               "health. It is what your own paperwork says and has not been followed up.")
     if not findings:
-        st.markdown(ui.empty("Nothing to flag.<br>No duplicate medicines, no finished "
-                             "course still marked as current, nothing that collides with "
-                             "your recorded allergies."), unsafe_allow_html=True)
+        st.markdown(ui.empty("Nothing outstanding.<br>No overdue follow-up, no duplicate "
+                             "medicine, no finished course still marked current, nothing "
+                             "that collides with your recorded allergies."),
+                    unsafe_allow_html=True)
     for f in findings:
         st.markdown(f"<div class='hit {f['tone']}'><div class='h'>{f['title']}</div>"
                     f"<div class='b'>{f['body']}</div></div>", unsafe_allow_html=True)
+
+    doctors = careteam.team(con, my_id())
+    if findings:
+        if doctors:
+            st.caption("Your care team sees this list too: "
+                       + ", ".join(d.get("display_name") or d["email"] for d in doctors)
+                       + ". It is not sent to them — they see it when they sign in. To "
+                         "make sure they read it, send them the message below yourself.")
+        else:
+            st.caption("No care team yet, so no clinician sees this. Add your doctor on "
+                       "the Card screen, or send them the message below yourself.")
+        st.download_button("Download this as a message to my doctor",
+                           data=liaison.message(me(), findings),
+                           file_name="medvault-update-for-my-doctor.txt",
+                           use_container_width=True)
 
     st.markdown(ui.section("Ask about your medicines and treatment"), unsafe_allow_html=True)
     ready, why = reader_ready()
@@ -1166,9 +1200,42 @@ def auth_panel():
                 st.rerun()
 
 
+def your_patients(account):
+    """The Liaison's other end: what each patient who chose this clinician has outstanding.
+
+    Only patients who added this clinician to their care team appear. The item text is
+    the same text the patient sees, so the two of them are never looking at different
+    lists about the same records.
+    """
+    mine = careteam.patients(con, account["id"])
+    st.markdown(ui.section(f"Your patients · {len(mine)}"), unsafe_allow_html=True)
+    if not mine:
+        st.markdown(ui.empty("No patient has added you to their care team yet.<br>They do "
+                             "it from their Card screen with your MedVault email."),
+                    unsafe_allow_html=True)
+        return
+    st.caption("What each patient's own records say is outstanding. Not a symptom check "
+               "and not a referral — every item names the record it came from, so it can "
+               "be checked rather than trusted.")
+    for patient in mine:
+        items = liaison.update(con, patient["id"])
+        worst = next((i["tone"] for i in items), "ok")
+        label = (f"{patient.get('display_name') or patient['email']} · "
+                 f"{len(items)} outstanding" if items else
+                 f"{patient.get('display_name') or patient['email']} · nothing outstanding")
+        with st.expander(label, expanded=(worst == "bad")):
+            if not items:
+                st.caption("Nothing in this patient's records is outstanding.")
+            for item in items:
+                st.markdown(f"<div class='hit {item['tone']}'><div class='h'>{item['title']}"
+                            f"</div><div class='b'>{item['body']}</div></div>",
+                            unsafe_allow_html=True)
+
+
 def screen_review(account):
     """A clinician confirming that a record matches what they actually issued."""
-    pending = db.pending_verification(con)
+    your_patients(account)
+    pending = db.pending_verification(con, owner_ids=visible_owners())
     st.markdown(ui.section(f"Waiting on you · {len(pending)}"), unsafe_allow_html=True)
     st.caption("Records a patient filed themselves. Confirming one means it matches what "
                "you issued — your NPI is attached to that claim, so only confirm what you "
@@ -1180,6 +1247,12 @@ def screen_review(account):
         return
 
     for r in pending:
+        # Checked before anything about the record is drawn - its title, its summary and
+        # its original scan included - not only before the buttons. The query is already
+        # scoped to the care team; this is the second lock, for a patient who removes
+        # their clinician between one screen and the next.
+        if not careteam.may_see(con, account["id"], r["owner_id"]):
+            continue
         st.markdown(
             f"<div class='rec'><div class='top'>"
             f"<span class='pill'>{kind_label(r['kind'])}</span>"
@@ -1220,6 +1293,37 @@ def hosted():
     """
     return bool(os.environ.get("MEDVAULT_HOSTED")) or "HOSTNAME" in os.environ and \
         os.environ.get("HOME", "").startswith("/home/appuser")
+
+
+def care_team_panel():
+    """The patient's side of the care team: who can see their records, and the off switch.
+
+    Before this existed, any clinician account could read every patient's records. The
+    Liaison reports a patient's outstanding items to their doctors, and building it on
+    that would have broadcast to every clinician on the server - so it is built on this
+    instead, and this is the patient's to change.
+    """
+    st.markdown(ui.section("Your care team"), unsafe_allow_html=True)
+    st.caption("The clinicians you choose can see your records and the list of what they "
+               "say is outstanding. Nobody else can. Remove someone and it takes effect "
+               "immediately.")
+    for doc in careteam.team(con, my_id()):
+        c1, c2 = st.columns([3, 1])
+        c1.markdown(f"<div class='med'><div class='n'>{doc.get('display_name') or doc['email']}"
+                    f"</div><div class='d'>{doc.get('npi_specialty') or 'Clinician'} · "
+                    f"NPI {doc.get('npi')} verified</div></div>", unsafe_allow_html=True)
+        if c2.button("Remove", key=f"ct{doc['id']}", use_container_width=True):
+            careteam.remove(con, my_id(), doc["id"])
+            st.rerun()
+    with st.form("addcare", border=False, clear_on_submit=True):
+        email = st.text_input("Your doctor's MedVault email", placeholder="doctor@clinic.org")
+        if st.form_submit_button("Add to my care team", use_container_width=True) and email:
+            added, problem = careteam.add(con, my_id(), email)
+            if problem:
+                st.error(problem)
+            else:
+                st.success(f"Added {added.get('display_name') or added['email']}.")
+                st.rerun()
 
 
 def vault_transfer(account):
@@ -1280,8 +1384,11 @@ if not account:
     screen_signin()
     st.stop()
 
-total = sum(db.counts_by_kind(con, None if accounts.is_verified_clinician(account)
-                              else account["id"]).values())
+# The header count is scoped like everything else. It used to be the whole server for a
+# clinician - a count, not records, but still a number about patients who never chose
+# them, and the line a source-scanning test missed because it spelled the check
+# differently from the rest.
+total = sum(db.counts_by_kind(con, owner_ids=visible_owners()).values())
 st.markdown(ui.appbar(ui.signed_in_strip(
     account, meta=f"{total} record{'' if total == 1 else 's'}")), unsafe_allow_html=True)
 
@@ -1301,6 +1408,7 @@ else:
     tabs = st.tabs(["Card", "Add", "Records", "Medicines", "Bill", "Ask"])
     with tabs[0]:
         screen_card()
+        care_team_panel()
         vault_transfer(account)
         sign_out()
     with tabs[1]: screen_add()
