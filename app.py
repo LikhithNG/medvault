@@ -7,8 +7,8 @@ hospital desk and have it be useful", which is a harder test than "does it look 
 This file is the shell: it loads the credentials before anything else can read them,
 draws the stylesheet, and puts each screen behind its tab. The screens are in
 medvault/screen_*.py, and who is signed in is in medvault/session.py. Streamlit reruns
-this file on every click but does not reload the modules it imports, so a deploy that
-changes a screen needs the app rebooted, not just redeployed.
+this file on every click but does not reload the modules it imports; medvault/freshness.py
+is what makes a deploy that changes them take effect without a reboot.
 """
 import os
 import pathlib
@@ -17,7 +17,8 @@ import sys
 import streamlit as st
 
 HERE = pathlib.Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE / "medvault"))
+if str(HERE / "medvault") not in sys.path:      # once, not once per click
+    sys.path.insert(0, str(HERE / "medvault"))
 
 st.set_page_config(page_title="MedVault — your records, and the bill that follows",
                    page_icon=str(HERE / "static" / "icon-192.png"),
@@ -79,6 +80,15 @@ def _load_credentials():
 
 
 _load_credentials()
+
+# Before any medvault import: if a push changed the code under medvault/, drop the old
+# modules so the imports below load the new ones, and drop the cached connection the old
+# db.py opened. Without this, the newest app.py ran against modules from pushes ago and
+# took the site down - see medvault/freshness.py.
+import freshness               # noqa: E402
+if freshness.ensure(HERE / "medvault"):
+    st.cache_resource.clear()
+    st.cache_data.clear()
 
 import accounts                # noqa: E402
 import db                      # noqa: E402

@@ -30,29 +30,48 @@ OFFLINE = {"TURSO_DATABASE_URL": "", "TURSO_AUTH_TOKEN": "", "GEMINI_API_KEY": "
 @contextlib.contextmanager
 def offline_vault():
     """A temp vault with two patients, and no way for the app to reach anything live."""
-    saved = {k: os.environ.get(k) for k in OFFLINE}
-    os.environ.update(OFFLINE)
-    import accounts
-    import db
-    import store
-    assert not store.configured(), "the remote database is still switched on"
-    old_default = db.DEFAULT_PATH
     with tempfile.TemporaryDirectory() as tmp:
-        db.DEFAULT_PATH = pathlib.Path(tmp) / "bill.db"
-        con = db.connect(str(db.DEFAULT_PATH))
-        alice, _ = accounts.create(con, email="alice@example.test", password="password1",
-                                   role="patient", display_name="Alice Anderson")
-        bob, _ = accounts.create(con, email="bob@example.test", password="password1",
-                                 role="patient", display_name="Bob Brown")
-        db.add_record(con, kind="imaging", title="Alice's chest X-ray",
-                      service_date="2026-03-14", owner_id=alice["id"])
-        db.add_record(con, kind="lab", title="Bob's blood panel",
-                      service_date="2026-03-20", owner_id=bob["id"])
+        path = pathlib.Path(tmp) / "bill.db"
+        # MEDVAULT_DB as well as db.DEFAULT_PATH, and set before db is imported. The app
+        # drops and reloads its modules when it sees them as stale (freshness.py), and a
+        # reloaded db reads the variable, not the attribute patched below - so without it
+        # a reload would point the app at the real vault.db.
+        wanted = {**OFFLINE, "MEDVAULT_DB": str(path)}
+        saved = {k: os.environ.get(k) for k in wanted}
+        # The app may reload the medvault modules (freshness.py). Put back the ones every
+        # other test file imported, so no test is left holding a module the rest of the
+        # process has replaced.
+        modules = {n: m for n, m in sys.modules.items()
+                   if (getattr(m, "__file__", None) or "").startswith(str(ROOT / "medvault"))}
+        stamps = dict(getattr(sys, "_medvault_code_stamps", {}) or {})
+        os.environ.update(wanted)
+        import accounts
+        import db
+        import store
+        assert not store.configured(), "the remote database is still switched on"
+        old_default = db.DEFAULT_PATH
+        db.DEFAULT_PATH = path
+        con = db.connect(str(path))
         try:
+            alice, _ = accounts.create(con, email="alice@example.test",
+                                       password="password1", role="patient",
+                                       display_name="Alice Anderson")
+            bob, _ = accounts.create(con, email="bob@example.test", password="password1",
+                                     role="patient", display_name="Bob Brown")
+            db.add_record(con, kind="imaging", title="Alice's chest X-ray",
+                          service_date="2026-03-14", owner_id=alice["id"])
+            db.add_record(con, kind="lab", title="Bob's blood panel",
+                          service_date="2026-03-20", owner_id=bob["id"])
             yield con, alice, bob
         finally:
             con.close()
             db.DEFAULT_PATH = old_default
+            for name in [n for n, m in sys.modules.items()
+                         if (getattr(m, "__file__", None) or "").startswith(
+                             str(ROOT / "medvault"))]:
+                del sys.modules[name]
+            sys.modules.update(modules)
+            setattr(sys, "_medvault_code_stamps", stamps)
             for k, v in saved.items():
                 if v is None:
                     os.environ.pop(k, None)
