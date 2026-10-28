@@ -13,6 +13,8 @@ The test is not "does it look nice". It is "can someone hold this up at a hospit
 and have the person behind it read it", which rules out most of what a dashboard normally
 does: small type, dense tables, colour-only meaning.
 """
+import html
+
 import logo
 
 _MARK_MASK = logo.css_url(logo.mark(size=48, uid="m", fill="mono").replace(
@@ -56,7 +58,7 @@ h1,h2,h3,h4{font-family:var(--sans);color:var(--ink);letter-spacing:-.025em}
 /* ---- the lockup ---------------------------------------------------------- */
 .mvlockup{display:inline-flex;align-items:center;gap:.5rem;text-decoration:none}
 .mvlockup .mvmark{display:block;flex:0 0 auto}
-.mvname{font-weight:800;font-size:var(--mv-name,19px);letter-spacing:-.035em;
+.mvname{font-weight:800;font-size:19px;letter-spacing:-.035em;
   line-height:1;white-space:nowrap}
 
 /* ---- the bar at the top of the app --------------------------------------- */
@@ -261,16 +263,21 @@ div[data-testid="stVerticalBlockBorderWrapper"]:has(> div >
 .note{font-size:12.5px;color:var(--faint);line-height:1.55;margin-top:.5rem}
 
 /* ---- Streamlit's own widgets --------------------------------------------- */
-.stButton>button{border-radius:12px;font-weight:600;font-family:var(--sans);
-  border:1px solid var(--line);padding:.58rem 1rem;background:var(--card);
-  color:var(--ink);transition:box-shadow .15s ease,transform .1s ease,border-color .15s ease}
-.stButton>button:hover{border-color:#C9D6E6;box-shadow:var(--sh-sm);color:var(--accent)}
-.stButton>button:active{transform:translateY(1px)}
-.stButton>button[kind="primary"],
+/* Download buttons are a different Streamlit widget, and were left out of this: the
+   calendar file - the thing that actually reminds anybody - sat under the Medicines
+   screen as the one square, flat-blue button in the app. */
+:is(.stButton,.stDownloadButton)>button{border-radius:12px;font-weight:600;
+  font-family:var(--sans);border:1px solid var(--line);padding:.58rem 1rem;
+  background:var(--card);color:var(--ink);
+  transition:box-shadow .15s ease,transform .1s ease,border-color .15s ease}
+:is(.stButton,.stDownloadButton)>button:hover{border-color:#C9D6E6;box-shadow:var(--sh-sm);
+  color:var(--accent)}
+:is(.stButton,.stDownloadButton)>button:active{transform:translateY(1px)}
+:is(.stButton,.stDownloadButton)>button[kind="primary"],
 button[kind="primaryFormSubmit"]{
   background:linear-gradient(135deg,var(--accent-bright),var(--accent-deep));
   border:none;color:#fff;box-shadow:0 6px 18px rgba(15,111,222,.30)}
-.stButton>button[kind="primary"]:hover,
+:is(.stButton,.stDownloadButton)>button[kind="primary"]:hover,
 button[kind="primaryFormSubmit"]:hover{
   box-shadow:0 10px 24px rgba(15,111,222,.38);color:#fff}
 div[data-testid="stFileUploader"]{background:var(--card);border-radius:var(--r);
@@ -298,6 +305,31 @@ textarea::placeholder,input::placeholder{color:var(--faint)!important}
 div[data-testid="stCaptionContainer"],div[data-testid="stCaptionContainer"] p{
   color:var(--soft)!important;font-size:13px!important;line-height:1.5!important}
 label p{color:var(--soft)!important;font-size:13px!important;font-weight:600!important}
+
+/* One typeface. Streamlit sets Source Sans on its own elements through generated class
+   names, so the Inter rule at the top reached the buttons and the inputs and missed the
+   captions, the cards and the section headings - two typefaces on every screen, which
+   reads as two products. The icon font and the letter's fixed-width text are left alone -
+   the letter lines its figures up with spaces, so it is excluded with everything inside
+   it, not only its wrapper (the fixed-width font is on an inner div). */
+.stApp :is(p,li,span,div,label,b,strong,em,small,a,h1,h2,h3,h4,h5,h6,summary,button,
+  input,textarea):not([data-testid="stIconMaterial"]):not([data-testid="stText"])
+  :not([data-testid="stText"] *){
+  font-family:var(--sans)}
+
+/* The three totals on a checked bill. Streamlit draws a metric as a 36px number in a
+   light weight, which next to everything else here looked like it came from another
+   site. They are cards, in the type the cards use. */
+div[data-testid="stMetric"]{background:var(--card);border:1px solid var(--line);
+  border-radius:var(--r);padding:.75rem .9rem .8rem;box-shadow:var(--sh-sm)}
+div[data-testid="stMetricLabel"] p{font-size:10.5px!important;font-weight:700!important;
+  text-transform:uppercase;letter-spacing:.07em;color:var(--faint)!important}
+div[data-testid="stMetricValue"]{font-size:23px!important;font-weight:800!important;
+  letter-spacing:-.035em;color:var(--ink);line-height:1.25}
+/* the unexplained gap is a question to ask, so it takes the warning colour, not the
+   alarm one - the caption under it says in words that it is not money owed */
+:is(div[data-testid="column"],div[data-testid="stColumn"]):last-child
+  div[data-testid="stMetricValue"]{color:var(--warn)}
 
 /* ---- the navigation bar -------------------------------------------------- */
 /* Streamlit draws tabs as a strip at the top of the page, which reads as a web page.
@@ -474,6 +506,17 @@ def section(label):
 
 def empty(message):
     return f"<div class='empty'>{message}</div>"
+
+
+def safe(text):
+    """Text for inside a chat bubble: escaped, with bold let back through.
+
+    A model's answer, a question and a record title read off a scan all went into the
+    page as raw HTML. Bold is the one tag the fixed answers use on purpose - the emergency
+    answer bolds "call 911" - so it is the one tag restored.
+    """
+    return (html.escape(str(text or "")).replace("&lt;b&gt;", "<b>")
+            .replace("&lt;/b&gt;", "</b>"))
 
 
 PROV_CLASS = {"SELF": "self", "VERIFIED": "verified", "CLINICAL": "clinical"}

@@ -345,6 +345,7 @@ def screen_add():
             slot.markdown(agentsui.working("Reader", "Reading your document", step),
                           unsafe_allow_html=True)
         reading("Opening it…")
+        started = time.perf_counter()
         text, note = (None, None)
         if is_pdf:
             import io as _io
@@ -356,6 +357,7 @@ def screen_add():
             reading("Looking at the page — a photograph takes a few seconds")
             rec, meta = read_document(image=(up.type or "image/jpeg", data))
         slot.empty()
+        st.session_state["draft_took"] = agentsui.took(time.perf_counter() - started)
 
         if not meta.get("ok"):
             st.error("**That document could not be read just now**\n\nThe reading service "
@@ -371,7 +373,9 @@ def screen_add():
     if not draft:
         return
 
-    st.markdown(ui.section("Check this before filing") + agentsui.badge("Reader"),
+    took = st.session_state.get("draft_took")
+    st.markdown(agentsui.heading(ui.section("Check this before filing"), "Reader",
+                                 f"read in {took}" if took else ""),
                 unsafe_allow_html=True)
     st.caption("Read off the page by a model. Correct anything it got wrong — it is your "
                "record, and a wrong dose is worse than no dose.")
@@ -406,7 +410,7 @@ def screen_add():
                             verified_by=filer.get("id") if clinical else None)
         for m in meds:
             db.add_medication(con, rid, m)
-        for k in ("draft", "draft_file", "draft_model"):
+        for k in ("draft", "draft_file", "draft_model", "draft_took"):
             st.session_state.pop(k, None)
         st.success(f"Filed. {len(meds)} medicine(s) added." if meds else "Filed.")
         st.rerun()
@@ -435,9 +439,9 @@ def screen_records():
             f"<span class='pill'>{kind_label(r['kind'])}</span>"
             f"{ui.provenance_badge(r)}"
             f"<span class='when'>{when(r)}</span></div>"
-            f"<div class='title'>{r['title']}</div>"
-            + (f"<div class='who'>{r['provider']}</div>" if r.get("provider") else "")
-            + (f"<div class='sum'>{r['summary']}</div>" if r.get("summary") else "")
+            f"<div class='title'>{ui.safe(r['title'])}</div>"
+            + (f"<div class='who'>{ui.safe(r['provider'])}</div>" if r.get("provider") else "")
+            + (f"<div class='sum'>{ui.safe(r['summary'])}</div>" if r.get("summary") else "")
             + f"<div class='provwhy'>{accounts.PROVENANCE.get(r.get('provenance') or 'SELF', accounts.PROVENANCE['SELF'])[1]}</div>"
             + ("" if r.get("file_size") else
                "<div class='nofile'>No original attached</div>")
@@ -462,8 +466,11 @@ def screen_today():
     meds = db.list_medications(con, active_only=True, owner_id=my_id())
     day = schedule.plan(meds, day_start=day_start)
 
-    st.markdown(ui.section(f"Today · {len(day['doses'])} dose(s)")
-                + agentsui.badge("Scheduler"), unsafe_allow_html=True)
+    # The note is the one input the Scheduler plans from, so the badge changes - and the
+    # clock turns once - exactly when the day is re-planned, and not on every rerun.
+    st.markdown(agentsui.heading(ui.section(f"Today · {len(day['doses'])} dose(s)"),
+                                 "Scheduler", f"day starts {day_start}"),
+                unsafe_allow_html=True)
     if not meds:
         st.markdown(ui.empty("Nothing to take.<br>Medicines appear here once a "
                              "prescription is filed."), unsafe_allow_html=True)
@@ -481,7 +488,7 @@ def screen_today():
     for i, dose in enumerate(day["doses"], start=1):
         extra = schedule.note(dose["parsed"])
         ends = (f" · last dose {dose['ends']:%-d %b}" if dose["ends"] else "")
-        st.markdown(f"<div class='med ag-in'{agentsui.arrive(i)}>"
+        st.markdown(f"<div class='med ag-in {agentsui.arrive(i)}'>"
                     f"<div class='n'>{dose['at']} · {dose['med']['name']}"
                     f"</div><div class='d'>{dose['med'].get('dose') or 'as prescribed'}"
                     + (f" · {extra}" if extra else "") + ends + "</div></div>",
@@ -559,21 +566,26 @@ def screen_medicines():
                     + f"<div class='why'>From {src}</div></div>", unsafe_allow_html=True)
 
 
-def screen_check():
-    """The reason this app and a bill checker belong to the same person."""
-    st.markdown(ui.section("Check a bill against your records"), unsafe_allow_html=True)
-    st.caption("A price check asks whether a charge was the right amount. This asks "
-               "something a price list cannot: does your own paperwork show it happened?")
+# The three agents a bill passes through, in the order it reaches them.
+BILL_RELAY = ("Reader", "Checker", "Advocate")
+RELAY_INTRO = ("Press Check it and three agents take it from here: the Reader reads a photo "
+               "of the bill, the Checker prices every line, and the Advocate writes the "
+               "letter if anything is flagged.")
+# A step that finished this long before the run did was on screen long enough to be seen
+# finishing. Anything faster shows its work once more in the final frame, in turn.
+SEEN_SECONDS = 0.4
 
-    records = db.list_records(con, limit=2000, owner_id=my_id())
-    if not records:
-        st.markdown(ui.empty("File a few records first.<br>"
-                             "With an empty vault there is nothing to check a bill against."),
-                    unsafe_allow_html=True)
-        return
 
-    st.info(f"Checking against **{len(records)} record(s)** you have filed.")
+@st.cache_resource
+def price_table():
+    """Pricing a bill needs to know whose published file to price it against."""
+    import checker
+    return checker.load_reference()
 
+
+def bill_form():
+    """Everything the patient tells the Bill screen. Returns a dict; draws the widgets."""
+    import rights
     # Pasting was the only way in, which meant retyping a bill that arrived as a PDF or
     # sits on the kitchen table. A photo is how a patient actually has this document.
     how = st.radio("Where is the bill?", ["Photograph or PDF", "Paste the lines"],
@@ -613,12 +625,6 @@ def screen_check():
         gfe_raw = st.text_input("If you were given a written estimate, what did it say?",
                                 placeholder="e.g. 1200.00", key="rt_gfe")
 
-    # Pricing a bill needs to know whose published file to price it against.
-    import checker
-    @st.cache_resource
-    def price_table():
-        return checker.load_reference()
-
     known = sorted({h for h, _ in price_table()})
     pretty = {h: h.title() for h in known}
     hospital = st.selectbox(
@@ -628,108 +634,6 @@ def screen_check():
                "If yours is not one of them, leave it unset — every line is still checked "
                "against the national Medicare allowance, which covers any CPT code.")
 
-    ready = bool(pasted.strip()) or upload is not None
-    if not st.button("Check it", type="primary", use_container_width=True) or not ready:
-        return
-
-    import re as _re
-    import crosscheck
-    from codes import find_code
-
-    def reject_if_not_itemised(rows):
-        """A statement with no billing codes cannot be checked against anything.
-
-        Itemized rejected these before the Checker ever saw them, which is why a latent
-        defect in its duplicate rule never surfaced there: two lines with an empty code
-        match each other and are reported as the same code billed twice. Guarding at the
-        boundary fixes the behaviour and leaves checker.py byte-identical to the module
-        that produced the Assignment 4 figures.
-        """
-        if rows and not any((r.get("code") or "").strip() for r in rows):
-            st.error("**No billing codes found**\n\nEvery line of an itemised bill carries "
-                     "a procedure code, like 74177 or J1885. None were found here — this "
-                     "may be a summary statement rather than an itemised one. Ask the "
-                     "hospital for the itemised version; you cannot check what you cannot "
-                     "see.")
-            return True
-        return False
-
-    lines = []
-    if upload is not None:
-        ok, why = reader_ready()
-        if not ok:
-            st.error(f"**This bill cannot be read here**\n\nThe reader is not set up — "
-                     f"{why}. Paste the lines instead and everything else still works.")
-            return
-        from extract import read_bill_verified, pdf_text
-        data = upload.getvalue()
-        is_pdf = (upload.type or "").endswith("pdf") or upload.name.lower().endswith(".pdf")
-        slot = st.empty()
-        def reading(step):
-            slot.markdown(agentsui.working("Reader", "Reading the bill", step),
-                          unsafe_allow_html=True)
-        reading("Opening it…")
-        text = None
-        if is_pdf:
-            import io as _io
-            text, note = pdf_text(_io.BytesIO(data))
-            if text:
-                reading(f"Read the text layer · {note}")
-        if not text:
-            reading("Looking at the page, then checking the lines add up to its total")
-        lines, meta = (read_bill_verified(text=text) if text
-                       else read_bill_verified(image=(upload.type or "image/jpeg", data)))
-        slot.empty()
-        # The step log used to sit in a collapsed status box. The one line in it worth
-        # keeping is the one that says the bill was read twice, because that is the
-        # reconciliation working - so it survives as a caption.
-        if meta.get("attempts", 1) > 1:
-            st.caption(f"Read {meta['attempts']} times to check the lines added up to the "
-                       "total printed on the bill.")
-
-        if not meta.get("ok"):
-            st.error("**That bill could not be read just now**\n\nThe reading service did "
-                     "not answer. Nothing was stored. Paste the lines instead, or try again "
-                     "in a moment.")
-            st.caption(f"For the maintainer: {str(meta.get('error'))[:160]}")
-            return
-        if not lines:
-            st.error("**No charges could be read from that bill**\n\nEvery line of an "
-                     "itemised bill carries a code, a quantity and an amount. None were "
-                     "found — this may be a summary rather than an itemised statement. Ask "
-                     "the hospital for the itemised version.")
-            return
-        read_total = sum(l["charged"] for l in lines)
-        who = f" · read by {meta['provider']}" if meta.get("provider") else ""
-        if meta.get("reconciled") is True:
-            st.success(f"Read **{len(lines)} charge(s)** totalling **${read_total:,.2f}**"
-                       + (f" from {meta['hospital']}" if meta.get("hospital") else "")
-                       + f" — and they add up to the total printed on the bill.{who}")
-        else:
-            # Never show a number from an unverified read without saying so. A truncated
-            # read looks exactly like a short bill.
-            st.warning(
-                f"**Read {len(lines)} charge(s) totalling ${read_total:,.2f}, but could "
-                f"not confirm that against a printed total.**\n\nCheck the list below "
-                f"against the bill in your hand before trusting anything underneath it — "
-                f"if a line is missing, the figures will be too low.")
-        with st.expander("Check what was read",
-                         expanded=meta.get("reconciled") is not True):
-            for l in lines:
-                st.markdown(f"<div class='rec'><div class='top'>"
-                            f"<span class='pill'>{l['code'] or 'no code'}</span>"
-                            f"<span class='when'>{l['service_date'] or 'no date'}</span></div>"
-                            f"<div class='title'>${l['charged']:,.2f}</div>"
-                            f"<div class='who'>{l['description']} · qty {l['units']}</div>"
-                            f"</div>", unsafe_allow_html=True)
-    else:
-        lines = paste.lines(pasted)
-
-    if reject_if_not_itemised(lines):
-        return
-
-    # ---- what the law may already give you, before any price is compared -------
-    import rights, billchecks
     tri = {"Not sure": None, "Yes": True, "No": False}
     try:
         gfe_val = float((gfe_raw or "").replace("$", "").replace(",", "").strip() or 0) or None
@@ -740,172 +644,486 @@ def screen_check():
                   "Uninsured or self-pay": "self_pay"}.get(cov, rights.UNKNOWN),
         emergency=tri[emg], nonprofit_hospital=tri[npf], in_network_facility=tri[inn],
         gfe_amount=gfe_val)
-    bill_total = round(sum(float(l.get("charged") or 0) for l in lines), 2)
-    protections = rights.evaluate(lines, bill_total, ctx)
+    listed = hospital != "— not listed —"
+    return {"pasting": how == "Paste the lines", "pasted": pasted, "upload": upload,
+            "ctx": ctx,
+            "hospital": hospital if listed else None,
+            "hospital_name": pretty.get(hospital) if listed else None,
+            "answers": (cov, emg, npf, inn, gfe_raw)}
 
-    if protections:
-        st.markdown(ui.section(f"What the law may already give you · {len(protections)}"),
-                    unsafe_allow_html=True)
-        for f in protections:
-            tone = "bad" if f["severity"] == "high" else "warn"
-            st.markdown(f"<div class='hit {tone}'><div class='h'>{f['title']}</div>"
-                        f"<div class='b'>{f['means']}<br><br><b>What to do:</b> {f['todo']}"
-                        f"<br><span style='opacity:.7'>{f['source']}</span></div></div>",
-                        unsafe_allow_html=True)
 
-    still_open = rights.unanswered(ctx)
-    if still_open:
-        st.caption("Not checked, because you have not said: " + ", ".join(still_open)
-                   + ". That is not the same as having no protection.")
+def bill_key(form, records):
+    """Everything a checked bill was computed from. A different key is a different bill.
 
-    # ---- things wrong with the bill on its own face ----------------------------
-    face = billchecks.run(lines)
-    if face:
-        st.markdown(ui.section(f"Wrong on the bill's own face · {len(face)}"),
-                    unsafe_allow_html=True)
-        for _, f in face:
-            st.markdown(f"<div class='hit warn'><div class='h'>{f['title']}</div>"
-                        f"<div class='b'>{f['detail']}<br><br><b>Ask:</b> {f['ask']}</div>"
-                        f"</div>", unsafe_allow_html=True)
+    The form is not all of it. The cross-check reads the records, the letter is signed
+    with the name on the card, and both belong to one account - so all three are in the
+    key. Without them, filing the very record a line was missing redrew the old "nothing
+    behind it" finding, and a letter saying so, next to a count that had gone up by one.
+    """
+    import hashlib
+    upload = form["upload"]
+    content = (hashlib.sha256(upload.getvalue()).hexdigest() if upload is not None
+               else form["pasted"])
+    held = tuple((r["id"], r.get("added_at"), r.get("service_date"), r.get("title"),
+                  r.get("summary")) for r in records)
+    signed = db.get_profile(con, my_id()).get("full_name")
+    return hashlib.sha256(repr((my_id(), upload is not None, content, form["hospital"],
+                                form["answers"], held, signed)).encode()).hexdigest()
 
-    # ---- the national benchmark, which works for any CPT code ------------------
-    # The 262-row table covers nine hospitals. This covers every CPT code there is, so a
-    # bill from anywhere gets an answer to "is this the right amount" rather than silence.
+
+def idle_relay(form):
+    """The three agents before anything has happened, so nobody is surprised by them."""
+    reader = (agentsui.step("Reader", "skip", "You paste it") if form["pasting"]
+              else agentsui.step("Reader", "wait", "Reads the photo"))
+    return [reader, agentsui.step("Checker", "wait", "Prices each line"),
+            agentsui.step("Advocate", "wait", "Writes the letter")]
+
+
+def read_bill_upload(upload, steps, show):
+    """The Reader's turn. Returns (lines, read, problem, steps)."""
+    import hashlib
+    ok, why = reader_ready()
+    if not ok:
+        return None, None, ("This bill cannot be read here",
+                            f"The reader is not set up — {why}. Paste the lines instead "
+                            f"and everything else still works.", None), \
+            agentsui.advance(steps, "Reader", "fail", "Not set up")
+
+    data = upload.getvalue()
+    sig = hashlib.sha256(data).hexdigest()
+    # Changing the hospital or an answer after a check used to mean reading the photo
+    # again - a second model call for a bill that had not changed.
+    held = st.session_state.get("bill_read")
+    if held and held["sig"] == sig:
+        return held["lines"], held["read"], None, \
+            agentsui.advance(steps, "Reader", "done", "Read already")
+
+    from extract import read_bill_verified, pdf_text
+    is_pdf = (upload.type or "").endswith("pdf") or upload.name.lower().endswith(".pdf")
+    steps = agentsui.advance(steps, "Reader", "work", "Reading…")
+    show(steps, "Reader · opening it…")
+    started = time.perf_counter()
+    text = None
+    if is_pdf:
+        import io as _io
+        text, note = pdf_text(_io.BytesIO(data))
+        if text:
+            show(steps, f"Reader · read the text layer · {note}")
+    if not text:
+        show(steps, "Reader · looking at the page, then checking the lines add up to its "
+                    "total")
+    lines, meta = (read_bill_verified(text=text) if text
+                   else read_bill_verified(image=(upload.type or "image/jpeg", data)))
+    spent = agentsui.took(time.perf_counter() - started)
+
+    if not meta.get("ok"):
+        return None, None, ("That bill could not be read just now",
+                            "The reading service did not answer. Nothing was stored. Paste "
+                            "the lines instead, or try again in a moment.",
+                            str(meta.get("error"))[:160]), \
+            agentsui.advance(steps, "Reader", "fail", "Did not answer")
+    if not lines:
+        return None, None, ("No charges could be read from that bill",
+                            "Every line of an itemised bill carries a code, a quantity and "
+                            "an amount. None were found — this may be a summary rather than "
+                            "an itemised statement. Ask the hospital for the itemised "
+                            "version.", None), \
+            agentsui.advance(steps, "Reader", "fail", "No charges found")
+
+    read = {"took": spent, "attempts": meta.get("attempts", 1),
+            "reconciled": meta.get("reconciled"), "provider": meta.get("provider"),
+            "hospital": meta.get("hospital")}
+    st.session_state["bill_read"] = {"sig": sig, "lines": lines, "read": read}
+    return lines, read, None, agentsui.advance(steps, "Reader", "done", f"Read in {spent}")
+
+
+def unreadable_as_itemised(lines):
+    """Why these lines cannot be checked, or None when they can.
+
+    A statement with no billing codes cannot be checked against anything. Itemized
+    rejected these before the Checker ever saw them, which is why a latent defect in its
+    duplicate rule never surfaced there: two lines with an empty code match each other and
+    are reported as the same code billed twice. Guarding at the boundary fixes the
+    behaviour and leaves checker.py byte-identical to the module that produced the
+    Assignment 4 figures.
+    """
+    if not lines:
+        return ("No charges found", "Nothing in what you pasted looks like a charge. Put "
+                "one charge on each line: a date, a code, a description and an amount.",
+                None)
+    if not any((l.get("code") or "").strip() for l in lines):
+        return ("No billing codes found", "Every line of an itemised bill carries a "
+                "procedure code, like 74177 or J1885. None were found here — this may be a "
+                "summary statement rather than an itemised one. Ask the hospital for the "
+                "itemised version; you cannot check what you cannot see.", None)
+    return None
+
+
+def check_bill_run(form, key, records, slot):
+    """Hand the bill along the relay, showing each agent as it works. Returns the run.
+
+    Everything is worked out before anything is drawn, so the relay above the button is
+    the one thing moving while the agents work, and the findings arrive together after.
+    """
+    import billchecks
+    import checker
+    import crosscheck
     import medicare
+    import rights
+
+    def show(steps, now):
+        slot.markdown(agentsui.relay(steps, now), unsafe_allow_html=True)
+
+    steps = [agentsui.step(n) for n in BILL_RELAY]
+    finished = {}
+
+    def stop(steps, problem, lines=None, read=None):
+        steps = [agentsui.step(s["name"], "skip" if s["state"] == "wait" else s["state"],
+                               s["note"] if s["state"] != "wait" else "Stopped")
+                 for s in steps]
+        show(steps, problem[0])
+        return {"key": key, "steps": steps, "now": problem[0], "problem": problem,
+                "lines": lines, "read": read}
+
+    # ---- the Reader, unless the patient typed the lines themselves
+    if form["upload"] is None:
+        steps = agentsui.advance(steps, "Reader", "skip", "You pasted it")
+        lines, read = paste.lines(form["pasted"]), None
+    else:
+        lines, read, problem, steps = read_bill_upload(form["upload"], steps, show)
+        if problem:
+            return stop(steps, problem)
+        finished["Reader"] = time.perf_counter()
+
+    problem = unreadable_as_itemised(lines)
+    if problem:
+        # What was read stays on screen: a Reader that missed the codes on an itemised
+        # bill looks exactly like a summary statement, and only the lines show which.
+        return stop(steps, problem, lines, read)
+
+    # ---- the Checker: every line against Medicare, and against the hospital's own file
+    hospital = form["hospital_name"]
+    steps = agentsui.advance(steps, "Checker", "work", "Pricing…")
+    show(steps, f"Checker · pricing {len(lines)} line(s) against the national Medicare "
+                f"allowance" + (f" and {hospital}'s published prices" if hospital else ""))
+    started = time.perf_counter()
     bench = medicare.lookup_many([l.get("code") for l in lines])
-    named = {c: b for c, b in bench.items() if b.get("found")}
-
-    if named:
-        st.markdown(ui.section("Against the national Medicare allowance")
-                    + agentsui.badge("Checker"), unsafe_allow_html=True)
-        st.caption("What the federal programme allows for the same code. **A Medicare rate "
-                   "is not a price cap** — a hospital may charge a commercial patient more, "
-                   "and usually does. This is context for the conversation, not evidence of "
-                   "an overcharge.")
-        rows = []
-        for l in lines:
-            b = named.get((l.get("code") or "").upper())
-            if not b or not b.get("medicare_rate"):
-                continue
-            mult = medicare.multiple_of_medicare(l.get("charged"), l.get("units"),
-                                                 b["medicare_rate"])
-            rows.append((mult or 0, l, b, mult))
-        for i, (_, l, b, mult) in enumerate(sorted(rows, key=lambda t: -t[0])):
-            tone = "bad" if (mult or 0) >= 10 else "warn" if (mult or 0) >= 3 else "ok"
-            times = (f"<b>{mult:g}× the Medicare allowance</b>" if mult
-                     else "could not be compared")
-            st.markdown(
-                f"<div class='hit {tone} ag-in'{agentsui.arrive(i)}>"
-                f"<span class='amt'>{_m(l.get('charged'))}</span>"
-                f"<div class='h'>{b['name']}</div><div class='b'>"
-                f"<b>{l.get('code')}</b> · billed as “{(l.get('description') or '')[:40]}”"
-                f"{f' · qty {l["units"]}' if (l.get('units') or 1) > 1 else ''}<br>"
-                f"Medicare allows {_m(b['medicare_rate'])}"
-                f"{f' per unit' if (l.get('units') or 1) > 1 else ''} — {times}."
-                + f"<br><span style='opacity:.65'>Source: CMS "
-                  f"{str(b.get('dataset','')).replace('CMS_','').replace('_',' ')}, "
-                  f"{b.get('effective_year','')}</span></div></div>",
-                unsafe_allow_html=True)
-
-        missing = [c for c, b in bench.items() if not b.get("found")]
-        if missing:
-            st.caption(f"{len(missing)} code(s) are not in the national fee schedule and "
-                       f"could not be benchmarked: {', '.join(sorted(missing))}. It covers "
-                       f"CPT; HCPCS codes such as J- and A-codes are outside it.")
-
-    # ---- what this particular hospital publishes -------------------------------
-    if hospital != "— not listed —":
+    priced = None
+    if hospital:
         # The table is keyed on a lowercased name; the letter must not be addressed to it.
         priced = checker.check_bill(
-            {"hospital_name": pretty.get(hospital, hospital),
+            {"hospital_name": hospital,
              "line_items": [{"code": l.get("code") or "", "description": l["description"],
                              "units": l.get("units") or 1, "charged": l["charged"]}
                             for l in lines]},
             price_table())
+    checker_took = agentsui.took(time.perf_counter() - started)
+    flagged = (priced.get("flagged_count") or 0) if priced else 0
+    steps = agentsui.advance(steps, "Checker", "done",
+                             f"{flagged} flagged · {checker_took}" if priced
+                             else f"Priced in {checker_took}")
+    finished["Checker"] = time.perf_counter()
 
-        c1, c2, c3 = st.columns(3)
-        c1.metric("You were billed", f"${priced['billed_total']:,.2f}")
-        c2.metric("They publish", f"${priced['posted_total']:,.2f}")
-        c3.metric("Unexplained", f"${priced['questionable_amount']:,.2f}")
-        # The date was hardcoded here. The table carries collected_date on every row, so
-        # the caption reads it: a refreshed table moves this line instead of silently
-        # leaving a stale date on screen.
-        collected = sorted({l["collected_date"] for l in priced["lines"]
-                            if l.get("collected_date")})
-        when = (" · ".join(_date(d) for d in collected) if collected
-                else "an undated table")
-        st.caption("A gap to ask about — not money you are owed, and not a refund "
-                   f"estimate. Published prices collected {when}; a hospital may have "
-                   "republished since.")
+    # ---- the checks that are not an agent's: the law, the bill's own face, your records
+    bill_total = round(sum(float(l.get("charged") or 0) for l in lines), 2)
+    protections = rights.evaluate(lines, bill_total, form["ctx"])
+    face = [f for _, f in billchecks.run(lines)]
+    checked, summary = crosscheck.check_bill(lines, records)
 
-        # Attached to every flag since the Checker was written and never shown until now.
-        # The PRD promised it as what this screen says when a price file cannot settle a
-        # line: how often CMS has already had to act against this hospital.
-        #
-        # Three states, not two. A hospital the enforcement file was never joined to is
-        # not a hospital with a clean record, and saying "0 actions" for one would be the
-        # same mistake this app refuses to make about a missing medical record.
-        matched = next((l.get("enforcement_match") for l in priced["lines"]
-                        if l.get("enforcement_match")), "none")
-        actions = max((l.get("hospital_enforcement_actions") or 0)
-                      for l in priced["lines"]) if priced["lines"] else 0
-        if matched == "none":
-            st.caption("This hospital could not be matched to CMS's price-transparency "
-                       "enforcement file by name and state, so this project holds no "
-                       "enforcement history for it. **That is not the same as a clean "
-                       "record** — it usually means CMS lists the hospital under a "
-                       "slightly different name.")
-        elif actions:
-            st.caption(f"CMS has recorded **{actions} price-transparency enforcement "
-                       f"action(s)** against this hospital. That is about whether it "
-                       f"published properly, not about your bill — but it is context for "
-                       f"how much weight the file above deserves.")
-        else:
-            st.caption("CMS has recorded no price-transparency enforcement actions "
-                       "against this hospital.")
+    # ---- the Advocate, when there is something to put in a letter
+    letter, letter_took = None, None
+    if flagged:
+        import dispute
+        steps = agentsui.advance(steps, "Advocate", "work", "Writing…")
+        show(steps, "Advocate · ranking the flagged lines by the money at stake and "
+                    "writing the letter")
+        started = time.perf_counter()
+        letter = dispute.letter(
+            priced, patient_name=db.get_profile(con, my_id()).get("full_name"),
+            rights_findings=protections,
+            record_gaps=[c for c in checked if c["verdict"] in ("NO_RECORD", "DATE_NO_MATCH")])
+        letter_took = agentsui.took(time.perf_counter() - started)
+        steps = agentsui.advance(steps, "Advocate", "done", f"Letter · {letter_took}")
+        finished["Advocate"] = time.perf_counter()
+    else:
+        steps = agentsui.advance(steps, "Advocate", "skip",
+                                 "Nothing flagged" if priced else "Needs the hospital")
 
-        flagged_lines = [l for l in priced["lines"] if l["verdict"] != "VERIFIED"]
-        if flagged_lines:
-            # "Above the published price" was wrong as a heading: this section also
-            # carries duplicates, suspect quantities and codes with no published price.
-            st.markdown(ui.section(f"Checked against the published prices · "
-                                   f"{len(flagged_lines)} flagged"),
+    # Agents that finished faster than a frame could show them get to show their work
+    # once in the final frame, in the order they did it. One that was visibly seen
+    # finishing - a Reader that took four seconds - is not made to do it twice.
+    end = time.perf_counter()
+    steps = agentsui.finale(steps, {n for n, t in finished.items() if end - t < SEEN_SECONDS})
+    now = (f"Done. {len(lines)} line(s) checked against Medicare and your records"
+           + (f"; {flagged} flagged against {hospital}'s published prices" if priced else
+              ". Choose the hospital above to compare against its own published prices")
+           + ("; the letter is below." if letter else "."))
+    show(steps, now)
+    return {"key": key, "steps": steps, "now": now, "problem": None, "lines": lines,
+            "read": read, "protections": protections,
+            "still_open": rights.unanswered(form["ctx"]), "face": face, "bench": bench,
+            "priced": priced, "checker_took": checker_took, "checked": checked,
+            "summary": summary, "letter": letter, "letter_took": letter_took}
+
+
+def screen_check():
+    """The reason this app and a bill checker belong to the same person."""
+    st.markdown(ui.section("Check a bill against your records"), unsafe_allow_html=True)
+    st.caption("A price check asks whether a charge was the right amount. This asks "
+               "something a price list cannot: does your own paperwork show it happened?")
+
+    records = db.list_records(con, limit=2000, owner_id=my_id())
+    if not records:
+        st.markdown(ui.empty("File a few records first.<br>"
+                             "With an empty vault there is nothing to check a bill against."),
+                    unsafe_allow_html=True)
+        return
+
+    st.info(f"Checking against **{len(records)} record(s)** you have filed.")
+    form = bill_form()
+    ready = bool(form["pasted"].strip()) or form["upload"] is not None
+
+    # The relay sits directly above the button, so the agents are on screen - waiting,
+    # then working - in the one place somebody who has just pressed it is looking.
+    slot = st.empty()
+    clicked = st.button("Check it", type="primary", use_container_width=True)
+
+    # The findings used to exist only on the run in which the button was pressed. Asking
+    # a question underneath them, or downloading the letter, is another run - and it wiped
+    # the screen, so the question box under a checked bill could never answer anything.
+    # The finished run is kept now, keyed on everything it was worked out from.
+    key = bill_key(form, records)
+    run = st.session_state.get("bill_run")
+    if clicked and ready:
+        run = check_bill_run(form, key, records, slot)
+        st.session_state["bill_run"] = run
+    elif run and run["key"] == key:
+        slot.markdown(agentsui.relay(run["steps"], run["now"]), unsafe_allow_html=True)
+    else:
+        slot.markdown(agentsui.relay(idle_relay(form), RELAY_INTRO), unsafe_allow_html=True)
+        return
+
+    if run["problem"]:
+        if run.get("read"):
+            render_bill_read(run["read"], run["lines"])
+        title, body, detail = run["problem"]
+        st.error(f"**{title}**\n\n{body}")
+        if detail:
+            st.caption(f"For the maintainer: {detail}")
+        return
+    render_bill(run)
+
+
+def render_bill(run):
+    """A checked bill, drawn from the run - the same whether it was checked this run or
+    the one before."""
+    if run["read"]:
+        render_bill_read(run["read"], run["lines"])
+    render_rights(run["protections"], run["still_open"])
+    render_face(run["face"])
+    render_medicare(run["lines"], run["bench"], run["checker_took"])
+    if run["priced"]:
+        render_published(run["priced"])
+    render_against_records(run["checked"], run["summary"])
+    if run["letter"]:
+        render_letter(run["letter"], run["letter_took"])
+    render_bill_question(run)
+
+
+def render_bill_read(read, lines):
+    # The step log used to sit in a collapsed status box. The one line in it worth keeping
+    # is the one that says the bill was read twice, because that is the reconciliation
+    # working - so it survives as a caption.
+    if read.get("attempts", 1) > 1:
+        st.caption(f"Read {read['attempts']} times to check the lines added up to the "
+                   "total printed on the bill.")
+    read_total = sum(l["charged"] for l in lines)
+    who = f" · read by {read['provider']}" if read.get("provider") else ""
+    if read.get("reconciled") is True:
+        st.success(f"Read **{len(lines)} charge(s)** totalling **${read_total:,.2f}**"
+                   + (f" from {read['hospital']}" if read.get("hospital") else "")
+                   + f" — and they add up to the total printed on the bill.{who}")
+    else:
+        # Never show a number from an unverified read without saying so. A truncated read
+        # looks exactly like a short bill.
+        st.warning(
+            f"**Read {len(lines)} charge(s) totalling ${read_total:,.2f}, but could not "
+            f"confirm that against a printed total.**\n\nCheck the list below against the "
+            f"bill in your hand before trusting anything underneath it — if a line is "
+            f"missing, the figures will be too low.")
+    with st.expander("Check what was read", expanded=read.get("reconciled") is not True):
+        for l in lines:
+            st.markdown(f"<div class='rec'><div class='top'>"
+                        f"<span class='pill'>{ui.safe(l['code'] or 'no code')}</span>"
+                        f"<span class='when'>{ui.safe(l['service_date'] or 'no date')}"
+                        f"</span></div><div class='title'>${l['charged']:,.2f}</div>"
+                        f"<div class='who'>{ui.safe(l['description'])} · qty "
+                        f"{ui.safe(l['units'])}</div>"
+                        f"</div>", unsafe_allow_html=True)
+
+
+def render_rights(protections, still_open):
+    """What the law may already give you, before any price is compared."""
+    if protections:
+        st.markdown(ui.section(f"What the law may already give you · {len(protections)}"),
+                    unsafe_allow_html=True)
+        for i, f in enumerate(protections):
+            tone = "bad" if f["severity"] == "high" else "warn"
+            st.markdown(f"<div class='hit {tone} ag-in {agentsui.arrive(i)}'>"
+                        f"<div class='h'>{f['title']}</div>"
+                        f"<div class='b'>{f['means']}<br><br><b>What to do:</b> {f['todo']}"
+                        f"<br><span style='opacity:.7'>{f['source']}</span></div></div>",
                         unsafe_allow_html=True)
-            for l in sorted(flagged_lines, key=lambda x: -(x.get("charged") or 0)):
-                label, tone = VERDICTS.get(l["verdict"], ("Checked", "warn"))
-                over = (f" · <b>{_m(l['amount_over'])} above</b>"
-                        if l.get("amount_over") else "")
-                # The Checker leaves posted_price empty on a duplicate row - the price
-                # is on the first instance of that code. Saying "no published price"
-                # because this particular row lacks one told the reader the hospital
-                # publishes nothing for 99284 while the row above it showed $1,605.00.
-                price = l.get("posted_price")
-                if price is None and l.get("code"):
-                    price = next((o.get("posted_price") for o in priced["lines"]
-                                  if o.get("code") == l["code"] and o.get("posted_price")),
-                                 None)
-                posted = (f"They publish {_m(price)} for this code" if price else
-                          "No published price for this code — worth asking about")
-                # The receipt, on the card rather than only in the letter: which of the
-                # hospital's three published numbers this was compared against, and when
-                # that file was collected.
-                cite = (f"<br><span style='opacity:.65'>Compared against their "
-                        f"{l['basis']}, collected {_date(l['collected_date'])}</span>"
-                        if l.get("basis") and l.get("collected_date") else "")
-                st.markdown(
-                    f"<div class='hit {tone}'><span class='amt'>{_m(l['charged'])}</span>"
-                    f"<div class='h'>{label}</div><div class='b'>"
-                    f"<b>{l.get('code') or '—'}</b> {l.get('description','')[:48]} · "
-                    f"qty {l.get('units',1)}<br>{posted}{over}{cite}</div></div>",
+    if still_open:
+        st.caption("Not checked, because you have not said: " + ", ".join(still_open)
+                   + ". That is not the same as having no protection.")
+
+
+def render_face(face):
+    """Things wrong with the bill on its own face."""
+    if not face:
+        return
+    st.markdown(ui.section(f"Wrong on the bill's own face · {len(face)}"),
+                unsafe_allow_html=True)
+    for i, f in enumerate(face):
+        st.markdown(f"<div class='hit warn ag-in {agentsui.arrive(i)}'><div class='h'>"
+                    f"{ui.safe(f['title'])}</div><div class='b'>{ui.safe(f['detail'])}"
+                    f"<br><br><b>Ask:</b> {ui.safe(f['ask'])}</div></div>",
                     unsafe_allow_html=True)
 
-        st.session_state["priced"] = priced
 
-    checked, summary = crosscheck.check_bill(lines, records)
-    st.session_state["findings"] = {"priced": st.session_state.get("priced"),
-                                    "rights": protections, "face": [f for _, f in face],
-                                    "crosschecked": checked}
+def render_medicare(lines, bench, checker_took):
+    """The national benchmark, which works for any CPT code.
 
+    The 262-row table covers nine hospitals. This covers every CPT code there is, so a
+    bill from anywhere gets an answer to "is this the right amount" rather than silence.
+    """
+    import medicare
+    named = {c: b for c, b in bench.items() if b.get("found")}
+    if not named:
+        return
+    st.markdown(agentsui.heading(ui.section("Against the national Medicare allowance"),
+                                 "Checker", checker_took), unsafe_allow_html=True)
+    st.caption("What the federal programme allows for the same code. **A Medicare rate "
+               "is not a price cap** — a hospital may charge a commercial patient more, "
+               "and usually does. This is context for the conversation, not evidence of "
+               "an overcharge.")
+    rows = []
+    for l in lines:
+        b = named.get((l.get("code") or "").upper())
+        if not b or not b.get("medicare_rate"):
+            continue
+        mult = medicare.multiple_of_medicare(l.get("charged"), l.get("units"),
+                                             b["medicare_rate"])
+        rows.append((mult or 0, l, b, mult))
+    for i, (_, l, b, mult) in enumerate(sorted(rows, key=lambda t: -t[0])):
+        tone = "bad" if (mult or 0) >= 10 else "warn" if (mult or 0) >= 3 else "ok"
+        times = (f"<b>{mult:g}× the Medicare allowance</b>" if mult
+                 else "could not be compared")
+        st.markdown(
+            f"<div class='hit {tone} ag-in {agentsui.arrive(i)}'>"
+            f"<span class='amt'>{_m(l.get('charged'))}</span>"
+            f"<div class='h'>{ui.safe(b['name'])}</div><div class='b'>"
+            f"<b>{ui.safe(l.get('code'))}</b> · billed as "
+            f"“{ui.safe((l.get('description') or '')[:40])}”"
+            f"{f' · qty {l["units"]}' if (l.get('units') or 1) > 1 else ''}<br>"
+            f"Medicare allows {_m(b['medicare_rate'])}"
+            f"{f' per unit' if (l.get('units') or 1) > 1 else ''} — {times}."
+            + f"<br><span style='opacity:.65'>Source: CMS "
+              f"{str(b.get('dataset','')).replace('CMS_','').replace('_',' ')}, "
+              f"{b.get('effective_year','')}</span></div></div>",
+            unsafe_allow_html=True)
+
+    missing = [c for c, b in bench.items() if not b.get("found")]
+    if missing:
+        st.caption(f"{len(missing)} code(s) are not in the national fee schedule and "
+                   f"could not be benchmarked: {', '.join(sorted(missing))}. It covers "
+                   f"CPT; HCPCS codes such as J- and A-codes are outside it.")
+
+
+def render_published(priced):
+    """What this particular hospital publishes."""
+    c1, c2, c3 = st.columns(3)
+    c1.metric("You were billed", f"${priced['billed_total']:,.2f}")
+    c2.metric("They publish", f"${priced['posted_total']:,.2f}")
+    c3.metric("Unexplained", f"${priced['questionable_amount']:,.2f}")
+    # The date was hardcoded here. The table carries collected_date on every row, so the
+    # caption reads it: a refreshed table moves this line instead of silently leaving a
+    # stale date on screen.
+    collected = sorted({l["collected_date"] for l in priced["lines"]
+                        if l.get("collected_date")})
+    when = (" · ".join(_date(d) for d in collected) if collected
+            else "an undated table")
+    st.caption("A gap to ask about — not money you are owed, and not a refund "
+               f"estimate. Published prices collected {when}; a hospital may have "
+               "republished since.")
+
+    # Attached to every flag since the Checker was written and never shown until now.
+    # The PRD promised it as what this screen says when a price file cannot settle a
+    # line: how often CMS has already had to act against this hospital.
+    #
+    # Three states, not two. A hospital the enforcement file was never joined to is not a
+    # hospital with a clean record, and saying "0 actions" for one would be the same
+    # mistake this app refuses to make about a missing medical record.
+    matched = next((l.get("enforcement_match") for l in priced["lines"]
+                    if l.get("enforcement_match")), "none")
+    actions = max((l.get("hospital_enforcement_actions") or 0)
+                  for l in priced["lines"]) if priced["lines"] else 0
+    if matched == "none":
+        st.caption("This hospital could not be matched to CMS's price-transparency "
+                   "enforcement file by name and state, so this project holds no "
+                   "enforcement history for it. **That is not the same as a clean "
+                   "record** — it usually means CMS lists the hospital under a "
+                   "slightly different name.")
+    elif actions:
+        st.caption(f"CMS has recorded **{actions} price-transparency enforcement "
+                   f"action(s)** against this hospital. That is about whether it "
+                   f"published properly, not about your bill — but it is context for "
+                   f"how much weight the file above deserves.")
+    else:
+        st.caption("CMS has recorded no price-transparency enforcement actions "
+                   "against this hospital.")
+
+    flagged_lines = [l for l in priced["lines"] if l["verdict"] != "VERIFIED"]
+    if not flagged_lines:
+        return
+    # "Above the published price" was wrong as a heading: this section also carries
+    # duplicates, suspect quantities and codes with no published price.
+    st.markdown(ui.section(f"Checked against the published prices · "
+                           f"{len(flagged_lines)} flagged"), unsafe_allow_html=True)
+    for i, l in enumerate(sorted(flagged_lines, key=lambda x: -(x.get("charged") or 0))):
+        label, tone = VERDICTS.get(l["verdict"], ("Checked", "warn"))
+        over = (f" · <b>{_m(l['amount_over'])} above</b>"
+                if l.get("amount_over") else "")
+        # The Checker leaves posted_price empty on a duplicate row - the price is on the
+        # first instance of that code. Saying "no published price" because this
+        # particular row lacks one told the reader the hospital publishes nothing for
+        # 99284 while the row above it showed $1,605.00.
+        price = l.get("posted_price")
+        if price is None and l.get("code"):
+            price = next((o.get("posted_price") for o in priced["lines"]
+                          if o.get("code") == l["code"] and o.get("posted_price")),
+                         None)
+        posted = (f"They publish {_m(price)} for this code" if price else
+                  "No published price for this code — worth asking about")
+        # The receipt, on the card rather than only in the letter: which of the hospital's
+        # three published numbers this was compared against, and when that file was
+        # collected.
+        cite = (f"<br><span style='opacity:.65'>Compared against their "
+                f"{l['basis']}, collected {_date(l['collected_date'])}</span>"
+                if l.get("basis") and l.get("collected_date") else "")
+        st.markdown(
+            f"<div class='hit {tone} ag-in {agentsui.arrive(i)}'>"
+            f"<span class='amt'>{_m(l['charged'])}</span>"
+            f"<div class='h'>{label}</div><div class='b'>"
+            f"<b>{ui.safe(l.get('code') or '—')}</b> "
+            f"{ui.safe(l.get('description', '')[:48])} · "
+            f"qty {l.get('units',1)}<br>{posted}{over}{cite}</div></div>",
+            unsafe_allow_html=True)
+
+
+def render_against_records(checked, summary):
+    import crosscheck
     # A bill with no dates on it produced one identical "no date to check against" card per
     # line, under a heading that said nothing was found - four cards saying the same thing
     # beneath "0 of 4". When nothing is dated, that is one fact about the bill, not N.
@@ -933,11 +1151,11 @@ def screen_check():
         for r in worth_showing:
             groups.setdefault((r["verdict"], r.get("service_date")), []).append(r)
 
-        for (verdict, when_), rows in groups.items():
+        for i, ((verdict, when_), rows) in enumerate(groups.items()):
             label, tone = crosscheck.VERDICTS[verdict]
             head = f"{label}{f' · {when_}' if when_ else ''}"
             if verdict == "DATE_NO_MATCH" and rows[0].get("matches"):
-                held = ", ".join(f"“{m['title']}”" for m in rows[0]["matches"][:3])
+                held = ", ".join(f"“{ui.safe(m['title'])}”" for m in rows[0]["matches"][:3])
                 why = (f"You have {len(rows[0]['matches'])} record(s) from that day "
                        f"({held}) and none of them covers the charge"
                        f"{'s' if len(rows) > 1 else ''} below.")
@@ -947,52 +1165,53 @@ def screen_check():
                        + (f" — your closest record is {gap} days away" if gap else "")
                        + ". That may simply be paperwork you never received.")
             else:
-                why = rows[0]["ask"]
+                why = ui.safe(rows[0]["ask"])
 
             body = "".join(
                 f"<div class='b' style='margin-top:.45rem'>"
                 f"<span class='amt'>${r['charged']:,.2f}</span>"
                 + " · ".join(filter(None, [
-                    f"<b>{r['code']}</b>" if r.get("code") else None,
-                    (r.get("description") or "")[:46] or None]))
+                    f"<b>{ui.safe(r['code'])}</b>" if r.get("code") else None,
+                    ui.safe((r.get("description") or "")[:46]) or None]))
                 + "</div>" for r in rows)
 
-            st.markdown(f"<div class='hit {tone}'><div class='h'>{head}</div>"
+            st.markdown(f"<div class='hit {tone} ag-in {agentsui.arrive(i)}'>"
+                        f"<div class='h'>{head}</div>"
                         f"<div class='b'>{why}</div>{body}</div>",
                         unsafe_allow_html=True)
     st.markdown(f"<div class='note'>{summary['caveat']}</div>", unsafe_allow_html=True)
 
-    # ---- the letter --------------------------------------------------------
-    priced = st.session_state.get("priced")
-    if priced and priced.get("flagged_count"):
-        import dispute
-        prof = db.get_profile(con, my_id())
-        text = dispute.letter(priced, patient_name=prof.get("full_name"),
-                              rights_findings=protections,
-                              record_gaps=[c for c in checked
-                                           if c["verdict"] in ("NO_RECORD", "DATE_NO_MATCH")])
-        st.markdown(ui.section("A letter you can send") + agentsui.badge("Advocate"),
-                    unsafe_allow_html=True)
-        st.caption("Built from the figures above directly — not written by a model, so "
-                   "nothing in it can drift from what this screen showed you.")
-        with st.expander("Read it"):
-            st.text(text)
-        st.download_button("Download the letter", data=text,
-                           file_name="medvault-dispute-letter.txt",
-                           use_container_width=True)
 
-    # ---- ask about any of it ----------------------------------------------
+def render_letter(text, letter_took):
+    st.markdown(agentsui.heading(ui.section("A letter you can send"), "Advocate",
+                                 letter_took), unsafe_allow_html=True)
+    st.caption("Built from the figures above directly — not written by a model, so "
+               "nothing in it can drift from what this screen showed you.")
+    with st.expander("Read it"):
+        st.text(text)
+    st.download_button("Download the letter", data=text,
+                       file_name="medvault-dispute-letter.txt",
+                       use_container_width=True)
+
+
+def render_bill_question(run):
     st.markdown(ui.section("Ask about this bill"), unsafe_allow_html=True)
     st.caption("Answers come out of the findings above, not out of a language model — so "
                "it can only tell you things the checks actually established, and it says "
                "when it does not know.")
     question = st.text_input("Ask", key="ask_q", label_visibility="collapsed",
                              placeholder="why is 72148 flagged?  ·  what do I do next?")
-    if question:
+    if question.strip():
         import explain
-        st.markdown(explain.answer(question, st.session_state.get("findings") or {}))
-
-
+        reply = explain.answer(question, {"priced": run["priced"],
+                                          "rights": run["protections"],
+                                          "face": run["face"],
+                                          "crosschecked": run["checked"]})
+        # Streamlit reads a pair of dollar signs as maths, so "$9,374.04 for 1 unit.
+        # This hospital publishes $6,009.00" came out as italic run-together letters.
+        # Nobody had seen it, because until this screen kept its findings the answer
+        # never got as far as being drawn.
+        st.markdown((reply or "").replace("$", "\\$"))
 
 
 # ------------------------------------------------------------ who you are ----
@@ -1006,7 +1225,7 @@ EXAMPLE_QUESTIONS = [
 
 def _render_turn(turn):
     """One question and its answer, with the badge that says where the answer came from."""
-    st.markdown(f"<div class='qa'><div class='bubble q ag-in'>{turn['q']}</div>",
+    st.markdown(f"<div class='qa'><div class='bubble q ag-in'>{ui.safe(turn['q'])}</div>",
                 unsafe_allow_html=True)
     a = turn["a"]
     if a.get("kind") == "error":
@@ -1018,15 +1237,20 @@ def _render_turn(turn):
 
     label, tone = ask.KIND_LABEL.get(a["kind"], ("Answer", "warn")) \
         if a["kind"] != "emergency" else ("Call for help now", "bad")
-    body = "".join(f"<p>{para}</p>" for para in a["answer"].split("\n") if para.strip())
+    body = "".join(f"<p>{ui.safe(para)}</p>" for para in a["answer"].split("\n")
+                   if para.strip())
     srcs = ""
     if a.get("sources"):
         items = " · ".join(
-            f"<b>{r.get('title')}</b> ({r.get('service_date') or 'undated'})"
+            f"<b>{ui.safe(r.get('title'))}</b> ({ui.safe(r.get('service_date') or 'undated')})"
             for r in a["sources"].values())
         srcs = f"<div class='srcs'>Read out of: {items}</div>"
-    st.markdown(f"<div class='bubble a ag-in' style='--i:2'><span class='badge {tone}'>{label}</span>"
-                f"{body}{srcs}</div></div>", unsafe_allow_html=True)
+    # Who answered, and how long it took - the Companion's mark plays once as the answer
+    # lands. An answer the model never gave (an emergency, a refused dose question) is
+    # still the Companion's, so it is stamped the same way.
+    who = agentsui.stamp("Companion", f"answered in {turn['took']}") if turn.get("took") else ""
+    st.markdown(f"<div class='bubble a ag-in ag-i2'><span class='badge {tone}'>"
+                f"{label}</span>{body}{srcs}{who}</div></div>", unsafe_allow_html=True)
 
 
 def screen_ask():
@@ -1035,8 +1259,9 @@ def screen_ask():
     # untimeable doses - showing both would put the same finding on screen twice, which
     # is the mistake this project has made three times already.
     findings = liaison.update(con, my_id())
-    st.markdown(ui.section(f"What your own records say is outstanding · {len(findings)}")
-                + agentsui.badge("Liaison"), unsafe_allow_html=True)
+    st.markdown(agentsui.heading(
+        ui.section(f"What your own records say is outstanding · {len(findings)}"),
+        "Liaison"), unsafe_allow_html=True)
     st.caption("Worked out here, from your records, by arithmetic — no model is involved, "
                "nothing leaves this server, and nothing here is a judgement about your "
                "health. It is what your own paperwork says and has not been followed up.")
@@ -1046,9 +1271,9 @@ def screen_ask():
                              "that collides with your recorded allergies."),
                     unsafe_allow_html=True)
     for i, f in enumerate(findings):
-        st.markdown(f"<div class='hit {f['tone']} ag-in'{agentsui.arrive(i)}>"
-                    f"<div class='h'>{f['title']}</div>"
-                    f"<div class='b'>{f['body']}</div></div>", unsafe_allow_html=True)
+        st.markdown(f"<div class='hit {f['tone']} ag-in {agentsui.arrive(i)}'>"
+                    f"<div class='h'>{ui.safe(f['title'])}</div>"
+                    f"<div class='b'>{ui.safe(f['body'])}</div></div>", unsafe_allow_html=True)
 
     doctors = careteam.team(con, my_id())
     if findings:
@@ -1065,8 +1290,8 @@ def screen_ask():
                            file_name="medvault-update-for-my-doctor.txt",
                            use_container_width=True)
 
-    st.markdown(ui.section("Ask about your medicines and treatment")
-                + agentsui.badge("Companion"), unsafe_allow_html=True)
+    st.markdown(agentsui.heading(ui.section("Ask about your medicines and treatment"),
+                                 "Companion"), unsafe_allow_html=True)
     ready, why = reader_ready()
     if not ready:
         st.info(f"The question box needs a reading key, and {why}. The checks above do "
@@ -1089,8 +1314,11 @@ def screen_ask():
                                        "Checking first whether this is a question a model "
                                        "should not answer at all"),
                       unsafe_allow_html=True)
+        started = time.perf_counter()
+        reply = ask.answer(con, my_id(), question)
         st.session_state["ask_log"].append(
-            {"q": question, "a": ask.answer(con, my_id(), question)})
+            {"q": question, "a": reply,
+             "took": agentsui.took(time.perf_counter() - started)})
         slot.empty()
         st.rerun()
 
@@ -1240,7 +1468,7 @@ def your_patients(account):
     lists about the same records.
     """
     mine = careteam.patients(con, account["id"])
-    st.markdown(ui.section(f"Your patients · {len(mine)}") + agentsui.badge("Liaison"),
+    st.markdown(agentsui.heading(ui.section(f"Your patients · {len(mine)}"), "Liaison"),
                 unsafe_allow_html=True)
     if not mine:
         st.markdown(ui.empty("No patient has added you to their care team yet.<br>They do "
@@ -1260,9 +1488,9 @@ def your_patients(account):
             if not items:
                 st.caption("Nothing in this patient's records is outstanding.")
             for i, item in enumerate(items):
-                st.markdown(f"<div class='hit {item['tone']} ag-in'{agentsui.arrive(i)}>"
-                            f"<div class='h'>{item['title']}"
-                            f"</div><div class='b'>{item['body']}</div></div>",
+                st.markdown(f"<div class='hit {item['tone']} ag-in {agentsui.arrive(i)}'>"
+                            f"<div class='h'>{ui.safe(item['title'])}"
+                            f"</div><div class='b'>{ui.safe(item['body'])}</div></div>",
                             unsafe_allow_html=True)
 
 
@@ -1292,9 +1520,9 @@ def screen_review(account):
             f"<span class='pill'>{kind_label(r['kind'])}</span>"
             f"{ui.provenance_badge(r)}"
             f"<span class='when'>{when(r)}</span></div>"
-            f"<div class='title'>{r['title']}</div>"
-            + (f"<div class='who'>{r['provider']}</div>" if r.get("provider") else "")
-            + (f"<div class='sum'>{r['summary']}</div>" if r.get("summary") else "")
+            f"<div class='title'>{ui.safe(r['title'])}</div>"
+            + (f"<div class='who'>{ui.safe(r['provider'])}</div>" if r.get("provider") else "")
+            + (f"<div class='sum'>{ui.safe(r['summary'])}</div>" if r.get("summary") else "")
             + "</div>", unsafe_allow_html=True)
         if r.get("file_size"):
             full = db.get_record(con, r["id"])
@@ -1408,7 +1636,10 @@ def sign_out():
     """At the foot of a screen, not in the navigation - leaving is not a place to go."""
     st.markdown("<div style='height:.6rem'></div>", unsafe_allow_html=True)
     if st.button("Sign out", use_container_width=True, key=f"out{id(st.session_state)}"):
-        st.session_state.pop("account", None)
+        # Everything, not only the account. Signing out used to leave the last bill check,
+        # the Ask conversation and a half-filed document in the session, and the next
+        # person to sign in on the same phone could see them.
+        st.session_state.clear()
         st.rerun()
 
 # ------------------------------------------------------------------ shell ----

@@ -141,7 +141,9 @@ def css_url(svg):
 def wordmark(size=19, uid="w", ink=INK, accent=ACCENT):
     """Mark plus name. The name is live text, not an outline: it picks up Inter from the
     page, stays selectable, and is read aloud by a screen reader."""
-    return (f'<span class="mvlockup" style="--mv-name:{size}px">'
+    # The size goes on the name itself. It was a custom property on the wrapper, which
+    # Streamlit's markdown renderer drops from inline styles, so every lockup was 19px.
+    return (f'<span class="mvlockup">'
             f'{mark(size=round(size * 1.75), uid=uid)}'
-            f'<span class="mvname" style="color:{ink}">Med'
+            f'<span class="mvname" style="color:{ink};font-size:{size}px">Med'
             f'<span style="color:{accent}">Vault</span></span></span>')
