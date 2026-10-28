@@ -9,7 +9,7 @@ import agentsui
 import db
 import ui
 from schema import KIND_ORDER, kind_label
-from session import me, reader_ready, vault, visible_owners, when
+from session import clinician_view, me, reader_ready, vault, visible_owners, when
 
 
 def screen_add():
@@ -61,7 +61,8 @@ def screen_add():
         if not meta.get("ok"):
             st.error("**That document could not be read just now**\n\nThe reading service "
                      "did not answer. Nothing was stored. Try again in a moment.")
-            st.caption(f"For the maintainer: {str(meta.get('error'))[:160]}")
+            st.markdown(ui.hint("", ui.safe(str(meta.get("error"))[:160]),
+                                label="Technical detail"), unsafe_allow_html=True)
             return
 
         st.session_state["draft"] = rec
@@ -96,7 +97,7 @@ def screen_add():
                         f"<div class='d'>{bits or 'no dose printed'}</div></div>",
                         unsafe_allow_html=True)
 
-    if st.button("File it", type="primary", use_container_width=True):
+    if st.button("File this record", type="primary", use_container_width=True):
         fname, fmime, fbytes = st.session_state["draft_file"]
         filer = me()
         clinical = accounts.is_verified_clinician(filer)
@@ -111,7 +112,8 @@ def screen_add():
             db.add_medication(con, rid, m)
         for k in ("draft", "draft_file", "draft_model", "draft_took"):
             st.session_state.pop(k, None)
-        st.success(f"Filed. {len(meds)} medicine(s) added." if meds else "Filed.")
+        ui.flash(f"Filed “{title or 'Untitled record'}”"
+                 + (f" and added {len(meds)} medicine(s)." if meds else "."))
         st.rerun()
 
 
@@ -129,8 +131,17 @@ def screen_records():
                            owner_ids=visible_owners())
 
     if not rows:
-        st.markdown(ui.empty("Nothing here yet." if not q else f"Nothing matches “{q}”."),
-                    unsafe_allow_html=True)
+        # An empty list should say what to do next, not only that it is empty.
+        if q:
+            message = (f"Nothing matches “{ui.safe(q)}”.<br>Try a medicine, a hospital or "
+                       f"a word from the summary.")
+        elif clinician_view():
+            message = ("No records yet.<br>They appear when a patient adds you to their "
+                       "care team.")
+        else:
+            message = ("Nothing filed yet.<br>Use <b>Add</b> to photograph a prescription "
+                       "or upload a report.")
+        st.markdown(ui.empty(message), unsafe_allow_html=True)
         return
 
     for r in rows:

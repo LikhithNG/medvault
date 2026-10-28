@@ -35,8 +35,15 @@ BADGE_IC = _icon('<path d="M12 3.2 14.1 4.7l2.6-.2 1 2.4 2.2 1.4-.8 2.5.8 2.5-2.
 
 
 def nav():
+    """The brand, and a way straight to the sign-in box.
+
+    On a phone the box sits below the headline, the paragraph and the three ticks - most of
+    a screen down - and someone who already has an account had to scroll past the pitch
+    every time they came back. The button jumps there.
+    """
     return (f"<div class='navbar'>{logo.wordmark(size=20, uid='n')}"
-            f"<div class='links'><span class='free'>Free to use</span></div></div>")
+            f"<div class='links'><span class='free'>Free to use</span>"
+            f"<a class='cta' href='#open-your-vault' target='_self'>Sign in</a></div></div>")
 
 
 def hero():

@@ -89,7 +89,7 @@ __STAGGER__
 .ag-g svg .fill{fill:currentColor;stroke:none}
 
 /* the badge on anything an agent produced */
-.ag-badge{display:inline-flex;align-items:center;gap:.42rem;font-size:10.5px;
+.ag-badge{display:inline-flex;align-items:center;gap:.42rem;font-size:11px;
   font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--accent);
   background:var(--accent-soft);border:1px solid #D6E6FD;border-radius:999px;
   padding:.2rem .62rem .2rem .22rem;margin:-.2rem 0 .65rem;white-space:nowrap}
@@ -119,10 +119,10 @@ __STAGGER__
   margin-bottom:.6rem}
 .ag-card .ag-g svg{width:27px;height:27px}
 .ag-card .ag-n{font-size:15px;font-weight:800;color:var(--ink);letter-spacing:-.02em}
-.ag-card .ag-r{font-size:10.5px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
+.ag-card .ag-r{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;
   color:var(--faint);margin:.1rem 0 .4rem}
 .ag-card p{font-size:13px;line-height:1.5;color:var(--soft);margin:0}
-.ag-card .ag-kind{display:inline-block;margin-top:.55rem;font-size:10.5px;font-weight:700;
+.ag-card .ag-kind{display:inline-block;margin-top:.55rem;font-size:11px;font-weight:700;
   padding:.14rem .45rem;border-radius:999px;background:var(--ok-soft);color:var(--ok);
   border:1px solid #BCE5CF}
 .ag-card .ag-kind.model{background:var(--warn-soft);color:var(--warn);border-color:#F7E0B5}

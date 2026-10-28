@@ -25,10 +25,16 @@ CSS = """
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
 
 :root{
-  --ink:#0B1220; --soft:#55606E; --faint:#8A95A5;
+  /* --faint was #8A95A5, 2.7-3.0:1 on these backgrounds - under WCAG AA's 4.5:1 for the
+     dates, notes and labels it is used on. #626D7B is 4.7:1 at worst (on --accent-soft). */
+  --ink:#0B1220; --soft:#55606E; --faint:#626D7B;
   --line:#E4E9F0; --line-soft:#EFF3F8;
   --bg:#F6F8FC; --card:#FFFFFF;
-  --accent:#0F6FDE; --accent-bright:#3B8CFF; --accent-deep:#0A4E9E;
+  /* --accent is text as often as it is colour, on white and on --accent-soft; #0F6FDE
+     was 4.3:1 on the soft blue. #0B5CC0 is 5.6:1. --accent-strong starts every gradient
+     that carries white text: #3B8CFF under small white type was 3.3:1. */
+  --accent:#0B5CC0; --accent-bright:#3B8CFF; --accent-strong:#1A6FE0; --accent-deep:#0A4E9E;
+  --focus:#0A4E9E;
   --accent-soft:#EAF2FE;
   --warn:#B45309; --warn-soft:#FEF6E7;
   --danger:#B42318; --danger-soft:#FEF0EF;
@@ -75,16 +81,31 @@ h1,h2,h3,h4{font-family:var(--sans);color:var(--ink);letter-spacing:-.025em}
   border:1px solid var(--line);border-radius:var(--r);padding:.6rem .75rem;
   box-shadow:var(--sh-sm)}
 .whoami .av{width:32px;height:32px;border-radius:10px;color:#fff;flex:0 0 auto;
-  background:linear-gradient(135deg,var(--accent-bright),var(--accent-deep));
+  background:linear-gradient(135deg,var(--accent-strong),var(--accent-deep));
   display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px}
 .whoami .nm{font-size:14.5px;font-weight:700;color:var(--ink);line-height:1.2}
 .whoami .rl{font-size:11.5px;color:var(--faint);margin-top:.1rem}
-.whoami .count{margin-left:auto;font-size:10.5px;font-weight:700;
+.whoami .count{margin-left:auto;font-size:11px;font-weight:700;
   text-transform:uppercase;letter-spacing:.05em;color:var(--accent);
   background:var(--accent-soft);border:1px solid #D6E6FD;padding:.22rem .55rem;
   border-radius:999px;white-space:nowrap}
 .whoami .count+.chk{margin-left:.4rem}
-.whoami .chk{margin-left:auto;font-size:10.5px;font-weight:700;text-transform:uppercase;
+.whoami .who{min-width:0}
+.whoami .rl{overflow-wrap:anywhere}
+.whoami .out{margin-left:.55rem;font-size:13px;font-weight:600;color:var(--accent);
+  text-decoration:none;white-space:nowrap;padding:.35rem .2rem;border-radius:6px}
+.whoami .out:hover{text-decoration:underline}
+.whoami .count+.out{margin-left:.55rem}
+.whoami .who+.out{margin-left:auto}
+/* The second, destructive step of a two-step action, in red: a blue primary button there
+   invited exactly the click the step exists to slow down. Streamlit 1.5x+ puts the widget
+   key on its container; on older versions these fall back to an ordinary button. */
+[class*="st-key-cty"] button,[class*="st-key-noy"] button{background:var(--danger)!important;
+  color:#fff!important;border:none!important;box-shadow:none!important}
+[class*="st-key-cty"] button p,[class*="st-key-noy"] button p{color:#fff!important}
+/* the second step of removing someone from the care team */
+.ask{font-size:13.5px;font-weight:700;color:var(--danger);padding:.85rem 0 0;text-align:center}
+.whoami .chk{margin-left:auto;font-size:11px;font-weight:700;text-transform:uppercase;
   letter-spacing:.05em;color:var(--ok);background:var(--ok-soft);border:1px solid #BCE5CF;
   padding:.22rem .55rem;border-radius:999px;text-align:right;line-height:1.3}
 
@@ -92,6 +113,13 @@ h1,h2,h3,h4{font-family:var(--sans);color:var(--ink);letter-spacing:-.025em}
 .navbar{display:flex;align-items:center;gap:.6rem;padding:.2rem 0 1.4rem;margin-bottom:.4rem}
 .navbar .links{margin-left:auto;display:flex;align-items:center;gap:1.1rem}
 .navbar .links span{font-size:13px;font-weight:600;color:var(--soft)}
+.navbar .links .cta{font-size:13.5px;font-weight:700;color:#fff;text-decoration:none;
+  background:linear-gradient(135deg,var(--accent-strong),var(--accent-deep));
+  padding:.5rem .95rem;border-radius:999px;box-shadow:0 4px 12px rgba(15,111,222,.28)}
+.navbar .links .cta:hover{box-shadow:0 6px 16px rgba(15,111,222,.36)}
+@media (max-width: 420px){ .navbar .links .free{display:none} }
+/* the jump lands the box below the top edge, not under it */
+#open-your-vault{scroll-margin-top:1.2rem}
 .navbar .links .free{font-size:11.5px;font-weight:700;letter-spacing:.04em;
   text-transform:uppercase;color:var(--ok);background:var(--ok-soft);
   border:1px solid #BCE5CF;border-radius:999px;padding:.28rem .65rem}
@@ -157,7 +185,7 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 .sitefoot b{color:var(--soft);font-weight:600}
 
 /* ---- the emergency card -------------------------------------------------- */
-.idcard{background:linear-gradient(150deg,#2E86FF 0%,#0F6FDE 45%,#083F80 100%);color:#fff;
+.idcard{background:linear-gradient(150deg,#1A6FE0 0%,#0F5FC8 45%,#083F80 100%);color:#fff;
   border-radius:var(--r-xl);padding:1.25rem 1.25rem 1.3rem;margin-bottom:.9rem;
   position:relative;overflow:hidden;box-shadow:0 14px 34px rgba(12,76,160,.30)}
 /* a soft highlight across the top, so the card has a surface rather than a flat fill */
@@ -165,13 +193,13 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
   background:radial-gradient(120% 70% at 85% -10%,rgba(255,255,255,.24),transparent 60%)}
 .idcard>*{position:relative;z-index:1}
 .idcard .brandline{display:flex;align-items:center;gap:.4rem;font-size:11px;font-weight:700;
-  letter-spacing:.12em;text-transform:uppercase;opacity:.78;margin-bottom:.85rem}
+  letter-spacing:.12em;text-transform:uppercase;opacity:.92;margin-bottom:.85rem}
 .idcard .who{font-size:24px;font-weight:800;letter-spacing:-.035em;line-height:1.14}
 .idcard .sub{font-size:13px;opacity:.87;margin-top:.18rem}
 .idcard .grid{display:flex;gap:.5rem;margin-top:1rem}
 .idcard .cell{background:rgba(255,255,255,.16);border-radius:12px;padding:.52rem .62rem;
   flex:1 1 0;min-width:0;backdrop-filter:blur(2px)}
-.idcard .cell .k{font-size:10px;text-transform:uppercase;letter-spacing:.07em;opacity:.82}
+.idcard .cell .k{font-size:10.5px;text-transform:uppercase;letter-spacing:.07em;opacity:.92}
 /* A date of birth is ten characters and was wrapping onto two lines inside its cell, which
    made the card look broken. The cells share the width evenly and clip rather than wrap. */
 .idcard .cell .v{font-size:15px;font-weight:700;margin-top:.12rem;white-space:nowrap;
@@ -184,7 +212,7 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 /* a red band, because an allergy is the one thing that must not be missed */
 .alert{background:var(--danger-soft);border:1px solid #F6C9C4;border-left:4px solid var(--danger);
   border-radius:var(--r);padding:.75rem .9rem;margin-bottom:.8rem}
-.alert .k{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
+.alert .k{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.07em;
   color:var(--danger)}
 .alert .v{font-size:15.5px;font-weight:600;color:#7A1710;margin-top:.15rem;line-height:1.35}
 
@@ -195,13 +223,15 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 .rec:hover{box-shadow:var(--sh-md);border-color:#D7DFEA}
 .rec:active{transform:scale(.995)}
 .rec .top{display:flex;align-items:center;gap:.4rem;margin-bottom:.35rem;flex-wrap:wrap}
-.rec .pill{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
+.rec .pill{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;
   padding:.2rem .5rem;border-radius:999px;background:var(--accent-soft);color:var(--accent);
   border:1px solid #D6E6FD}
 .rec .when{font-size:12px;color:var(--faint);margin-left:auto;white-space:nowrap}
 .rec .title{font-size:16.5px;font-weight:700;color:var(--ink);line-height:1.3;
   letter-spacing:-.02em}
 .rec .who{font-size:13px;color:var(--soft);margin-top:.12rem}
+.rec .patient{font-size:13px;color:var(--soft);margin-top:.12rem}
+.rec .patient b{color:var(--ink);font-weight:700}
 .rec .sum{font-size:13.5px;color:var(--soft);margin-top:.42rem;line-height:1.45}
 .rec .nofile{font-size:12px;color:var(--faint);margin-top:.4rem}
 
@@ -209,7 +239,7 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 /* The badge is the product's whole answer to "how do I know this is real". It is drawn on
    every record, including the unverified ones, because a vault that only labels the good
    records teaches people that an absent badge means nothing. */
-.prov{font-size:10.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
+.prov{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;
   padding:.2rem .5rem;border-radius:999px;display:inline-flex;align-items:center;gap:.25rem}
 .prov.self{background:#F2F4F8;color:#5B6673;border:1px solid #DFE4EC}
 .prov.verified{background:var(--ok-soft);color:var(--ok);border:1px solid #BCE5CF}
@@ -223,6 +253,10 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 .med .n{font-size:16px;font-weight:700;color:var(--ink);line-height:1.3;letter-spacing:-.02em}
 .med .d{font-size:13.5px;color:var(--soft);margin-top:.25rem;line-height:1.45}
 .med .why{font-size:12.5px;color:var(--faint);margin-top:.3rem;font-style:italic}
+.med.stopped{opacity:.7;border-left-color:var(--line)}
+.med .pill.off{display:inline-block;margin-left:.5rem;vertical-align:2px;font-size:11px;
+  font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.12rem .45rem;
+  border-radius:999px;background:#F2F4F8;color:var(--soft);border:1px solid #DFE4EC}
 
 /* ---- the bill cross-check ------------------------------------------------ */
 .hit{border-radius:var(--r);padding:.9rem .95rem;margin-bottom:.6rem;border:1px solid}
@@ -239,7 +273,7 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 .qa{margin-bottom:1rem}
 .bubble{border-radius:16px;padding:.75rem .95rem;font-size:14.5px;line-height:1.58;
   width:fit-content;max-width:92%}
-.bubble.q{background:linear-gradient(135deg,var(--accent-bright),var(--accent-deep));
+.bubble.q{background:linear-gradient(135deg,var(--accent-strong),var(--accent-deep));
   color:#fff;margin-left:auto;border-bottom-right-radius:5px;font-weight:500;
   box-shadow:0 5px 16px rgba(15,111,222,.26)}
 .bubble.a{background:var(--card);border:1px solid var(--line);color:var(--ink);
@@ -249,7 +283,7 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 /* The badge is the whole point of the answer: a reader has to be able to tell at a glance
    whether what follows came out of their own records or out of a model's general
    knowledge, and those two things look identical once they are prose. */
-.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:10.5px;font-weight:700;
+.badge{display:inline-flex;align-items:center;gap:.3rem;font-size:11px;font-weight:700;
   text-transform:uppercase;letter-spacing:.055em;padding:.22rem .55rem;border-radius:999px;
   margin-bottom:.55rem}
 .badge.ok{background:var(--ok-soft);color:var(--ok);border:1px solid #BCE5CF}
@@ -289,7 +323,7 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
   white-space:normal!important;line-height:1.35}
 :is(.stButton,.stDownloadButton)>button[kind="primary"],
 button[kind="primaryFormSubmit"]{
-  background:linear-gradient(135deg,var(--accent-bright),var(--accent-deep));
+  background:linear-gradient(135deg,var(--accent-strong),var(--accent-deep));
   border:none;color:#fff;box-shadow:0 6px 18px rgba(15,111,222,.30)}
 :is(.stButton,.stDownloadButton)>button[kind="primary"]:hover,
 button[kind="primaryFormSubmit"]:hover{
@@ -319,6 +353,31 @@ div[data-baseweb="input"]:focus-within,div[data-baseweb="textarea"]:focus-within
 div[role="group"]:has(> input[role="combobox"]):focus-within{
   border-color:var(--accent)!important;box-shadow:0 0 0 3px rgba(15,111,222,.14)}
 textarea::placeholder,input::placeholder{color:var(--faint)!important}
+
+/* Keyboard focus you can see. Streamlit's ring is a pale blue glow, which on a blue button
+   is no ring at all, and the navigation had none. Shown for keyboard focus only, so a tap
+   or a click does not leave an outline behind. */
+.stApp :is(button,[role="tab"],a,summary,input[type="radio"],input[type="checkbox"]):focus-visible{
+  outline:3px solid var(--focus)!important;outline-offset:2px!important}
+
+/* iOS zooms the whole page into any input whose text is under 16px, and leaves it zoomed
+   after the keyboard goes - so every field on a phone is 16px. */
+@media (max-width: 899px){
+  textarea,input[type="text"],input[type="password"],input[type="email"],
+  input[role="combobox"]{font-size:16px!important}
+}
+
+/* a caption that says the one thing that matters, with the reasoning a tap away */
+.hint{font-size:13px;color:var(--soft);line-height:1.5;margin:.1rem 0 .7rem}
+.hint b{color:var(--ink);font-weight:600}
+.hint details{display:inline}
+.hint summary{display:inline;cursor:pointer;color:var(--accent);font-weight:600;
+  list-style:none;margin-left:.2rem;border-radius:4px}
+.hint summary::-webkit-details-marker{display:none}
+.hint summary::after{content:" ›";display:inline-block;transition:transform .15s ease}
+.hint details[open] summary::after{transform:rotate(90deg)}
+.hint details>div{display:block;margin-top:.4rem;padding:.6rem .75rem;background:var(--card);
+  border:1px solid var(--line);border-radius:10px;color:var(--soft)}
 
 /* Captions carry most of the plain-language explanation in this app; they have to be read,
    not merely present. */
@@ -379,7 +438,7 @@ div[data-testid="stMetricValue"]{font-size:23px!important;font-weight:800!import
 /* Six labels across a phone is 62px each, and at 10.5px "Records" and "Medicines" met in
    the middle with no space between them. Smaller, and clipped rather than overlapping. */
 [role="tablist"]:has([role="tab"]:nth-child(6)) [role="tab"] p{
-  font-size:9.5px!important;letter-spacing:-.02em;max-width:100%;overflow:hidden;
+  font-size:10px!important;letter-spacing:-.02em;max-width:100%;overflow:hidden;
   text-overflow:ellipsis}
 div[data-baseweb="tab-highlight"],div[data-baseweb="tab-border"],
 .react-aria-SelectionIndicator,[role="tablist"]::after{display:none}
@@ -544,6 +603,42 @@ def empty(message):
     return f"<div class='empty'>{message}</div>"
 
 
+def hint(short, more=None, label="Why?"):
+    """One short line, and the reasoning behind a toggle rather than in front of the reader.
+
+    Fifteen captions in this app ran past 160 characters. Each was true and most were the
+    point of the product - but a paragraph under every heading is read by nobody, so the
+    caveat that mattered was lost with the rest. The line that has to be read stays
+    visible; the why is one tap away, in a native <details> that a keyboard can open and
+    that does not rerun the app.
+
+    Both arguments are markup this app wrote. Anything from a record, a bill or a person
+    must go through safe() before it is passed in.
+    """
+    more_html = (f"<details><summary>{label}</summary><div>{more}</div></details>"
+                 if more else "")
+    return f"<div class='hint'>{short}{more_html}</div>"
+
+
+def flash(message, icon="✅"):
+    """Say what just happened, on the run after it happened.
+
+    Every save in this app is followed by st.rerun(), which wiped the "Saved." drawn just
+    before it - so a patient filed a prescription, saved their card or added a doctor and
+    was told nothing. The message is held until the next run and shown as a toast there.
+    """
+    import streamlit as st
+    st.session_state["_flash"] = (message, icon)
+
+
+def show_flash():
+    """The toast for whatever flash() was told on the previous run, once."""
+    import streamlit as st
+    pending = st.session_state.pop("_flash", None)
+    if pending:
+        st.toast(pending[0], icon=pending[1])
+
+
 _TO_TOP = """<script>
 (function () {
   var doc = window.parent.document;
@@ -597,13 +692,21 @@ def signed_in_strip(account, meta=""):
                                       account.get("email", "?")).split()[:2]).upper()
     role = ("Clinician" if account["role"] == "clinician" else "Patient")
     count = f"<div class='count'>{meta}</div>" if meta else ""
-    chk = ""
     if accounts.is_verified_clinician(account):
-        chk = (f"<div class='chk'>NPI {account['npi']} verified<br>"
-               f"{account.get('npi_specialty') or ''}</div>")
+        # In the role line rather than a second chip: with the count and the sign-out link
+        # beside it, two chips did not fit a phone's width.
+        role = (f"Clinician · NPI {safe(account['npi'])} verified"
+                + (f" · {safe(account.get('npi_specialty'))}"
+                   if account.get("npi_specialty") else ""))
+    # Signing out was a button at the foot of the Card screen, and nowhere else - on a
+    # phone shared at a desk, the one control that hands the phone back was the hardest
+    # to find. A link reloads the page, which is itself a sign-out (the account lives in
+    # the session), and app.py clears whatever the query string asked for.
+    out = "<a class='out' href='?signout=1' target='_self'>Sign out</a>"
     return (f"<div class='whoami'><div class='av'>{initials or '?'}</div>"
-            f"<div><div class='nm'>{account.get('display_name') or account['email']}</div>"
-            f"<div class='rl'>{role}</div></div>{count}{chk}</div>")
+            f"<div class='who'><div class='nm'>"
+            f"{safe(account.get('display_name') or account['email'])}</div>"
+            f"<div class='rl'>{role}</div></div>{count}{out}</div>")
 
 
 def mono_mark(size=13):

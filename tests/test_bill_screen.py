@@ -91,7 +91,7 @@ def _app(account):
 def _check(at, bill=BILL):
     at.radio(key="bill_source").set_value("Paste the lines").run()
     next(t for t in at.text_area if "Paste" in t.label).set_value(bill).run()
-    next(b for b in at.button if b.label == "Check it").click().run()
+    next(b for b in at.button if b.label == "Check this bill").click().run()
     assert not at.exception, [e.value for e in at.exception]
     return at
 
@@ -119,7 +119,7 @@ def test_filing_the_missing_record_retires_the_old_finding():
         at.run()
         assert not _shown(at, "lines have nothing behind them"), \
             "a finding about the old records was redrawn after a new one was filed"
-        assert _shown(at, "Press Check it")
+        assert _shown(at, "Three agents take it from here")
 
 
 def test_signing_out_leaves_nothing_for_the_next_person():
@@ -135,7 +135,7 @@ def test_signing_out_leaves_nothing_for_the_next_person():
         at.radio(key="bill_source").set_value("Paste the lines").run()
         next(t for t in at.text_area if "Paste" in t.label).set_value(BILL).run()
         assert not _shown(at, "Alice's chest X-ray"), "Bob was shown Alice's records"
-        assert _shown(at, "Press Check it")
+        assert _shown(at, "Three agents take it from here")
 
 
 def test_a_blank_question_does_not_take_the_screen_down():

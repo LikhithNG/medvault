@@ -28,7 +28,7 @@ def screen_signin():
         # find reliably; the marker inside it is what the :has() selector keys on.
         with st.container(border=True):
             st.markdown("<div class='panelmark'></div>"
-                        "<div class='panelhead'>Open your vault</div>"
+                        "<div class='panelhead' id='open-your-vault'>Open your vault</div>"
                         "<div class='panelsub'>Patients and clinicians both sign in "
                         "here. A clinician is checked against the national provider "
                         "registry when the account is made.</div>",
@@ -40,9 +40,8 @@ def screen_signin():
         col.markdown(landing.feature(*feature), unsafe_allow_html=True)
 
     st.markdown(ui.section("Six agents, one job each"), unsafe_allow_html=True)
-    st.caption("Green means no model is involved — the answer is arithmetic over a "
-               "published file. Amber means a model reads or answers, inside limits that "
-               "are written down.")
+    st.caption("Green: no AI model, just arithmetic over a published file. Amber: an AI "
+               "model reads or answers, inside limits that are written down.")
     st.markdown(agentsui.roster(), unsafe_allow_html=True)
 
     st.markdown(ui.section("How it works"), unsafe_allow_html=True)
@@ -74,6 +73,8 @@ def auth_panel():
                 else:
                     st.session_state["account"] = acct
                     st.session_state["arrived"] = True     # see ui.to_top()
+                    first = (acct.get("display_name") or "").split(" ")[0]
+                    ui.flash(f"Welcome back{', ' + first if first else ''}.", icon="👋")
                     st.rerun()
 
     else:
@@ -96,9 +97,11 @@ def auth_panel():
         record = None
         if role == "clinician":
             st.markdown(ui.section("Verify your NPI"), unsafe_allow_html=True)
-            st.caption("Checked live against the CMS national provider registry. This "
-                       "confirms the number is real, active and matches a licence — it "
-                       "does not, on its own, prove you are that person.")
+            st.markdown(ui.hint("Checked live against the national provider registry "
+                                "(CMS).",
+                                "This confirms the number is real, active and matches a "
+                                "licence. It does not, on its own, prove you are that "
+                                "person."), unsafe_allow_html=True)
             npi_in = st.text_input("NPI number", key="su_npi", placeholder="10 digits")
             if st.button("Check the registry", use_container_width=True):
                 found, problem = npi.lookup(npi_in)
@@ -121,6 +124,8 @@ def auth_panel():
         email2 = st.text_input("Email", key="su_email", placeholder="you@example.com")
         pw2 = st.text_input("Password", type="password", key="su_pw",
                             help="At least 8 characters. Nothing follows this field.")
+        # The rule was only in the tooltip, so the first anybody saw of it was the error.
+        st.caption("At least 8 characters.")
 
         if st.button("Create account", type="primary", use_container_width=True):
             acct, problem = accounts.create(con, email=email2, password=pw2, role=role,
@@ -131,4 +136,6 @@ def auth_panel():
                 st.session_state["account"] = acct
                 st.session_state.pop("npi_record", None)
                 st.session_state["arrived"] = True         # see ui.to_top()
+                ui.flash("Account created. Start with your emergency card - it is the "
+                         "screen someone reads if you cannot speak for yourself.", icon="🎉")
                 st.rerun()

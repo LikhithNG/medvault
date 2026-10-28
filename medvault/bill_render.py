@@ -111,10 +111,10 @@ def render_medicare(lines, bench, checker_took):
         return
     st.markdown(agentsui.heading(ui.section("Against the national Medicare allowance"),
                                  "Checker", checker_took), unsafe_allow_html=True)
-    st.caption("What the federal programme allows for the same code. **A Medicare rate "
-               "is not a price cap** — a hospital may charge a commercial patient more, "
-               "and usually does. This is context for the conversation, not evidence of "
-               "an overcharge.")
+    st.markdown(ui.hint("What Medicare allows for the same code. <b>Not a price cap</b> — "
+                        "context for the conversation, not proof of an overcharge.",
+                        "A hospital may charge a commercial patient more than Medicare "
+                        "allows, and usually does."), unsafe_allow_html=True)
     rows = []
     for l in lines:
         b = named.get((l.get("code") or "").upper())
@@ -177,16 +177,18 @@ def render_published(priced):
     actions = max((l.get("hospital_enforcement_actions") or 0)
                   for l in priced["lines"]) if priced["lines"] else 0
     if matched == "none":
-        st.caption("This hospital could not be matched to CMS's price-transparency "
-                   "enforcement file by name and state, so this project holds no "
-                   "enforcement history for it. **That is not the same as a clean "
-                   "record** — it usually means CMS lists the hospital under a "
-                   "slightly different name.")
+        st.markdown(ui.hint("No enforcement history found for this hospital — <b>that is "
+                            "not a clean record</b>.",
+                            "It could not be matched to CMS's price-transparency enforcement "
+                            "file by name and state. That usually means CMS lists the "
+                            "hospital under a slightly different name."),
+                    unsafe_allow_html=True)
     elif actions:
-        st.caption(f"CMS has recorded **{actions} price-transparency enforcement "
-                   f"action(s)** against this hospital. That is about whether it "
-                   f"published properly, not about your bill — but it is context for "
-                   f"how much weight the file above deserves.")
+        st.markdown(ui.hint(f"CMS has recorded <b>{actions} price-transparency enforcement "
+                            f"action(s)</b> against this hospital.",
+                            "That is about whether it published its prices properly, not "
+                            "about your bill — but it is context for how much weight the "
+                            "file above deserves."), unsafe_allow_html=True)
     else:
         st.caption("CMS has recorded no price-transparency enforcement actions "
                    "against this hospital.")
@@ -303,9 +305,9 @@ def render_letter(text, letter_took):
 
 def render_bill_question(run):
     st.markdown(ui.section("Ask about this bill"), unsafe_allow_html=True)
-    st.caption("Answers come out of the findings above, not out of a language model — so "
-               "it can only tell you things the checks actually established, and it says "
-               "when it does not know.")
+    st.markdown(ui.hint("Answers come from the findings above, not from an AI model.",
+                        "So it can only tell you what the checks actually established, and "
+                        "it says when it does not know."), unsafe_allow_html=True)
     question = st.text_input("Ask", key="ask_q", label_visibility="collapsed",
                              placeholder="why is 72148 flagged?  ·  what do I do next?")
     if question.strip():

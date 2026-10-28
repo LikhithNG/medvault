@@ -22,14 +22,16 @@ def profile_editor(p, expanded):
     """
     con = vault()
     with st.expander("Set up your card" if expanded else "Edit this card", expanded=expanded):
-        st.caption("This is what someone sees if they pick up your phone in an emergency. "
-                   "Nothing here leaves this device.")
+        st.markdown(ui.hint("What someone sees if they pick up your phone in an emergency.",
+                            "It is stored in your vault. You, and the clinicians you add to "
+                            "your care team, are the only people who can see it."),
+                    unsafe_allow_html=True)
 
         st.markdown(ui.section("You"), unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         full = c1.text_input("Full name", p.get("full_name", ""))
         dob = c2.text_input("Date of birth", p.get("date_of_birth", ""),
-                            placeholder="1999-07-12")
+                            placeholder="1999-07-12", help="Year, month, day: 1999-07-12")
         blood_now = p.get("blood_type", "")
         blood = c1.selectbox("Blood type", BLOOD_TYPES,
                              index=BLOOD_TYPES.index(blood_now) if blood_now in BLOOD_TYPES else 0,
@@ -49,12 +51,12 @@ def profile_editor(p, expanded):
         econ = c1.text_input("Emergency contact", p.get("emergency_name", ""))
         erel = c2.text_input("Relationship", p.get("emergency_relation", ""),
                              placeholder="sister, partner")
-        ephone = st.text_input("Their phone", p.get("emergency_phone", ""))
+        ephone = st.text_input("Contact's phone", p.get("emergency_phone", ""))
 
         st.markdown(ui.section("Your doctor"), unsafe_allow_html=True)
         c1, c2 = st.columns(2)
         gp = c1.text_input("Primary doctor", p.get("gp_name", ""))
-        gpp = c2.text_input("Their phone", p.get("gp_phone", ""), key="gpphone")
+        gpp = c2.text_input("Doctor's phone", p.get("gp_phone", ""), key="gpphone")
 
         st.markdown(ui.section("Insurance"), unsafe_allow_html=True)
         st.caption("The number reception asks for before anything else happens.")
@@ -69,7 +71,7 @@ def profile_editor(p, expanded):
                 "emergency_name": econ, "emergency_relation": erel,
                 "emergency_phone": ephone, "gp_name": gp, "gp_phone": gpp,
                 "insurer": ins, "member_id": mem})
-            st.success("Saved.")
+            ui.flash("Card saved.")
             st.rerun()
 
 
@@ -173,16 +175,38 @@ def care_team_panel():
     """
     con = vault()
     st.markdown(ui.section("Your care team"), unsafe_allow_html=True)
-    st.caption("The clinicians you choose can see your records and the list of what they "
-               "say is outstanding. Nobody else can. Remove someone and it takes effect "
-               "immediately.")
-    for doc in careteam.team(con, my_id()):
+    st.markdown(ui.hint("Only the clinicians you add here can see your records.",
+                        "They also see the list of what your records say is outstanding. "
+                        "Remove someone and they lose access straight away."),
+                unsafe_allow_html=True)
+    team = careteam.team(con, my_id())
+    if not team:
+        st.markdown(ui.empty("No one yet.<br>Add your doctor with the email they use for "
+                             "MedVault."), unsafe_allow_html=True)
+    for doc in team:
+        name = ui.safe(doc.get("display_name") or doc["email"])
         c1, c2 = st.columns([3, 1])
-        c1.markdown(f"<div class='med'><div class='n'>{doc.get('display_name') or doc['email']}"
-                    f"</div><div class='d'>{doc.get('npi_specialty') or 'Clinician'} · "
-                    f"NPI {doc.get('npi')} verified</div></div>", unsafe_allow_html=True)
-        if c2.button("Remove", key=f"ct{doc['id']}", use_container_width=True):
-            careteam.remove(con, my_id(), doc["id"])
+        c1.markdown(f"<div class='med'><div class='n'>{name}</div><div class='d'>"
+                    f"{ui.safe(doc.get('npi_specialty') or 'Clinician')} · NPI "
+                    f"{ui.safe(doc.get('npi'))} verified</div></div>", unsafe_allow_html=True)
+        # Removing someone ends their access to every record at once, so it asks first.
+        # It was one tap, beside the name, on a phone - exactly where a thumb lands by
+        # accident.
+        if st.session_state.get("confirm_remove") == doc["id"]:
+            c2.markdown("<div class='ask'>Remove?</div>", unsafe_allow_html=True)
+            y, n = st.columns(2)
+            if y.button(f"Yes, remove {doc.get('display_name') or 'them'}",
+                        key=f"cty{doc['id']}", use_container_width=True):
+                careteam.remove(con, my_id(), doc["id"])
+                st.session_state.pop("confirm_remove", None)
+                ui.flash(f"Removed {doc.get('display_name') or doc['email']}. They can no "
+                         f"longer see your records.")
+                st.rerun()
+            if n.button("Keep", key=f"ctn{doc['id']}", use_container_width=True):
+                st.session_state.pop("confirm_remove", None)
+                st.rerun()
+        elif c2.button("Remove", key=f"ct{doc['id']}", use_container_width=True):
+            st.session_state["confirm_remove"] = doc["id"]
             st.rerun()
     with st.form("addcare", border=False, clear_on_submit=True):
         email = st.text_input("Your doctor's MedVault email", placeholder="doctor@clinic.org")
@@ -191,7 +215,8 @@ def care_team_panel():
             if problem:
                 st.error(problem)
             else:
-                st.success(f"Added {added.get('display_name') or added['email']}.")
+                ui.flash(f"Added {added.get('display_name') or added['email']} to your "
+                         f"care team.")
                 st.rerun()
 
 
@@ -203,18 +228,21 @@ def vault_transfer(account):
     # behind it the records do outlive a restart, and saying otherwise would be a caveat
     # that is no longer true - which costs as much trust as a missing one.
     if hosted() and not store.configured():
-        st.warning("**This deployment's storage is temporary.** The server restarts when "
-                   "it is idle and the database goes with it. Download your vault before "
-                   "you close the tab, and put it back with the box below. Setting "
-                   "`TURSO_DATABASE_URL` and `TURSO_AUTH_TOKEN` in this app's secrets "
-                   "moves it to a database that survives.")
-    elif store.configured():
-        st.success("**Your records are kept in a database, not on this server's disk.** "
-                   "They survive a restart and a redeploy. Taking a copy is still worth "
-                   "doing — a vault you cannot leave with is a trap.")
-    st.caption("Everything except the original scans, as JSON small enough to email "
-               "yourself. A vault that only takes deposits is a trap, so this goes both "
-               "ways.")
+        st.warning("**Storage on this server is temporary.** Download your vault before "
+                   "you leave, and put it back below next time.")
+        st.markdown(ui.hint("", "The server restarts when it is idle and its disk goes "
+                                "with it. Setting <code>TURSO_DATABASE_URL</code> and "
+                                "<code>TURSO_AUTH_TOKEN</code> in this app's secrets moves "
+                                "the vault to a database that survives.",
+                            label="For whoever runs this server"),
+                    unsafe_allow_html=True)
+    saved = ("Your records are saved in a database and survive restarts. "
+             if store.configured() else "")
+    st.markdown(ui.hint("Download everything except the original scans as one file, and "
+                        "put it back here or on another device.",
+                        saved + "It is JSON, small enough to email yourself. A vault you "
+                        "cannot leave with is a trap, so this goes both ways."),
+                unsafe_allow_html=True)
 
     st.download_button("Download my vault",
                        data=db.export_vault(con, my_id()),
@@ -222,21 +250,22 @@ def vault_transfer(account):
                        mime="application/json", use_container_width=True)
 
     back = st.file_uploader("Put a vault file back", type=["json"], key="vault_in")
+    st.markdown(ui.hint("Restored records are labelled as filed by you.",
+                        "A confirmation from a clinician on another server does not travel "
+                        "with the file - the account that gave it does not exist here."),
+                unsafe_allow_html=True)
     if back is not None and st.button("Restore it", use_container_width=True):
         try:
             done = db.import_vault(con, my_id(), back.getvalue())
         except (ValueError, json.JSONDecodeError) as problem:
             st.error(f"That file could not be read: {problem}")
         else:
-            st.success(
+            ui.flash(
                 f"Restored {done['records_added']} record(s)"
                 + (f", skipped {done['records_skipped']} already here"
                    if done["records_skipped"] else "")
                 + f", {done['medications_added']} medicine(s)."
                 + (" Your card was restored too." if done["profile_restored"] else ""))
-            st.caption("Restored records are labelled as filed by you. A confirmation "
-                       "from a clinician on another server does not travel with the file "
-                       "— the account that gave it does not exist here.")
             st.rerun()
 
 
@@ -249,4 +278,5 @@ def sign_out():
         # person to sign in on the same phone could see them.
         st.session_state.clear()
         st.session_state["arrived"] = True                 # see ui.to_top()
+        ui.flash("Signed out.", icon="👋")
         st.rerun()

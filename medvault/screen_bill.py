@@ -2,7 +2,7 @@
 """The Bill screen: the form, and the run that hands a bill from agent to agent.
 
 The drawing of the findings lives in bill_render.py, so this file is about what happens
-when somebody presses Check it, and that one is about what they see after.
+when somebody presses "Check this bill", and that one is about what they see after.
 """
 import time
 
@@ -20,9 +20,9 @@ from session import my_id, reader_ready, vault
 BILL_RELAY = ("Reader", "Checker", "Advocate")
 
 
-RELAY_INTRO = ("Press Check it and three agents take it from here: the Reader reads a photo "
-               "of the bill, the Checker prices every line, and the Advocate writes the "
-               "letter if anything is flagged.")
+RELAY_INTRO = ("Three agents take it from here: the Reader reads a photo of the bill, the "
+               "Checker prices every line, and the Advocate writes a letter if anything is "
+               "flagged.")
 
 
 # A step that finished this long before the run did was on screen long enough to be seen
@@ -55,18 +55,18 @@ def bill_form():
         upload = st.file_uploader("Photo or PDF of the bill",
                                   type=["jpg", "jpeg", "png", "webp", "pdf"],
                                   label_visibility="collapsed", key="bill_file")
-        st.caption("On a phone this opens the camera. The bill is read once to pull out "
-                   "the codes, quantities and amounts. It is not stored unless you file it "
-                   "as a record from the Add screen.")
+        st.markdown(ui.hint("On a phone this opens the camera. The bill is not stored.",
+                            "It is read once to pull out the codes, quantities and amounts. "
+                            "To keep a copy, file it as a record on the Add screen."),
+                    unsafe_allow_html=True)
         if upload:
             st.caption(f"{upload.name} · {len(upload.getvalue())/1024:,.0f} KB")
 
     # A few questions about the patient's situation unlock protections worth far more than
     # any rate difference on the bill - and none of them need a price file to answer.
-    with st.expander("Four questions that may be worth more than the prices"):
-        st.caption("Federal law gives patients rights that depend on the situation, not on "
-                   "the amounts. Leave anything blank that you are not sure of — unanswered "
-                   "is treated as unknown, never as no.")
+    with st.expander("Optional: 4 quick questions that can unlock legal protections"):
+        st.caption("Some protections depend on your situation, not on the amounts. Skip "
+                   "anything you are not sure of — a blank counts as unknown, never as no.")
         cov = st.radio("Were you insured for this care?",
                        ["Not sure", "I have insurance", "Uninsured or self-pay"],
                        key="rt_cov")
@@ -84,9 +84,12 @@ def bill_form():
     hospital = st.selectbox(
         "Which hospital issued this bill?", ["— not listed —"] + known,
         format_func=lambda h: h if h.startswith("—") else pretty[h], key="bill_hosp")
-    st.caption("Nine hospitals have published price files collected for this project. "
-               "If yours is not one of them, leave it unset — every line is still checked "
-               "against the national Medicare allowance, which covers any CPT code.")
+    st.markdown(ui.hint("Not listed? Leave it unset — every line is still checked against "
+                        "Medicare.",
+                        "Nine hospitals' published price files were collected for this "
+                        "project. The national Medicare allowance covers any CPT code, so a "
+                        "bill from anywhere still gets a benchmark."),
+                unsafe_allow_html=True)
 
     tri = {"Not sure": None, "Yes": True, "No": False}
     try:
@@ -330,20 +333,21 @@ def screen_check():
                "something a price list cannot: does your own paperwork show it happened?")
 
     records = db.list_records(con, limit=2000, owner_id=my_id())
-    if not records:
-        st.markdown(ui.empty("File a few records first.<br>"
-                             "With an empty vault there is nothing to check a bill against."),
-                    unsafe_allow_html=True)
-        return
-
-    st.info(f"Checking against **{len(records)} record(s)** you have filed.")
+    # An empty vault used to stop the whole screen with "file a few records first". Only
+    # the cross-check needs records; the prices do not, and somebody holding a bill on
+    # their first visit was turned away from the part that needed nothing from them.
+    if records:
+        st.info(f"Checking against **{len(records)} record(s)** you have filed.")
+    else:
+        st.info("**No records filed yet.** Every line is still priced; it just cannot be "
+                "matched to your paperwork until you file some on **Add**.")
     form = bill_form()
     ready = bool(form["pasted"].strip()) or form["upload"] is not None
 
     # The relay sits directly above the button, so the agents are on screen - waiting,
     # then working - in the one place somebody who has just pressed it is looking.
     slot = st.empty()
-    clicked = st.button("Check it", type="primary", use_container_width=True)
+    clicked = st.button("Check this bill", type="primary", use_container_width=True)
 
     # The findings used to exist only on the run in which the button was pressed. Asking
     # a question underneath them, or downloading the letter, is another run - and it wiped
@@ -366,6 +370,7 @@ def screen_check():
         title, body, detail = run["problem"]
         st.error(f"**{title}**\n\n{body}")
         if detail:
-            st.caption(f"For the maintainer: {detail}")
+            st.markdown(ui.hint("", ui.safe(detail), label="Technical detail"),
+                        unsafe_allow_html=True)
         return
     render_bill(run)

@@ -30,8 +30,9 @@ def screen_today():
                                  "Scheduler", f"day starts {day_start}"),
                 unsafe_allow_html=True)
     if not meds:
-        st.markdown(ui.empty("Nothing to take.<br>Medicines appear here once a "
-                             "prescription is filed."), unsafe_allow_html=True)
+        st.markdown(ui.empty("Nothing to take.<br>Use <b>Add</b> to photograph a "
+                             "prescription and its medicines appear here."),
+                    unsafe_allow_html=True)
         return
 
     coming = schedule.next_due(day)
@@ -82,19 +83,24 @@ def screen_today():
                         f"this is not on your calendar.</div></div>",
                         unsafe_allow_html=True)
     if day["finished"]:
+        # This used to say "switch them off below", and there was no switch. There is now:
+        # each medicine in the list at the foot of this screen has one.
         st.caption("Finished courses not shown: "
                    + ", ".join(f"{e['med']['name']} (last dose {e['ends']:%-d %b})"
                                for e in day["finished"])
-                   + ". Switch them off below so your card is right.")
+                   + ". Mark them finished in the list below so your card stays right.")
 
-    st.caption("Times are a suggestion from MedVault, not part of the prescription — a "
-               "prescription that says “twice daily” says how often, not when. They move "
-               "with the time your day starts.")
+    st.markdown(ui.hint("Times are MedVault's suggestion, not part of the prescription.",
+                        "A prescription that says “twice daily” says how often, not when. "
+                        "The times move with the time your day starts."),
+                unsafe_allow_html=True)
     with st.form("daystart", border=False):
         chosen = st.time_input("My day starts at",
                                value=datetime.time.fromisoformat(day_start), step=900)
         if st.form_submit_button("Move my times", use_container_width=True):
             db.save_profile(con, my_id(), {"day_start": chosen.strftime("%H:%M")})
+            ui.flash(f"Today's doses now start at {chosen.strftime('%H:%M')}. Download the "
+                     f"calendar again to move the reminders on your phone.", icon="⏰")
             st.rerun()
 
     if day["doses"]:
@@ -113,13 +119,28 @@ def screen_medicines():
     meds = db.list_medications(con, active_only=False, owner_id=my_id())
     st.markdown(ui.section(f"Medicines · {len(meds)}"), unsafe_allow_html=True)
     if not meds:
-        st.markdown(ui.empty("No medicines yet.<br>They are pulled out of prescriptions "
-                             "automatically when you file one."), unsafe_allow_html=True)
+        st.markdown(ui.empty("No medicines yet.<br>They are pulled out of a prescription "
+                             "when you file it on <b>Add</b>."), unsafe_allow_html=True)
         return
+    st.markdown(ui.hint("Mark a medicine finished and it leaves your card, today's plan "
+                        "and the calendar file."), unsafe_allow_html=True)
     for m in meds:
         bits = " · ".join(x for x in (m.get("dose"), m.get("frequency"), m.get("duration")) if x)
         src = f"{m.get('provider') or 'unknown'} · {m.get('service_date') or 'no date'}"
-        st.markdown(f"<div class='med'><div class='n'>{m['name']}</div>"
-                    f"<div class='d'>{bits or 'no dose recorded'}</div>"
-                    + (f"<div class='why'>{m['reason']}</div>" if m.get("reason") else "")
-                    + f"<div class='why'>From {src}</div></div>", unsafe_allow_html=True)
+        stopped = not m.get("active", 1)
+        st.markdown(f"<div class='med{' stopped' if stopped else ''}'><div class='n'>"
+                    f"{ui.safe(m['name'])}"
+                    + ("<span class='pill off'>Finished</span>" if stopped else "")
+                    + f"</div><div class='d'>{ui.safe(bits) or 'no dose recorded'}</div>"
+                    + (f"<div class='why'>{ui.safe(m['reason'])}</div>" if m.get("reason") else "")
+                    + f"<div class='why'>From {ui.safe(src)}</div></div>",
+                    unsafe_allow_html=True)
+        # The medicine came out of this patient's own records (owner_id above), so the id
+        # is one of theirs.
+        if st.button("I'm taking this again" if stopped else "Mark as finished",
+                     key=f"medact{m['id']}", use_container_width=True):
+            db.set_medication_active(con, m["id"], stopped)
+            ui.flash(f"{m['name']} " + ("is back on your card." if stopped else
+                                        "marked as finished. It is off your card and "
+                                        "today's plan."))
+            st.rerun()

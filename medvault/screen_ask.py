@@ -57,11 +57,13 @@ def screen_ask():
     # is the mistake this project has made three times already.
     findings = liaison.update(con, my_id())
     st.markdown(agentsui.heading(
-        ui.section(f"What your own records say is outstanding · {len(findings)}"),
+        ui.section(f"Outstanding in your records · {len(findings)}"),
         "Liaison"), unsafe_allow_html=True)
-    st.caption("Worked out here, from your records, by arithmetic — no model is involved, "
-               "nothing leaves this server, and nothing here is a judgement about your "
-               "health. It is what your own paperwork says and has not been followed up.")
+    st.markdown(ui.hint("From your own records, by arithmetic — not a judgement about your "
+                        "health.",
+                        "No AI model is involved and nothing leaves this server. Each item "
+                        "is something your own paperwork says and that has not been "
+                        "followed up."), unsafe_allow_html=True)
     if not findings:
         st.markdown(ui.empty("Nothing outstanding.<br>No overdue follow-up, no duplicate "
                              "medicine, no finished course still marked current, nothing "
@@ -75,13 +77,16 @@ def screen_ask():
     doctors = careteam.team(con, my_id())
     if findings:
         if doctors:
-            st.caption("Your care team sees this list too: "
-                       + ", ".join(d.get("display_name") or d["email"] for d in doctors)
-                       + ". It is not sent to them — they see it when they sign in. To "
-                         "make sure they read it, send them the message below yourself.")
+            names = ", ".join(ui.safe(d.get("display_name") or d["email"]) for d in doctors)
+            st.markdown(ui.hint(f"Your care team ({names}) sees this list when they sign in.",
+                                "It is not sent to them. To make sure they read it, download "
+                                "the message below and send it yourself."),
+                        unsafe_allow_html=True)
         else:
-            st.caption("No care team yet, so no clinician sees this. Add your doctor on "
-                       "the Card screen, or send them the message below yourself.")
+            st.markdown(ui.hint("No clinician sees this yet.",
+                                "Add your doctor to your care team on the Card screen, or "
+                                "download the message below and send it yourself."),
+                        unsafe_allow_html=True)
         st.download_button("Download this as a message to my doctor",
                            data=liaison.message(me(), findings),
                            file_name="medvault-update-for-my-doctor.txt",
@@ -91,15 +96,17 @@ def screen_ask():
                                  "Companion"), unsafe_allow_html=True)
     ready, why = reader_ready()
     if not ready:
-        st.info(f"The question box needs a reading key, and {why}. The checks above do "
-                f"not — they are already complete.")
+        st.info(f"Questions are switched off on this server ({why}). The checks above do "
+                f"not need it and are complete.")
         return
 
-    st.caption("It answers from the records in your vault, and says so when an answer is "
-               "general knowledge instead. It will not tell you to change a dose, judge "
-               "whether something is safe for you, or check drug interactions — it has no "
-               "interaction database and will not pretend otherwise. **Your question and "
-               "the text of your records are sent to the reader to answer it.**")
+    st.markdown(ui.hint("Answers come from your own records. <b>Your question and the "
+                        "text of your records are sent to the AI reader to answer it.</b>",
+                        "It says so when an answer is general knowledge instead. It will not "
+                        "tell you to change a dose, judge whether something is safe for "
+                        "you, or check drug interactions — it has no interaction database "
+                        "and will not pretend otherwise.",
+                        label="What it will not do"), unsafe_allow_html=True)
 
     log = st.session_state.setdefault("ask_log", [])
     for turn in log:

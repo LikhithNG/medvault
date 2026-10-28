@@ -116,6 +116,14 @@ con = vault()
 
 # ------------------------------------------------------------------ shell ----
 
+# The header's "Sign out" link. Following it reloads the page, which already leaves the
+# session behind; this makes sure, and takes the request out of the address bar.
+if st.query_params.get("signout"):
+    st.session_state.clear()
+    st.query_params.clear()
+    ui.flash("Signed out.", icon="👋")
+ui.show_flash()
+
 account = st.session_state.get("account")
 if not account:
     screen_signin()
