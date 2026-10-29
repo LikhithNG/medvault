@@ -425,6 +425,32 @@ def test_the_prescriber_named_is_the_one_who_prescribed_the_medicine_asked_about
     assert set(who.split(", ")) == {"Dr Heart", "Dr Pharm"}, who
 
 
+def test_the_only_inhaler_is_the_inhaler_asked_about():
+    """"Inhaler" names no medicine - many have it - so "thinking of ditching the inhaler"
+    named no prescriber, even for a patient with one inhaler. Found on the staging copy."""
+    con, owner = a_patient()
+    rid = db.add_record(con, kind="prescription", title="Rx", provider="Dr Lung",
+                        owner_id=owner)
+    db.add_medication(con, rid, {"name": "Fluticasone inhaler", "dose": "2 puffs"})
+    rid = db.add_record(con, kind="prescription", title="Rx", provider="Dr Bug",
+                        owner_id=owner)
+    db.add_medication(con, rid, {"name": "Amoxicillin", "dose": "500 mg"})
+    out = ask.decision(con, owner, "thinking of ditching the inhaler since I feel fine")
+    assert "Dr Lung" in out["answer"] and "Dr Bug" not in out["answer"]
+    assert "What your records say: Fluticasone inhaler" in out["answer"]
+    # A word that is also a verb is not taken for a form.
+    db.add_medication(con, rid, {"name": "Chloramphenicol eye drops"})
+    out = ask.decision(con, owner, "my pressure drops when I take it, should I stop?")
+    assert "Dr Bug" not in out["answer"].split("Before your next dose")[0]
+
+
+def test_with_two_inhalers_the_inhaler_is_not_guessed():
+    con, owner = a_patient()
+    a_prescription(con, owner, [{"name": "Fluticasone inhaler"}, {"name": "Salbutamol inhaler"}])
+    out = ask.decision(con, owner, "should I stop the inhaler?")
+    assert "Your records list these as current" in out["answer"]
+
+
 def test_a_prescription_with_no_date_reads_prescribed_by():
     con, owner = a_patient()
     rid = db.add_record(con, kind="prescription", title="Rx", provider="Dr X", owner_id=owner)

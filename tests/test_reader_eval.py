@@ -68,6 +68,16 @@ def test_an_as_needed_medicine_read_as_scheduled_fails_its_check():
     assert failed == ["ibuprofen: as needed"], failed
 
 
+def test_a_misspelled_prescriber_fails_the_provider_check():
+    """The check passed on the surname alone, so a staging read of "Dr. Amora Osei" for the
+    printed "Dr. Amara Osei" scored as right. A name is a fact; spelt wrong it is wrong."""
+    failed = [c for c, p in reader_eval.score_prescription(
+        {**PERFECT, "provider": "Dr. Amora Osei, MD"}) if not p]
+    assert failed == ["provider"], failed
+    for right in ("Dr. Amara Osei, MD", "Riverbend Community Hospital"):
+        assert all(p for _, p in reader_eval.score_prescription({**PERFECT, "provider": right}))
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

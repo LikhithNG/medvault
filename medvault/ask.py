@@ -183,10 +183,24 @@ def _names(med):
     return {w for w in _words_of(med.get("name")) if len(w) >= 4 and w not in GENERIC_WORDS}
 
 
+# Forms in GENERIC_WORDS that still point at one medicine when only one comes in that form:
+# "the inhaler", for a patient with one inhaler. Not "drops" - it is a verb as often.
+FORM_WORDS = {"inhaler", "cream", "spray", "patch", "injection", "syrup"}
+
+
 def _named_in(text, meds):
-    """The medicines a text names, by any identifying word of their name."""
+    """The medicines a text names, by any identifying word of their name - or, when it
+    names none that way, by a form only one of them comes in."""
     words = _words_of(text)
-    return [m for m in meds if _names(m) & words]
+    named = [m for m in meds if _names(m) & words]
+    if named:
+        return named
+    by_form = []
+    for form in sorted(FORM_WORDS & words):
+        having = [m for m in meds if form in _words_of(m.get("name"))]
+        if len(having) == 1 and having[0] not in by_form:
+            by_form.append(having[0])
+    return by_form
 
 
 def brief(con, owner_id, today=None):

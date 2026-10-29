@@ -316,6 +316,26 @@ def test_follow_ups_written_in_words_ranges_and_years_are_found():
     assert _due_after("Return in 2 weeks for a wound check.") == [14]
 
 
+def test_the_clinician_is_told_the_list_is_worded_for_the_patient():
+    """The items speak to the patient - "You listed Penicillin (rash) on your card" - and
+    the clinician reads the same list, where it read as if the clinician had listed it.
+    Found on the staging copy."""
+    from test_bill_screen import _app, offline_vault
+    with offline_vault() as (con, alice, _):
+        doc, _ = accounts.create(con, email="dr.osei@example.com", password="password1",
+                                 role="clinician", display_name="Dr. Amara Osei",
+                                 npi_record=NPI)
+        db.save_profile(con, alice["id"], {"allergies": "Penicillin (rash)"})
+        rid = db.add_record(con, kind="prescription", title="Rx", service_date="2026-10-26",
+                            owner_id=alice["id"])
+        db.add_medication(con, rid, {"name": "Amoxicillin", "dose": "500 mg"})
+        careteam.add(con, alice["id"], "dr.osei@example.com")
+        at = _app(doc)
+        assert not at.exception, [e.value for e in at.exception]
+        assert any("You listed" in m.value for m in at.markdown), "no item to frame"
+        assert any("Worded for Alice Anderson" in c.value for c in at.caption)
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

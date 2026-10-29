@@ -329,6 +329,25 @@ def _uploaded():
 
 
 @contextlib.contextmanager
+def _uploaded_until_rekeyed():
+    """Like _uploaded, but as Streamlit behaves: a box given a new key is a new, empty box.
+    Yields every box drawn, in order, as (label, whether it held a file)."""
+    import streamlit as st
+    saved, first_key, drawn = st.file_uploader, {}, []
+
+    def box(label, *args, **kwargs):
+        first_key.setdefault(label, kwargs.get("key"))
+        held = kwargs.get("key") == first_key[label]
+        drawn.append((label, held))
+        return _Upload() if held else None
+    st.file_uploader = box
+    try:
+        yield drawn
+    finally:
+        st.file_uploader = saved
+
+
+@contextlib.contextmanager
 def _stand_in(module_name, attr, fn):
     """Replace one function on the module the app is using now, and put it back after.
 
@@ -430,6 +449,25 @@ def test_a_document_read_with_the_last_allowance_can_still_be_filed():
         _click(at, "File this record")
         titles = [r["title"] for r in db.list_records(con, owner_id=alice["id"])]
         assert "Blood panel" in titles
+
+
+def test_a_filed_document_leaves_the_upload_box_empty():
+    """Filing used to leave the photo in the box under a live "Read this document" - one
+    more click read it again, spending a read, and offered to file it a second time."""
+    with offline_vault() as (con, alice, _), _env(**READY), _no_network(), \
+            _uploaded_until_rekeyed() as drawn:
+        at = _app(alice)
+        read = ({"kind": "lab", "title": "Blood panel", "service_date": None,
+                 "provider": None, "summary": None, "medications": []},
+                {"ok": True, "model": "stand-in"})
+        with _stand_in("extract", "read_document", lambda **k: read):
+            _click(at, "Read this document")
+        _click(at, "File this record")
+        # What the app drew, not at.button: AppTest on 1.37 keeps the elements of the run
+        # that st.rerun() cut short, so "Read this document" lingers there either way.
+        boxes = [held for label, held in drawn if label == "Photo or PDF"]
+        assert boxes[0] and not boxes[-1], "the filed document is still in the box"
+        assert quota.allowance(con, alice).used == 1
 
 
 def test_a_bill_already_read_is_neither_refused_nor_counted_again():

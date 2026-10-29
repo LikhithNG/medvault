@@ -39,7 +39,9 @@ OUT = ROOT / "outputs" / "reader_eval.json"
 PRESCRIPTION = {
     "kind": "prescription",
     "service_date": "2026-09-18",
-    "provider_mentions": ("riverbend", "osei"),
+    # Spelt in full: the surname alone passed a read of "Dr. Amora Osei" for the printed
+    # "Dr. Amara Osei". Either the prescriber or the hospital, exactly as printed.
+    "provider_mentions": ("amara osei", "riverbend community hospital"),
     "medications": [
         {"name": "amoxicillin", "dose": "875", "per_day": 2, "prn": False, "days": "10"},
         {"name": "fluticasone", "dose": "50", "per_day": 1, "prn": False, "days": "21"},

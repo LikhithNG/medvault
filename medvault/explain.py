@@ -50,6 +50,11 @@ def _find_code(question):
 
 # ---- the answers -----------------------------------------------------------
 
+# A question about whether the paperwork shows a charge happened. Shared by the answer
+# about one code and the answer about the whole bill.
+ABOUT_RECORDS = re.compile(r"record|history|happen|receive|did i|my paperwork", re.I)
+
+
 def _about_a_code(q, state):
     code = _find_code(q)
     if not code:
@@ -92,6 +97,12 @@ def _about_a_code(q, state):
                    if any(r["verdict"] == "DUPLICATE" for r in rows) else "")]
     if line.get("source_url"):
         out += ["", f"Source: the standard-charge file this hospital publishes."]
+    # "...and is it in my records?" was answered on price alone, though the records
+    # check had already said what was behind this line.
+    held = [c for c in state.get("crosschecked") or []
+            if (c.get("code") or "").upper() == code]
+    if held and ABOUT_RECORDS.search(q):
+        out += ["", f"**Against your records:** {held[0]['ask']}"]
     return "\n".join(out)
 
 
@@ -182,7 +193,7 @@ def _rights(q, state):
 
 
 def _records(q, state):
-    if not re.search(r"record|history|happen|receive|did i|my paperwork", q, re.I):
+    if not ABOUT_RECORDS.search(q):
         return None
     checked = state.get("crosschecked") or []
     if not checked:

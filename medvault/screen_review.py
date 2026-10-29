@@ -34,12 +34,15 @@ def your_patients(account):
     for patient in mine:
         items = liaison.update(con, patient["id"])
         worst = next((i["tone"] for i in items), "ok")
-        label = (f"{patient.get('display_name') or patient['email']} · "
-                 f"{len(items)} outstanding" if items else
-                 f"{patient.get('display_name') or patient['email']} · nothing outstanding")
+        name = patient.get("display_name") or patient["email"]
+        label = f"{name} · {len(items)} outstanding" if items else f"{name} · nothing outstanding"
         with st.expander(label, expanded=(worst == "bad")):
             if not items:
                 st.caption("Nothing in this patient's records is outstanding.")
+            else:
+                # The items speak to the patient ("You listed Penicillin on your card");
+                # unframed, they read to a clinician as if the clinician had listed it.
+                st.caption(f"Worded for {name} — this is the list {name} sees.")
             for i, item in enumerate(items):
                 st.markdown(f"<div class='hit {item['tone']} ag-in {agentsui.arrive(i)}'>"
                             f"<div class='h'>{ui.safe(item['title'])}"

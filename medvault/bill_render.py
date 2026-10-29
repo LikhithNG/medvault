@@ -245,6 +245,12 @@ def render_published(priced):
             unsafe_allow_html=True)
 
 
+def _backed_by(row):
+    """The record a matched line was found in, for printing on that line."""
+    found = row.get("matches") if row.get("verdict") == "MATCHED" else None
+    return f"<i>backed by “{ui.safe(found[0]['title'])}”</i>" if found else None
+
+
 def render_against_records(checked, summary):
     import crosscheck
     # A bill with no dates on it produced one identical "no date to check against" card per
@@ -287,6 +293,11 @@ def render_against_records(checked, summary):
                 why = ("You have filed nothing from that date"
                        + (f" — your closest record is {gap} days away" if gap else "")
                        + ". That may simply be paperwork you never received.")
+            elif verdict == "MATCHED":
+                # Which record backs a line is a fact about the line, not the day. Said once
+                # for the group, the first line's record was printed over all of them - a
+                # metabolic panel shown as "supported by your chest X-ray".
+                why = "Each line is backed by a record you filed, named beside it."
             else:
                 why = ui.safe(rows[0]["ask"])
 
@@ -295,7 +306,8 @@ def render_against_records(checked, summary):
                 f"<span class='amt'>${r['charged']:,.2f}</span>"
                 + " · ".join(filter(None, [
                     f"<b>{ui.safe(r['code'])}</b>" if r.get("code") else None,
-                    ui.safe((r.get("description") or "")[:46]) or None]))
+                    ui.safe((r.get("description") or "")[:46]) or None,
+                    _backed_by(r)]))
                 + "</div>" for r in rows)
 
             st.markdown(f"<div class='hit {tone} ag-in {agentsui.arrive(i)}'>"

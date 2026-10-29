@@ -27,8 +27,12 @@ def screen_add():
                         label="Where it goes"), unsafe_allow_html=True)
     standing = ai_allowance()
 
+    # Keyed by how many documents this session has filed: filing moves the key on, and a
+    # new key is a new, empty box. The filed photo used to stay in it under a live "Read
+    # this document" - one click from a second read and a second copy of the record.
     up = st.file_uploader("Photo or PDF", type=["jpg", "jpeg", "png", "webp", "pdf"],
-                          label_visibility="collapsed")
+                          label_visibility="collapsed",
+                          key=f"doc_upload_{st.session_state.get('filed_count', 0)}")
     if not up:
         st.markdown(ui.empty("Nothing uploaded yet.<br>"
                              "On a phone this opens your camera."), unsafe_allow_html=True)
@@ -134,6 +138,7 @@ def screen_add():
             db.add_medication(con, rid, m)
         for k in ("draft", "draft_file", "draft_model", "draft_took"):
             st.session_state.pop(k, None)
+        st.session_state["filed_count"] = st.session_state.get("filed_count", 0) + 1
         ui.flash(f"Filed “{title or 'Untitled record'}”"
                  + (f" and added {len(meds)} medicine(s)." if meds else "."))
         st.rerun()

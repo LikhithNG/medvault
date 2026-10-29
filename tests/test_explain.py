@@ -57,6 +57,21 @@ def test_a_code_on_the_bill_is_explained_from_its_own_row():
     assert "more than the price the hospital publishes" in out
 
 
+def test_asking_about_a_code_and_the_records_answers_both():
+    """"why is 72148 flagged? and is it in my records?" was answered on price alone - the
+    records half dropped, though the check had the answer. Found on the staging copy."""
+    state = {**STATE, "crosschecked": [
+        {"code": "72148", "charged": 9400.00, "verdict": "DATE_NO_MATCH",
+         "ask": "You have records from 14 Mar 2026 and none of them mentions it."},
+        {"code": "71046", "charged": 299.00, "verdict": "MATCHED",
+         "ask": "Supported by your own record: “Chest X-ray”"}]}
+    out = explain.answer("why is 72148 flagged? and is it in my records?", state)
+    assert "$3,391.00 above" in out
+    assert "none of them mentions it" in out and "Chest X-ray" not in out
+    # Asked only about the price, the answer stays about the price.
+    assert "none of them mentions it" not in explain.answer("why is 72148 flagged?", state)
+
+
 def test_a_code_not_on_the_bill_is_not_invented():
     out = explain.answer("what is code 99999", STATE)
     assert "not on the bill" in out

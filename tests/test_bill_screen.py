@@ -109,6 +109,24 @@ def test_a_checked_bill_survives_the_question_asked_underneath_it():
         assert _shown(at, "lines have nothing behind them"), "the question wiped the bill"
 
 
+def test_each_matched_line_names_its_own_record():
+    """Two lines on one day, each backed by a different record. The card used to print the
+    first line's record for the whole day, so the metabolic panel read as "supported by your
+    chest X-ray" - wrong evidence on the screen whose job is showing the evidence."""
+    import db
+    with offline_vault() as (con, alice, _):
+        db.add_record(con, kind="lab", title="Basic metabolic panel",
+                      service_date="2026-03-14", owner_id=alice["id"])
+        at = _check(_app(alice), "2026-03-14  71046  XRAY CHEST 2-VIEWS         1   299.00\n"
+                                 "2026-03-14  80048  LAB BASIC METABOLIC PANEL  1   241.00")
+        card = next(m.value for m in at.markdown if "Matches a record" in m.value)
+        lines = {code: next(s for s in card.split("margin-top:.45rem") if code in s)
+                 for code in ("71046", "80048")}
+        assert "Basic metabolic panel" in lines["80048"], lines["80048"]
+        assert "chest X-ray" not in lines["80048"], lines["80048"]
+        assert "chest X-ray" in lines["71046"], lines["71046"]
+
+
 def test_filing_the_missing_record_retires_the_old_finding():
     import db
     with offline_vault() as (con, alice, _):
