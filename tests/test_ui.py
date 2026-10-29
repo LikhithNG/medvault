@@ -68,6 +68,17 @@ def test_a_bubbles_text_cannot_end_the_html_block_it_sits_in():
     assert "\n" not in out and "<br><br>" in out
 
 
+
+def test_a_big_screen_gets_a_wider_page_not_a_strip_in_the_middle():
+    """At 1920 wide - a projector, a desktop monitor - the landing page was a 1060px strip
+    with 430px of nothing either side, and the app a 708px column."""
+    block = ui.CSS[ui.CSS.index("@media (min-width: 1600px)"):]
+    block = block[:block.index("\n}") + 2]
+    assert ':not(:has([role="tablist"])) .block-container{max-width:1280px' in block
+    assert ':has([role="tablist"]) .block-container{max-width:1200px' in block
+    assert ".hero h1{font-size:60px}" in block
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

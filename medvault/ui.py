@@ -547,6 +547,15 @@ __ICONS__
   .stApp:has([role="tablist"]) .block-container{max-width:1000px!important}
 }
 
+/* A projector or a big monitor. At 1920 wide the landing page was a 1060px strip with
+   430px of nothing either side, and the app a 708px column; both grow, the hero with them. */
+@media (min-width: 1600px){
+  .stApp:has([role="tablist"]) .block-container{max-width:1200px!important}
+  .stApp:not(:has([role="tablist"])) .block-container{max-width:1280px!important}
+  .hero h1{font-size:60px}
+  .hero p.lead{font-size:19px}
+}
+
 </style>
 """
 
