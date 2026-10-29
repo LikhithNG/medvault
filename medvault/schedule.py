@@ -223,7 +223,9 @@ def note(parsed):
 # ---- the calendar a phone can hold ----------------------------------------------
 
 def _escape(text):
-    return (str(text or "").replace("\\", "\\\\").replace(";", "\\;")
+    # A lone carriage return is a line break too: left in, it put a bare CR in the file.
+    text = str(text or "").replace("\r\n", "\n").replace("\r", "\n")
+    return (text.replace("\\", "\\\\").replace(";", "\\;")
             .replace(",", "\\,").replace("\n", "\\n"))
 
 
@@ -252,13 +254,22 @@ def calendar(day, account_label="MedVault", stamp=None):
     morning wherever the phone is, which is what a dose time means.
     """
     stamp = stamp or datetime.datetime.now(datetime.timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    # Each download is a newer version of the same events, so a phone updates them.
+    sequence = int(datetime.datetime.strptime(stamp, "%Y%m%dT%H%M%SZ")
+                   .replace(tzinfo=datetime.timezone.utc).timestamp() // 60)
     start_day = day["date"]
+    slots = {}
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0",
              "PRODID:-//MedVault//Medication schedule//EN", "CALSCALE:GREGORIAN",
              f"X-WR-CALNAME:{_escape(account_label)} medicines"]
 
     for i, dose in enumerate(day["doses"]):
         med, parsed, end = dose["med"], dose["parsed"], dose["ends"]
+        # One UID per medicine and dose of the day - not per date and time. It carried
+        # both, so downloading again after moving the day's start (which the screen asks
+        # for) kept the old alarms and added new ones: two alarms for one dose.
+        key = med.get("id", i)
+        slots[key] = slots.get(key, 0) + 1
         h, m = dose["at"].split(":")
         begins = f"{start_day:%Y%m%d}T{h}{m}00"
         rule = "RRULE:FREQ=DAILY"
@@ -269,13 +280,15 @@ def calendar(day, account_label="MedVault", stamp=None):
         description = (
             f"{med.get('dose') or ''} · {parsed['text']}"
             + (f" · {extra}" if extra else "")
-            + (f"\\nPrescribed for: {med['reason']}" if med.get("reason") else "")
+            # Real line breaks, which _escape writes as the calendar's \\n. This wrote
+            # "\\\\n", and phones showed it literally.
+            + (f"\nPrescribed for: {med['reason']}" if med.get("reason") else "")
             + ("" if end else
-               "\\nThis course has no stated end. Delete this reminder when you stop.")
-            + "\\nThe time is a suggestion from MedVault, not part of the prescription."
+               "\nThis course has no stated end. Delete this reminder when you stop.")
+            + "\nThe time is a suggestion from MedVault, not part of the prescription."
         )
         lines += ["BEGIN:VEVENT",
-                  f"UID:medvault-{med.get('id', i)}-{h}{m}-{start_day:%Y%m%d}@medvault",
+                  f"UID:medvault-{key}-dose{slots[key]}@medvault", f"SEQUENCE:{sequence}",
                   f"DTSTAMP:{stamp}", f"DTSTART:{begins}", "DURATION:PT5M", rule,
                   f"SUMMARY:{_escape(what)}", f"DESCRIPTION:{_escape(description)}",
                   "BEGIN:VALARM", "ACTION:DISPLAY", "TRIGGER:PT0M",

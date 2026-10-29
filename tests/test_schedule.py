@@ -201,6 +201,36 @@ def test_an_evening_dose_is_given_an_evening_time():
     assert schedule.times_for(schedule.parse("every evening")) == ["18:00"]
 
 
+
+def test_downloading_the_calendar_again_updates_the_reminders_rather_than_doubling_them():
+    """The screen says to download the file again after moving the day's start - and each
+    event's UID carried the date and the time, so the phone kept the old alarms and added
+    new ones: two alarms for one dose."""
+    import re
+    meds = [{**med("Amoxicillin", "three times daily"), "id": 7}]
+    first = schedule.calendar(schedule.plan(meds, TODAY, day_start="08:00"))
+    later = schedule.calendar(schedule.plan(meds, TODAY + datetime.timedelta(days=3),
+                                            day_start="09:30"))
+    uids = lambda ics: re.findall(r"^UID:(.+)$", ics, re.M)
+    assert uids(first) == uids(later) and len(set(uids(first))) == 3
+
+
+def test_a_line_break_in_a_reminder_is_a_line_break_not_backslash_n():
+    """It wrote "\\n" and the escaping doubled the backslash, so phones showed a literal
+    \\n between the lines of the reminder."""
+    meds = [{**med("Amoxicillin", "twice daily", reason="Chest infection"), "id": 1}]
+    ics = schedule.calendar(schedule.plan(meds, TODAY)).replace("\r\n ", "")
+    assert "\\nPrescribed for" in ics and "\\\\n" not in ics
+
+
+def test_a_carriage_return_in_a_name_cannot_break_the_file():
+    import re
+    meds = [{**med("Amoxi\rcillin\r\nEND:VEVENT", "twice daily"), "id": 1}]
+    ics = schedule.calendar(schedule.plan(meds, TODAY))
+    assert not re.search(r"\r(?!\n)", ics)
+    assert [l for l in ics.split("\r\n") if l == "END:VEVENT"] == ["END:VEVENT"] * 2
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
