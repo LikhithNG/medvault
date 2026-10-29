@@ -151,6 +151,39 @@ def test_both_reader_prompts_say_the_page_is_data():
     assert extract.PAGE_IS_DATA in extract.BILL_PROMPT
 
 
+def test_every_medicine_field_must_be_answered_even_if_with_null():
+    """Only "name" was required. Measured on the sample prescription
+    (tools/reader_eval.py --prescription), the light fallback models left a printed
+    "Duration: 10 days" out of 17 of 36 medicines - a ten-day course the Scheduler then
+    never ends. Each field must now be answered; null still means "not printed"."""
+    item = extract.SCHEMA["properties"]["medications"]["items"]
+    assert set(item["required"]) == set(extract.MED_FIELDS)
+    for field in set(extract.MED_FIELDS) - {"name"}:
+        assert item["properties"][field].get("nullable"), field
+    assert not item["properties"]["name"].get("nullable")
+    assert "Duration:" in extract.PROMPT, "the prompt should say where details are printed"
+
+
+def test_a_strength_folded_into_the_name_is_moved_to_the_dose():
+    """The same models put "875 mg / 125 mg" in the name and left the dose empty."""
+    rec = extract._shape({"kind": "prescription", "medications": [
+        {"name": "Amoxicillin-Clavulanate 875 mg / 125 mg", "dose": None},
+        {"name": "Fluticasone propionate nasal spray 50 mcg"},
+        {"name": "Lactulose 10 g/15 mL"},
+        {"name": "Hydrocortisone cream 1%"},
+        {"name": "Ibuprofen 400 mg", "dose": "1 tablet"},    # a dose given is left alone
+        {"name": "Co-codamol 30/500"},                       # no unit: part of the name
+        {"name": "Aspirin 81 mg EC"},                        # not at the end: left alone
+        {"name": "Vitamin B12"},
+        {"name": "500 mg"}]})                                # nothing would be left
+    got = [(m["name"], m["dose"]) for m in rec["medications"]]
+    assert got == [("Amoxicillin-Clavulanate", "875 mg / 125 mg"),
+                   ("Fluticasone propionate nasal spray", "50 mcg"),
+                   ("Lactulose", "10 g/15 mL"), ("Hydrocortisone cream", "1%"),
+                   ("Ibuprofen 400 mg", "1 tablet"), ("Co-codamol 30/500", None),
+                   ("Aspirin 81 mg EC", None), ("Vitamin B12", None), ("500 mg", None)], got
+
+
 def test_a_record_of_the_wrong_shape_is_read_as_nothing_rather_than_a_crash():
     """The reader trusts nothing in a model's answer - except, it turned out, its shape: a
     JSON list, or a medicine given as a bare string, raised AttributeError on the Add

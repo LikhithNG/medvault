@@ -4,6 +4,7 @@
     python3 tools/reader_eval.py              # every sample photo, through the real model
     python3 tools/reader_eval.py --bills 3    # fewer bills, fewer model calls
     python3 tools/reader_eval.py --adversarial  # documents carrying planted instructions
+    python3 tools/reader_eval.py --prescription 3  # the prescription alone, 3 reads
 
 tools/accuracy_test.py measures the Checker, and its --reader mode hands the Reader each
 bill as text. A patient sends a photograph. This reads the sample photographs in samples/
@@ -136,6 +137,27 @@ def run(bills=None):
     return report
 
 
+def prescription_runs(n, read=None):
+    """The prescription photo read `n` times, each scored on its own: one read says little
+    about a model that reads names right most of the time. Which model answers is whatever
+    the pool has quota for - set GEMINI_POOL to measure one model."""
+    if read is None:
+        import extract
+        read = extract.read_document
+    photo = SAMPLES / "prescription_photo.jpg"
+    runs = []
+    for _ in range(n):
+        started = time.perf_counter()
+        record, meta = read(image=("image/jpeg", photo.read_bytes()))
+        checks = score_prescription(record or {}) if meta.get("ok") else []
+        runs.append({"model": meta.get("model"), "error": meta.get("error"),
+                     "provider_read": (record or {}).get("provider"),
+                     "passed": sum(ok for _, ok in checks), "total": len(checks),
+                     "failed": [c for c, ok in checks if not ok],
+                     "seconds": round(time.perf_counter() - started, 1), "read": record})
+    return runs
+
+
 # ---- documents that try to give the Reader orders ----------------------------------
 
 # Planted in a real sample bill, as a hostile billing office or a tampered scan might. The
@@ -212,7 +234,27 @@ def main():
     parser.add_argument("--bills", type=int, default=None, help="read only the first N bills")
     parser.add_argument("--adversarial", action="store_true",
                         help="documents carrying planted instructions")
+    parser.add_argument("--prescription", type=int, default=None, metavar="N",
+                        help="read only the prescription photo, N times")
+    parser.add_argument("--models", default=None, metavar="A,B",
+                        help="with --prescription: N reads on each model alone, not the pool")
     args = parser.parse_args()
+    if args.prescription:
+        import gemini
+        by_model = {}
+        for model in (args.models.split(",") if args.models else [None]):
+            if model:
+                gemini.POOL = [model]          # read at call time: this model and no other
+            runs = by_model[model or "pool"] = prescription_runs(args.prescription)
+            for r in runs:
+                print(f"  {r['passed']}/{r['total']} {r['model'] or r['error'][:60]} · "
+                      f"provider {r['provider_read']!r}"
+                      + (f" · failed {r['failed']}" if r["failed"] else ""))
+        target = ROOT / "outputs" / "reader_prescription.json"
+        target.write_text(json.dumps({"when": datetime.datetime.now().isoformat(
+            timespec="seconds"), "by_model": by_model}, indent=1))
+        print(f"written {target.relative_to(ROOT)}")
+        return
     if args.adversarial:
         import os
         # The models the hosted app gives Groq (app.py), not groq.py's own defaults.

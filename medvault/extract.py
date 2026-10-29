@@ -76,8 +76,14 @@ SCHEMA = {
             'type': 'array',
             'items': {
                 'type': 'object',
-                'properties': {k: {'type': 'string'} for k in MED_FIELDS},
-                'required': ['name'],
+                # Every field answered, null allowed. With only "name" required, the light
+                # fallback models left a printed "Duration: 10 days" out of 17 of 36
+                # medicines (tools/reader_eval.py --prescription) - a ten-day course the
+                # Scheduler then never ends. Null still means not printed.
+                'properties': {k: {'type': 'string', **({} if k == 'name' else
+                                                        {'nullable': True})}
+                               for k in MED_FIELDS},
+                'required': list(MED_FIELDS),
             },
         },
     },
@@ -112,6 +118,9 @@ If the document prescribes, dispenses or lists medicines, you must list EVERY on
 them under "medications" - one entry per medicine, even if there are several. If the
 document prescribes no medicines at all, return an empty list. For each medicine:
 {_MEDS}
+A medicine's details are often printed on their own lines under its name - "Sig:",
+"Duration:", "Indication:" - and they belong to that medicine's entry. The strength printed
+beside the name ("875 mg", "50 mcg") is its dose, not part of its name.
 
 Rules, in order of importance:
 1. Never invent a date, a dose, a provider or a diagnosis. If it is not printed, use null.
@@ -184,6 +193,22 @@ def _clean_date(value):
         return None          # 2026-13-45 and friends
 
 
+_UNIT = r"(?:mg|mcg|µg|g|ml|l|units?|iu|%)"
+# A strength at the very end of a name: "875 mg / 125 mg", "10 g/15 mL", "1%".
+STRENGTH_AT_END = re.compile(
+    rf"\s+(\d+(?:\.\d+)?\s*{_UNIT}(?:\s*/\s*(?:\d+(?:\.\d+)?\s*)?{_UNIT})*)\s*$", re.I)
+
+
+def _strength_out_of_name(med):
+    """The strength printed beside a name, put into the name by the model with the dose
+    left empty - "Amoxicillin-Clavulanate 875 mg / 125 mg". Moved, never merged: a dose
+    the model did give is left alone, and so is a name that would be nothing without it."""
+    found = STRENGTH_AT_END.search(med["name"])
+    if med.get("dose") or not found or not med["name"][:found.start()].strip():
+        return med
+    return {**med, "name": med["name"][:found.start()].strip(), "dose": found.group(1)}
+
+
 def _shape(raw):
     """One model answer in, one record dict out, with nothing trusted on the way through -
     its shape included: a JSON list where an object belongs, or a medicine given as a bare
@@ -197,7 +222,8 @@ def _shape(raw):
         name = _clean(m.get("name"))
         if not name:
             continue                     # a dose with no medicine attached helps nobody
-        meds.append({k: _clean(m.get(k)) for k in MED_FIELDS} | {"name": name})
+        meds.append(_strength_out_of_name({k: _clean(m.get(k)) for k in MED_FIELDS}
+                                          | {"name": name}))
 
     kind = _clean(raw.get("kind"))
     return {

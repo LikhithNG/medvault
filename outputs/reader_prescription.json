@@ -1,0 +1,505 @@
+{
+ "when": "2026-10-29T17:58:54",
+ "by_model": {
+  "gemini-flash-lite-latest": [
+   {
+    "model": "gemini-flash-lite-latest",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 2.0,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This prescription includes Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen for your diagnosis of acute bacterial sinusitis.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg, 1 tablet",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg, 2 sprays each nostril",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg, 1 tablet",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-flash-lite-latest",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 1.6,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This is a prescription for three different medications to treat a sinus infection, nasal inflammation, and pain or fever.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg, 1 tablet",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg, 2 sprays each nostril",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg, 1 tablet",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-flash-lite-latest",
+    "error": null,
+    "provider_read": "Dr. Amora Osei, MD",
+    "passed": 18,
+    "total": 19,
+    "failed": [
+     "provider"
+    ],
+    "seconds": 1.9,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Dr. Amora Osei, MD",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This prescription includes Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen for your sinus infection, nasal inflammation, and pain and fever.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg, 1 tablet",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg, 2 sprays each nostril",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg, 1 tablet",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-flash-lite-latest",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 1.7,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This is a prescription from Dr. Amara Osei, MD for acute bacterial sinusitis, including Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-flash-lite-latest",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 2.2,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This is a prescription for Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen from Dr. Amara Osei.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg, 1 tablet",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg, 2 sprays each nostril",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg, 1 tablet",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   }
+  ],
+  "gemini-3.5-flash-lite": [
+   {
+    "model": "gemini-3.5-flash-lite",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 10.0,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This is a prescription for Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen from Dr. Amara Osei, MD at Riverbend Community Hospital.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-3.5-flash-lite",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 2.0,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This is a prescription from Dr. Amara Osei for Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen to treat your acute bacterial sinusitis.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-3.5-flash-lite",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 1.7,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This is a prescription from Dr. Amara Osei for Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen to treat your acute bacterial sinusitis.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-3.5-flash-lite",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 1.7,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription from Riverbend Community Hospital",
+     "summary": "This is a prescription for Amoxicillin-Clavulanate, Fluticasone propionate nasal spray, and Ibuprofen prescribed by Dr. Amora Osei for acute bacterial sinusitis.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg, 1 tablet",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg, 2 sprays each nostril",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg, 1 tablet",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   },
+   {
+    "model": "gemini-3.5-flash-lite",
+    "error": null,
+    "provider_read": "Riverbend Community Hospital",
+    "passed": 19,
+    "total": 19,
+    "failed": [],
+    "seconds": 1.9,
+    "read": {
+     "kind": "prescription",
+     "service_date": "2026-09-18",
+     "provider": "Riverbend Community Hospital",
+     "title": "Prescription for sinus infection",
+     "summary": "This prescription includes three medications for your sinus infection, pain, and inflammation.",
+     "medications": [
+      {
+       "name": "Amoxicillin-Clavulanate",
+       "dose": "875 mg / 125 mg, 1 tablet",
+       "frequency": "twice daily",
+       "duration": "10 days",
+       "reason": "For the sinus infection"
+      },
+      {
+       "name": "Fluticasone propionate nasal spray",
+       "dose": "50 mcg, 2 sprays each nostril",
+       "frequency": "once daily",
+       "duration": "21 days",
+       "reason": "To reduce nasal inflammation"
+      },
+      {
+       "name": "Ibuprofen",
+       "dose": "400 mg, 1 tablet",
+       "frequency": "every 8 hours as needed",
+       "duration": "5 days",
+       "reason": "For pain and fever"
+      }
+     ]
+    }
+   }
+  ],
+  "gemini-3.7-flash": [
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 50.0,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 45.6,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 45.2,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 45.2,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "HTTP 503: {\n  \"error\": {\n    \"code\": 503,\n    \"message\": \"This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.\",\n    \"status\": \"UNAVAILABLE\"\n  }\n}\n",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 23.2,
+    "read": null
+   }
+  ],
+  "gemini-3.8-flash": [
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 48.2,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 45.2,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 45.2,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 49.7,
+    "read": null
+   },
+   {
+    "model": null,
+    "error": "TimeoutError: The read operation timed out",
+    "provider_read": null,
+    "passed": 0,
+    "total": 0,
+    "failed": [],
+    "seconds": 45.2,
+    "read": null
+   }
+  ]
+ }
+}

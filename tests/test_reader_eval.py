@@ -78,6 +78,18 @@ def test_a_misspelled_prescriber_fails_the_provider_check():
         assert all(p for _, p in reader_eval.score_prescription({**PERFECT, "provider": right}))
 
 
+def test_repeated_prescription_reads_are_scored_one_by_one():
+    reads = iter([(PERFECT, {"ok": True, "model": "m1"}),
+                  ({**PERFECT, "provider": "Dr. Amora Osei, MD"}, {"ok": True, "model": "m2"}),
+                  (None, {"ok": False, "error": "HTTP 429", "model": None})])
+    runs = reader_eval.prescription_runs(3, read=lambda **k: next(reads))
+    assert [(r["model"], r["passed"], r["failed"]) for r in runs] == [
+        ("m1", 19, []), ("m2", 18, ["provider"]), (None, 0, [])]
+    assert runs[1]["provider_read"] == "Dr. Amora Osei, MD"
+    assert runs[1]["read"]["provider"] == "Dr. Amora Osei, MD", "the read is kept to look at"
+    assert runs[2]["error"] == "HTTP 429" and runs[2]["total"] == 0
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
