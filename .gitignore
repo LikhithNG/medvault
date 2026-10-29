@@ -5,3 +5,5 @@ vault.db
 __pycache__/
 *.pyc
 .DS_Store
+demo_accounts.txt
+.venv/

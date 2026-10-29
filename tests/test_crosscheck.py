@@ -51,6 +51,26 @@ def test_a_day_you_have_records_for_but_nothing_matching():
     assert "Ask what this charge covers" in r["ask"]
 
 
+def test_an_er_visit_line_finds_the_emergency_visit_record():
+    """"E/R VISIT LEVEL IV" left only "visit" - one weak word, never evidence - so the
+    charge read as having nothing behind it beside an emergency department record."""
+    vault = VAULT + [{"title": "Emergency department visit", "service_date": "2026-03-14",
+                      "summary": "Seen after a fall; discharged the same day.",
+                      "provider": "Lahey"}]
+    for printed in ("E/R VISIT LEVEL IV", "ER VISIT LEVEL 4", "ED VISIT", "E.R. VISIT"):
+        r = cc.check_line({"description": printed, "service_date": "2026-03-14"}, vault)
+        assert r["verdict"] == "MATCHED", (printed, r["verdict"])
+        assert r["matches"][0]["title"] == "Emergency department visit", printed
+    # "ER" also means extended release; only an ER *visit* is an emergency.
+    r = cc.check_line({"description": "METFORMIN ER 500MG", "service_date": "2026-03-14"},
+                      vault)
+    assert r["verdict"] == "DATE_NO_MATCH", r.get("overlap")
+    # And with no emergency record, an ER visit is still a question, not a match.
+    r = cc.check_line({"description": "E/R VISIT LEVEL IV", "service_date": "2026-03-14"},
+                      VAULT)
+    assert r["verdict"] == "DATE_NO_MATCH", r.get("overlap")
+
+
 def test_filler_words_do_not_manufacture_a_match():
     # "HOSPITAL SERVICE" shares only stopwords with every record in the vault
     r = cc.check_line({"description": "HCHG GENERAL HOSPITAL SERVICE",

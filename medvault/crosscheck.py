@@ -62,6 +62,12 @@ def _parse(value):
         return None
 
 
+# "E/R VISIT", "ER VISIT", "ED VISIT": the emergency department, in letters the word
+# filter never sees - so an ER charge could not meet the emergency visit record beside
+# it. Only before "visit": in "METFORMIN ER" the letters mean extended release.
+ER_VISIT = re.compile(r"\b(?:e\.?/?r\.?|e\.?d\.?)\s+visit\b", re.I)
+
+
 def _words(text):
     """The meaningful words of a description, lowercased, stopwords dropped."""
     return {w for w in re.findall(r"[a-z]{3,}", (text or "").lower()) if w not in STOPWORDS}
@@ -78,7 +84,7 @@ def check_line(line, records):
     """
     when = _parse(line.get("service_date") or line.get("date"))
     desc = line.get("description") or line.get("desc") or ""
-    wanted = _words(desc)
+    wanted = _words(ER_VISIT.sub("emergency visit", desc))
 
     dated = [(r, _parse(r.get("service_date"))) for r in records]
     dated = [(r, d) for r, d in dated if d]
