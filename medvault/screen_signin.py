@@ -116,11 +116,13 @@ def auth_panel():
             if record:
                 st.success(f"**{record['name'] or 'Registered organisation'}**"
                            f"{' · ' + record['credential'] if record['credential'] else ''}")
+                # The registry's own words, from an outside service: data, not markup.
+                e = ui.esc
                 st.markdown(
-                    f"<div class='rec'><div class='title'>{record['specialty'] or '—'}</div>"
-                    f"<div class='who'>Licence {record['license'] or '—'} "
-                    f"{record['license_state'] or ''} · {record['city']}, {record['state']}"
-                    f"</div></div>", unsafe_allow_html=True)
+                    f"<div class='rec'><div class='title'>{e(record['specialty'] or '—')}</div>"
+                    f"<div class='who'>Licence {e(record['license'] or '—')} "
+                    f"{e(record['license_state'] or '')} · {e(record['city'])}, "
+                    f"{e(record['state'])}</div></div>", unsafe_allow_html=True)
 
         st.markdown(ui.section("How you will sign in"), unsafe_allow_html=True)
         email2 = st.text_input("Email", key="su_email", placeholder="you@example.com")

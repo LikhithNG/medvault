@@ -141,6 +141,8 @@ def expected_verdict(line, seen_codes, prices):
     """What the documented rules say this line is, in the documented order."""
     if line["charged"] is None:
         return "UNREADABLE"
+    # The same code again on the same day. Every benchmark bill is a single undated visit,
+    # so here that is the code appearing again.
     if line["code"] in seen_codes:
         return "DUPLICATE"
     if line["code"] not in prices:

@@ -167,9 +167,15 @@ def _clean_date(value):
 
 
 def _shape(raw):
-    """One model answer in, one record dict out, with nothing trusted on the way through."""
+    """One model answer in, one record dict out, with nothing trusted on the way through -
+    its shape included: a JSON list where an object belongs, or a medicine given as a bare
+    string, raised AttributeError on the Add screen."""
+    raw = raw if isinstance(raw, dict) else {}
+    listed = raw.get("medications")
     meds = []
-    for m in (raw.get("medications") or []):
+    for m in (listed if isinstance(listed, list) else []):
+        if not isinstance(m, dict):
+            continue
         name = _clean(m.get("name"))
         if not name:
             continue                     # a dose with no medicine attached helps nobody
@@ -418,7 +424,14 @@ def read_bill(*, text=None, image=None, prefer_open=True, deadline=None):
             return [], {"ok": False, "error": "the reader did not return a bill",
                         "model": r.get("model"), "provider": provider}
 
-    lines = [c for c in (_clean_line(l) for l in _line_items(raw)) if c]
+    # The lines themselves, sent without the object around them - the Groq path has no
+    # schema - or something that is not an answer at all.
+    if isinstance(raw, list):
+        raw = {ITEM_KEYS[0]: raw}
+    elif not isinstance(raw, dict):
+        raw = {}
+    lines = [c for c in (_clean_line(l) for l in _line_items(raw) if isinstance(l, dict))
+             if c]
     try:
         printed = round(float(raw["total_printed"]), 2) if raw.get("total_printed") else None
     except (TypeError, ValueError):

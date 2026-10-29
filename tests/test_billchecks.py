@@ -66,6 +66,72 @@ def test_reconciliation_against_the_printed_total():
         "no printed total means unverified, which is not the same as correct"
 
 
+
+# ---- the same charge twice -----------------------------------------------------------
+# Repeated codes used to be found only when a hospital was chosen - by the Checker, against
+# that hospital's price file - so a bill from any of the thousands of hospitals not in the
+# table got no duplicate check at all, though it needs nothing but the bill. And the
+# Checker's rule was "the code appears again anywhere": a daily blood count on three days
+# was two duplicates, and two lines with no code were duplicates of each other.
+
+def _line(code, date="2026-03-14", charged=100.0, description="ITEM"):
+    return {"code": code, "service_date": date, "charged": charged, "units": 1,
+            "description": description}
+
+
+def test_the_same_code_twice_on_the_same_day_is_a_duplicate():
+    found = billchecks.duplicates([_line("70450", description="CT HEAD"), _line("72148"),
+                                   _line("70450", charged=3076.10, description="CT HEAD")])
+    assert [i for i, _ in found] == [2]
+    f = found[0][1]
+    assert f["rule"] == "duplicate" and "70450" in f["title"] and "2026-03-14" in f["title"]
+    assert "$3,076.10" in f["detail"] and f["code"] == "70450"
+
+
+def test_the_same_test_on_different_days_is_not_a_duplicate():
+    daily = [_line("85025", date=f"2026-03-{d}") for d in (14, 15, 16)]
+    assert billchecks.duplicates(daily) == []
+
+
+def test_lines_with_no_code_are_never_duplicates_of_each_other():
+    assert billchecks.duplicates([_line(""), _line(None), _line("  ")]) == []
+
+
+def test_a_credit_or_a_zero_line_is_not_a_duplicate():
+    assert billchecks.duplicates([_line("70450"), _line("70450", charged=-100.0),
+                                  _line("70450", charged=0)]) == []
+
+
+def test_codes_are_compared_as_codes():
+    found = billchecks.duplicates([_line(" g0378"), _line("G0378 ")])
+    assert [i for i, _ in found] == [1]
+
+
+def test_two_undated_lines_with_one_code_are_duplicates():
+    assert [i for i, _ in billchecks.duplicates([_line("70450", date=None),
+                                                 _line("70450", date=None)])] == [1]
+
+
+def test_run_reports_a_duplicate_with_the_other_checks_in_bill_order():
+    lines = [_line("70450"), _line("J3490"), _line("70450")]
+    assert [(i, f["rule"]) for i, f in billchecks.run(lines)] == [
+        (1, "unspecified_code"), (2, "duplicate")]
+
+
+def test_the_hospital_check_uses_the_same_rule():
+    import checker
+    table = checker.load_reference()
+
+    def verdicts(items):
+        bill = checker.check_bill({"hospital_name": "Doylestown Hospital",
+                                   "line_items": items}, table)
+        return [l["verdict"] for l in bill["lines"]]
+    assert "DUPLICATE" not in verdicts([_line("70450", date=f"2026-03-{d}", charged=1.0)
+                                        for d in (14, 15, 16)])
+    assert "DUPLICATE" not in verdicts([_line(""), _line("")])
+    assert verdicts([_line("70450"), _line("70450")])[1] == "DUPLICATE"
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

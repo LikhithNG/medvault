@@ -66,6 +66,36 @@ def test_each_agent_run_is_traced():
     assert agents_seen == ["Checker", "Advocate"]
 
 
+
+def _check(text, hospital):
+    return pipeline.check_lines(paste.lines(text), hospital=hospital, ctx=CTX, records=[],
+                                patient_name="Test Patient", price_table=TABLE)
+
+
+TWICE = ("2026-03-14  70450  CT HEAD/BRAIN W/O CONTRAST  1  3,076.10\n"
+         "2026-03-14  70450  CT HEAD/BRAIN W/O CONTRAST  1  3,076.10")
+
+
+def test_without_a_hospital_a_repeated_code_is_still_found():
+    out = _check(TWICE, None)
+    assert [f["rule"] for f in out["face"]].count("duplicate") == 1
+
+
+def test_with_a_hospital_a_repeat_is_reported_once_not_twice():
+    """The hospital section reports it, with the price beside it; the bill's-own-face
+    section does not say it again."""
+    out = _check(TWICE, "Doylestown Hospital")
+    assert sum(l["verdict"] == "DUPLICATE" for l in out["priced"]["lines"]) == 1
+    assert not [f for f in out["face"] if f["rule"] == "duplicate"]
+
+
+def test_the_checker_is_told_each_lines_date():
+    out = _check("2026-03-14  70450  CT HEAD/BRAIN W/O CONTRAST  1  3,076.10\n"
+                 "2026-03-15  70450  CT HEAD/BRAIN W/O CONTRAST  1  3,076.10",
+                 "Doylestown Hospital")
+    assert "DUPLICATE" not in [l["verdict"] for l in out["priced"]["lines"]]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

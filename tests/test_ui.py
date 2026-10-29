@@ -49,6 +49,17 @@ def test_download_buttons_look_like_the_other_buttons():
     assert ":is(.stButton,.stDownloadButton)>button[kind=\"primary\"]" in ui.CSS
 
 
+def test_data_is_escaped_completely_and_keeps_its_line_breaks():
+    """A card field, a medicine name off a scan, another account's display name: data, not
+    markup. Nothing is let back through - not even bold - and a blank line cannot end the
+    HTML block it sits in, which made everything after it render as stray text."""
+    out = ui.esc('<img src=x onerror=alert(1)> </div><b>bold\n\nnext & "q"')
+    assert "<img" not in out and "</div>" not in out and "<b>" not in out
+    assert "&lt;img" in out and "&amp;" in out
+    assert "\n" not in out and out.count("<br>") == 2
+    assert ui.esc(None) == "" and ui.esc(500) == "500"
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

@@ -35,11 +35,12 @@ def screen_today():
                     unsafe_allow_html=True)
         return
 
+    esc = ui.esc       # medicine names and doses were read off a page, or typed
     coming = schedule.next_due(day)
     if coming:
         st.markdown(f"<div class='hit ok ag-next ag-in'><span class='amt'>{coming['at']}</span>"
-                    f"<div class='h'>Next: {coming['med']['name']}</div>"
-                    f"<div class='b'>{coming['med'].get('dose') or 'as prescribed'}"
+                    f"<div class='h'>Next: {esc(coming['med']['name'])}</div>"
+                    f"<div class='b'>{esc(coming['med'].get('dose') or 'as prescribed')}"
                     + (f" · {schedule.note(coming['parsed'])}"
                        if schedule.note(coming["parsed"]) else "")
                     + "</div></div>", unsafe_allow_html=True)
@@ -48,8 +49,8 @@ def screen_today():
         extra = schedule.note(dose["parsed"])
         ends = (f" · last dose {dose['ends']:%-d %b}" if dose["ends"] else "")
         st.markdown(f"<div class='med ag-in {agentsui.arrive(i)}'>"
-                    f"<div class='n'>{dose['at']} · {dose['med']['name']}"
-                    f"</div><div class='d'>{dose['med'].get('dose') or 'as prescribed'}"
+                    f"<div class='n'>{dose['at']} · {esc(dose['med']['name'])}"
+                    f"</div><div class='d'>{esc(dose['med'].get('dose') or 'as prescribed')}"
                     + (f" · {extra}" if extra else "") + ends + "</div></div>",
                     unsafe_allow_html=True)
 
@@ -61,24 +62,24 @@ def screen_today():
         for e in day["as_needed"]:
             gap = (f"Not more often than every {e['parsed']['every_hours']} hours."
                    if e["parsed"]["every_hours"] else "Follow the label for how often.")
-            st.markdown(f"<div class='med'><div class='n'>{e['med']['name']}</div>"
-                        f"<div class='d'>{e['med'].get('dose') or ''} · {gap}</div>"
+            st.markdown(f"<div class='med'><div class='n'>{esc(e['med']['name'])}</div>"
+                        f"<div class='d'>{esc(e['med'].get('dose') or '')} · {gap}</div>"
                         f"<div class='why'>Prescribed as needed, so it is not scheduled. "
                         f"Taking it on a timetable is not what the prescription says.</div>"
                         f"</div>", unsafe_allow_html=True)
     if day["weekly"]:
         st.markdown(ui.section("Weekly"), unsafe_allow_html=True)
         for e in day["weekly"]:
-            st.markdown(f"<div class='med'><div class='n'>{e['med']['name']}</div>"
-                        f"<div class='d'>{e['parsed']['text']} — pick the day with your "
+            st.markdown(f"<div class='med'><div class='n'>{esc(e['med']['name'])}</div>"
+                        f"<div class='d'>{esc(e['parsed']['text'])} — pick the day with your "
                         f"pharmacist; it is not on the daily calendar.</div></div>",
                         unsafe_allow_html=True)
     if day["unreadable"]:
         st.markdown(ui.section("Could not be timed"), unsafe_allow_html=True)
         for e in day["unreadable"]:
-            st.markdown(f"<div class='hit warn'><div class='h'>{e['med']['name']}</div>"
+            st.markdown(f"<div class='hit warn'><div class='h'>{esc(e['med']['name'])}</div>"
                         f"<div class='b'>The prescription says "
-                        f"“{e['parsed']['text'] or 'nothing about how often'}”, which "
+                        f"“{esc(e['parsed']['text'] or 'nothing about how often')}”, which "
                         f"does not say when. Ask the pharmacist rather than guessing — "
                         f"this is not on your calendar.</div></div>",
                         unsafe_allow_html=True)
@@ -125,7 +126,8 @@ def screen_medicines():
     st.markdown(ui.hint("Mark a medicine finished and it leaves your card, today's plan "
                         "and the calendar file."), unsafe_allow_html=True)
     for m in meds:
-        bits = " · ".join(x for x in (m.get("dose"), m.get("frequency"), m.get("duration")) if x)
+        bits = " · ".join(str(x) for x in (m.get("dose"), m.get("frequency"), m.get("duration"))
+                          if x)
         src = f"{m.get('provider') or 'unknown'} · {m.get('service_date') or 'no date'}"
         stopped = not m.get("active", 1)
         st.markdown(f"<div class='med{' stopped' if stopped else ''}'><div class='n'>"

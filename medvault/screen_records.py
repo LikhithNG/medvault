@@ -113,8 +113,9 @@ def screen_add():
     if meds:
         st.markdown(ui.section(f"Medicines found · {len(meds)}"), unsafe_allow_html=True)
         for m in meds:
-            bits = " · ".join(x for x in (m.get("dose"), m.get("frequency"), m.get("duration")) if x)
-            st.markdown(f"<div class='med'><div class='n'>{m['name']}</div>"
+            bits = " · ".join(ui.esc(x) for x in (m.get("dose"), m.get("frequency"),
+                                                   m.get("duration")) if x)
+            st.markdown(f"<div class='med'><div class='n'>{ui.esc(m['name'])}</div>"
                         f"<div class='d'>{bits or 'no dose printed'}</div></div>",
                         unsafe_allow_html=True)
 
@@ -170,7 +171,7 @@ def screen_records():
             f"<div class='rec'><div class='top'>"
             f"<span class='pill'>{kind_label(r['kind'])}</span>"
             f"{ui.provenance_badge(r)}"
-            f"<span class='when'>{when(r)}</span></div>"
+            f"<span class='when'>{ui.esc(when(r))}</span></div>"
             f"<div class='title'>{ui.safe(r['title'])}</div>"
             + (f"<div class='who'>{ui.safe(r['provider'])}</div>" if r.get("provider") else "")
             + (f"<div class='sum'>{ui.safe(r['summary'])}</div>" if r.get("summary") else "")

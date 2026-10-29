@@ -53,7 +53,8 @@ def check_lines(lines, *, hospital, ctx, records, patient_name, price_table,
             priced = checker.check_bill(
                 {"hospital_name": hospital,
                  "line_items": [{"code": l.get("code") or "", "description": l["description"],
-                                 "units": l.get("units") or 1, "charged": l["charged"]}
+                                 "units": l.get("units") or 1, "charged": l["charged"],
+                                 "service_date": l.get("service_date")}
                                 for l in lines]},
                 price_table)
     flagged = (priced.get("flagged_count") or 0) if priced else 0
@@ -63,7 +64,11 @@ def check_lines(lines, *, hospital, ctx, records, patient_name, price_table,
     # ---- the checks that are not an agent's: the law, the bill's own face, your records
     bill_total = round(sum(float(l.get("charged") or 0) for l in lines), 2)
     protections = rights.evaluate(lines, bill_total, ctx)
-    face = [f for _, f in billchecks.run(lines)]
+    # A repeated code is found from the bill alone, for every bill. When a hospital was
+    # chosen the Checker reports it too, beside that hospital's price - so it is said there,
+    # once, and not again here.
+    face = [f for _, f in billchecks.run(lines)
+            if not (priced and f["rule"] == "duplicate")]
     checked, summary = crosscheck.check_bill(lines, records)
 
     # ---- the Advocate, when there is something to put in a letter

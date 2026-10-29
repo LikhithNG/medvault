@@ -12,6 +12,8 @@ file was collected is not quoted at all.
 """
 import csv, os, collections
 
+import billchecks
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 TOLERANCE = 1.01          # a 1% rounding allowance before a line counts as over
 UNIT_SUSPICION = 10       # quantities at or above this on a once-per-visit code
@@ -37,8 +39,10 @@ def _f(v):
     try:    return float(v)
     except (TypeError, ValueError): return None
 
-def check_line(item, hospital, table, seen_codes):
-    """One line item in, one verdict out. Returns a new dict; nothing is mutated."""
+def check_line(item, hospital, table, seen):
+    """One line item in, one verdict out. Returns a new dict; nothing is mutated.
+
+    `seen` holds billchecks.repeat_key() for every earlier line on the bill."""
     code = str(item.get('code','')).strip()
     units = int(item.get('units') or 1)
     charged = _f(item.get('charged'))
@@ -77,9 +81,12 @@ def check_line(item, hospital, table, seen_codes):
     # Duplicate is checked BEFORE the posted-price lookup. Being billed twice for the same
     # code is actionable whether or not the hospital publishes a price for it; checking the
     # lookup first made a repeated unposted code report NOT_POSTED and hid the duplicate.
-    if code in seen_codes:
+    # The same charge as an earlier line - same code, same day - by billchecks' one rule.
+    key = billchecks.repeat_key({'code': code, 'charged': charged,
+                                 'service_date': item.get('service_date')})
+    if key is not None and key in seen:
         return {**base, 'verdict': 'DUPLICATE',
-                'reason': f'code {code} appears more than once on this bill'}
+                'reason': f'code {code} is billed more than once on the same day'}
 
     if ref is None:
         return {**base, 'verdict': 'NOT_POSTED',
@@ -124,7 +131,8 @@ def check_bill(bill, table):
     seen, lines = set(), []
     for item in bill.get('line_items', []):
         v = check_line(item, hospital, table, seen)
-        seen.add(v['code'])
+        seen.add(billchecks.repeat_key({'code': v['code'], 'charged': v['charged'],
+                                        'service_date': item.get('service_date')}))
         lines.append(v)
 
     flagged = [l for l in lines if l['verdict'] not in ('VERIFIED',)]

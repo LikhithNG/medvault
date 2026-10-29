@@ -95,9 +95,10 @@ def screen_card():
             return
 
     meds = db.list_medications(con, active_only=True, owner_id=my_id())
-    name = p.get("full_name") or "Your name"
-    cells = [("Blood", p.get("blood_type") or "—"),
-             ("Born", p.get("date_of_birth") or "—"),
+    e = ui.esc         # every value below is something somebody typed, or a model read
+    name = e(p.get("full_name") or "Your name")
+    cells = [("Blood", e(p.get("blood_type") or "—")),
+             ("Born", e(p.get("date_of_birth") or "—")),
              ("Records", str(sum(db.counts_by_kind(con, my_id()).values())))]
     cellhtml = "".join(
         f"<div class='cell'><div class='k'>{k}</div><div class='v'>{v}</div></div>"
@@ -107,7 +108,7 @@ def screen_card():
         f"<div class='idcard'>"
         f"<div class='brandline'>{ui.mono_mark()} MedVault · emergency card</div>"
         f"<div class='who'>{name}</div>"
-        f"<div class='sub'>{p.get('conditions') or 'No conditions recorded'}{donor}</div>"
+        f"<div class='sub'>{e(p.get('conditions') or 'No conditions recorded')}{donor}</div>"
         f"<div class='grid'>{cellhtml}</div></div>", unsafe_allow_html=True)
 
     # Allergies get their own red band rather than a cell, because this is the one line on
@@ -115,27 +116,27 @@ def screen_card():
     allergies = (p.get("allergies") or "").strip()
     st.markdown(
         f"<div class='alert'><div class='k'>Allergies</div><div class='v'>"
-        f"{allergies or 'None recorded — add them, this is the line staff look for first.'}"
+        f"{e(allergies) or 'None recorded — add them, this is the line staff look for first.'}"
         f"</div></div>", unsafe_allow_html=True)
 
     if p.get("emergency_name"):
         st.markdown(ui.section("In an emergency, call"), unsafe_allow_html=True)
-        rel = f" · {p['emergency_relation']}" if p.get("emergency_relation") else ""
-        st.markdown(f"<div class='med'><div class='n'>{p['emergency_name']}{rel}</div>"
-                    f"<div class='d'>{p.get('emergency_phone') or 'no number on file'}</div>"
+        rel = f" · {e(p['emergency_relation'])}" if p.get("emergency_relation") else ""
+        st.markdown(f"<div class='med'><div class='n'>{e(p['emergency_name'])}{rel}</div>"
+                    f"<div class='d'>{e(p.get('emergency_phone') or 'no number on file')}</div>"
                     f"</div>", unsafe_allow_html=True)
 
     if p.get("insurer") or p.get("member_id"):
         st.markdown(ui.section("Insurance"), unsafe_allow_html=True)
-        st.markdown(f"<div class='med'><div class='n'>{p.get('insurer') or 'Insurer not set'}"
+        st.markdown(f"<div class='med'><div class='n'>{e(p.get('insurer') or 'Insurer not set')}"
                     f"</div><div class='d'>Member ID "
-                    f"<b>{p.get('member_id') or 'not set'}</b></div></div>",
+                    f"<b>{e(p.get('member_id') or 'not set')}</b></div></div>",
                     unsafe_allow_html=True)
 
     if p.get("gp_name"):
         st.markdown(ui.section("Primary doctor"), unsafe_allow_html=True)
-        st.markdown(f"<div class='med'><div class='n'>{p['gp_name']}</div>"
-                    f"<div class='d'>{p.get('gp_phone') or 'no number on file'}</div></div>",
+        st.markdown(f"<div class='med'><div class='n'>{e(p['gp_name'])}</div>"
+                    f"<div class='d'>{e(p.get('gp_phone') or 'no number on file')}</div></div>",
                     unsafe_allow_html=True)
 
     st.markdown(ui.section(f"Taking now · {len(meds)}"), unsafe_allow_html=True)
@@ -143,10 +144,10 @@ def screen_card():
         st.markdown(ui.empty("No current medicines.<br>Add a prescription and they appear here."),
                     unsafe_allow_html=True)
     for m in meds[:6]:
-        bits = " · ".join(x for x in (m.get("dose"), m.get("frequency")) if x)
-        st.markdown(f"<div class='med'><div class='n'>{m['name']}</div>"
+        bits = " · ".join(e(x) for x in (m.get("dose"), m.get("frequency")) if x)
+        st.markdown(f"<div class='med'><div class='n'>{e(m['name'])}</div>"
                     f"<div class='d'>{bits or 'no dose recorded'}</div>"
-                    + (f"<div class='why'>{m['reason']}</div>" if m.get("reason") else "")
+                    + (f"<div class='why'>{e(m['reason'])}</div>" if m.get("reason") else "")
                     + "</div>", unsafe_allow_html=True)
 
     if not gaps:

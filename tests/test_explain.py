@@ -105,6 +105,21 @@ def test_rights_answers_cite_their_rule():
     assert "45 CFR 149.610" in out
 
 
+
+def test_without_a_hospital_the_duplicate_question_answers_from_the_bill_itself():
+    """It said "Nothing has been checked yet" whenever no hospital was chosen."""
+    import billchecks
+    lines = [{"code": "70450", "service_date": "2026-03-14", "charged": 3076.10,
+              "units": 1, "description": "CT HEAD"}] * 2
+    face = [f for _, f in billchecks.run(lines)]
+    reply = explain.answer("any duplicates on this bill?",
+                           {"priced": None, "face": face, "rights": [], "crosschecked": []})
+    assert "70450" in reply and "Nothing has been checked" not in reply
+    reply = explain.answer("anything billed twice?",
+                           {"priced": None, "face": [], "rights": [], "crosschecked": []})
+    assert "No duplicate" in reply and "same day" in reply
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

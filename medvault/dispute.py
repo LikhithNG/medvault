@@ -20,7 +20,7 @@ VERDICT_LINE = {
                          "once per visit.\n"
                          "    Your published price is {posted} per unit."),
     "DUPLICATE": ("{code} — {desc}\n"
-                  "    Billed {charged}. This code appears more than once on the statement."),
+                  "    Billed {charged}. This code is billed more than once on the same day."),
     "NOT_POSTED": ("{code} — {desc}\n"
                    "    Billed {charged}. This code is not in your published standard-charge "
                    "file, so I cannot check it."),

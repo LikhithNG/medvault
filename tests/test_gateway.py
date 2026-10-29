@@ -143,6 +143,43 @@ def test_both_reader_prompts_say_the_page_is_data():
     assert extract.PAGE_IS_DATA in extract.BILL_PROMPT
 
 
+def test_a_record_of_the_wrong_shape_is_read_as_nothing_rather_than_a_crash():
+    """The reader trusts nothing in a model's answer - except, it turned out, its shape: a
+    JSON list, or a medicine given as a bare string, raised AttributeError on the Add
+    screen. Those now come back as an empty record and are skipped, respectively."""
+    for raw in ([{"title": "x"}], "a record", 7, None):
+        rec = extract._shape(raw)
+        assert rec["title"] == "Untitled record" and rec["medications"] == [], raw
+    rec = extract._shape({"title": "Rx", "medications": ["Amoxicillin 500 mg", None,
+                                                         {"name": "Ibuprofen", "dose": 400}]})
+    assert [m["name"] for m in rec["medications"]] == ["Ibuprofen"]
+    assert rec["medications"][0]["dose"] == "400"
+
+
+def test_a_bill_answered_as_a_bare_list_is_read_as_its_lines():
+    """A model nudged towards JSON (the Groq path has no schema) can answer with the list
+    of lines itself, or slip a string in among them. Both raised AttributeError; a bare list
+    is the lines, and a line that is not an object is skipped."""
+    def answer(payload):
+        import gemini
+        real = gemini.generate
+        gemini.generate = lambda *a, **k: {"ok": True, "model": "stand-in", "json": payload}
+        try:
+            return extract.read_bill(text="a bill")
+        finally:
+            gemini.generate = real
+    groq_key = os.environ.pop("GROQ_API_KEY", None)
+    try:
+        lines, meta = answer([{"code": "70450", "description": "CT head", "units": 1,
+                               "charged": 3100}, "a stray string", None])
+        assert meta["ok"] and [l["code"] for l in lines] == ["70450"], (lines, meta)
+        lines, meta = answer("not json at all")
+        assert lines == [] and meta["ok"] is not None
+    finally:
+        if groq_key is not None:
+            os.environ["GROQ_API_KEY"] = groq_key
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

@@ -145,6 +145,20 @@ def test_a_blank_question_does_not_take_the_screen_down():
         assert not at.exception, [e.value for e in at.exception]
 
 
+
+def test_a_bill_from_an_unlisted_hospital_still_shows_a_repeated_code():
+    with offline_vault() as (_, alice, _):
+        at = _app(alice)
+        at.radio(key="bill_source").set_value("Paste the lines").run()
+        box = next(t for t in at.text_area if t.label == "Paste the bill's lines")
+        box.input("2026-03-14  70450  CT HEAD  1  3,100.00\n"
+                  "2026-03-14  70450  CT HEAD  1  3,100.00").run()
+        next(b for b in at.button if b.label == "Check this bill").click().run()
+        assert not at.exception, [e.value for e in at.exception]
+        shown = " ".join(m.value for m in at.markdown)
+        assert "Code 70450 is billed more than once on 2026-03-14" in shown
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

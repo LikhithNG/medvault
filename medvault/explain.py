@@ -28,7 +28,7 @@ VERDICT_MEANING = {
                      "code in its own standard-charge file."),
     "QUANTITY_SUSPECT": ("This is billed many times over for something a single visit does "
                          "not usually repeat. The rate may be right and the count wrong."),
-    "DUPLICATE": ("This code appears more than once on the statement. Sometimes that is "
+    "DUPLICATE": ("This code is billed more than once on the same day. Sometimes that is "
                   "legitimate — two bags of saline in one visit is ordinary — so it is a "
                   "question rather than an established error."),
     "NOT_POSTED": ("The hospital does not publish a price for this code, so there is "
@@ -92,16 +92,20 @@ def _why_flagged(q, state):
 def _duplicates(q, state):
     if not re.search(r"duplicat|twice|two times|repeat|same code", q, re.I):
         return None
-    dups = [l for l in _lines(state) if l["verdict"] == "DUPLICATE"]
-    if not _lines(state):
+    # Found by the Checker when a hospital was chosen, and from the bill alone when not -
+    # which used to be answered "nothing has been checked yet", for every bill from a
+    # hospital outside the price table.
+    dups = ([l for l in _lines(state) if l["verdict"] == "DUPLICATE"]
+            or [f for f in (state.get("face") or []) if f.get("rule") == "duplicate"])
+    if not _lines(state) and state.get("face") is None:
         return "**Nothing has been checked yet.** Run a bill through the Bill tab first."
     if not dups:
         return ("**No duplicate codes were found on this bill.** The check looks for the "
-                "same billing code appearing more than once on the same statement.")
-    out = ["**Codes appearing more than once:**", ""]
+                "same billing code billed more than once on the same day.")
+    out = ["**Codes billed more than once on the same day:**", ""]
     for l in dups:
         out.append(f"- **{l.get('code')}** · {_m(l.get('charged'))} · "
-                   f"{l.get('description', '')[:40]}")
+                   f"{(l.get('description') or '')[:40]}")
     out += ["", VERDICT_MEANING["DUPLICATE"]]
     return "\n".join(out)
 

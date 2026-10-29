@@ -673,6 +673,18 @@ def to_top():
     components.html(_TO_TOP, height=0, width=0)
 
 
+def esc(value):
+    """Data for the page: a card field, a medicine name read off a scan, a record title,
+    another account's display name, a bill line. Escaped in full - unlike safe(), nothing
+    is let back through - with line breaks kept as <br>, because a blank line inside one of
+    these HTML blocks ends the block and the rest of it renders as stray text.
+
+    The card printed its fields raw: an allergy note reading "</div>" broke the screen, and
+    a medicine name off a scanned page went into it as markup.
+    """
+    return html.escape(str(value if value is not None else "")).replace("\n", "<br>")
+
+
 def safe(text):
     """Text for inside a chat bubble: escaped, with bold let back through.
 

@@ -77,15 +77,61 @@ def unspecified(line):
     }
 
 
+def repeat_key(line):
+    """What makes two lines the same charge: the same code on the same day. None for a line
+    that cannot be a repeat - no code, or no positive amount.
+
+    The one rule for a duplicate, used here and by the Checker. It used to be "the code
+    appears again anywhere on the bill", which called a daily blood count on three days two
+    duplicates, and two lines with no code at all duplicates of each other.
+    """
+    code = (line.get("code") or "").strip().upper()
+    charged = line.get("charged")
+    if not code or not isinstance(charged, (int, float)) or charged <= 0:
+        return None
+    return code, line.get("service_date") or None
+
+
+def duplicates(lines):
+    """Every line repeating an earlier line's code on the same day: (line_index, finding).
+
+    Found from the bill alone, so it runs for every bill. It used to need a hospital chosen,
+    which left a bill from any hospital not in the price table with no duplicate check.
+    """
+    seen, out = set(), []
+    for i, line in enumerate(lines):
+        key = repeat_key(line)
+        if key is None:
+            continue
+        if key not in seen:
+            seen.add(key)
+            continue
+        code, day = key
+        what = (line.get("description") or "").strip()
+        out.append((i, {
+            "rule": "duplicate", "code": code, "charged": line["charged"],
+            "description": what, "service_date": day,
+            "title": f"Code {code} is billed more than once" + (f" on {day}" if day else ""),
+            "detail": (f"{code}{f' ({what})' if what else ''} appears again for "
+                       f"${line['charged']:,.2f}. Sometimes that is legitimate — two bags of "
+                       "saline in one visit is ordinary — so it is a question, not an "
+                       "established error."),
+            "ask": (f"Ask whether {code} was provided more than once that day, and to take "
+                    "the repeat off the bill if it was not."),
+        }))
+    return out
+
+
 CHECKS = (arithmetic, unspecified)
 
 
 def run(lines):
-    """Every bill-only check against every line. Returns (line_index, finding) pairs."""
+    """Every bill-only check against every line, in bill order: (line_index, finding)."""
     out = []
     for i, line in enumerate(lines):
         for check in CHECKS:
             found = check(line)
             if found:
                 out.append((i, found))
-    return out
+    out += duplicates(lines)
+    return sorted(out, key=lambda pair: pair[0])
