@@ -12,11 +12,11 @@ This gap is a question to ask, not money owed back and not a refund estimate.
 Checked against the hospital's own published prices
 ----------------------------------------------------------------------
   99284    E/R VISIT LEVEL IV                           $1,605.00
-           verdict: DUPLICATE — code 99284 appears more than once on this bill
+           verdict: DUPLICATE — code 99284 is billed more than once on the same day
 
 Wrong on the bill's own face
 ----------------------------------------------------------------------
-  Nothing. The arithmetic adds up and no code is unspecified.
+  line 2: Code 99284 is billed more than once — 99284 (E/R VISIT LEVEL IV) appears again for $1,605.00. Sometimes that is legitimate — two bags of saline in one visit is ordinary — so it is a question, not an established error.
 
 Against the national Medicare allowance
 ----------------------------------------------------------------------

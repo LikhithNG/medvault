@@ -5,17 +5,17 @@ Hospital           Doylestown Hospital
 Lines read         2
 Billed total       $9,600.00
 Published total    $0.00
-Unexplained gap    $1,180.00
+Unexplained gap    $0.00
 
 This gap is a question to ask, not money owed back and not a refund estimate.
 
 Checked against the hospital's own published prices
 ----------------------------------------------------------------------
-  None     HOSPITAL SERVICES                            $8,420.00
-           verdict: NOT_POSTED — Doylestown Hospital publishes no price for code None, so this charge cannot be checked against its own price file
+  —        HOSPITAL SERVICES                            $8,420.00
+           verdict: NOT_POSTED — this line carries no billing code, so there is no published price to check it against
 
-  None     PHARMACY                                     $1,180.00
-           verdict: DUPLICATE — code None appears more than once on this bill
+  —        PHARMACY                                     $1,180.00
+           verdict: NOT_POSTED — this line carries no billing code, so there is no published price to check it against
 
 Wrong on the bill's own face
 ----------------------------------------------------------------------

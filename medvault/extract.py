@@ -339,11 +339,16 @@ def _as_money(value):
         return round(float(value), 2)
     if not isinstance(value, str):
         return None
-    cleaned = re.sub(r"[^\d.\-]", "", value)
+    # A credit's sign, however it is written: "(150.00)" and "1,234.50 CR" came back as
+    # +150 and +1,234.50.
+    text = value.strip()
+    negative = (text.startswith("(") and text.endswith(")")) or "-" in text \
+        or bool(re.search(r"\bCR\b", text, re.I))
     try:
-        return round(float(cleaned), 2)
+        amount = round(float(re.sub(r"[^\d.]", "", text)), 2)
     except ValueError:
         return None
+    return -amount if negative else amount
 
 
 def _line_items(raw):

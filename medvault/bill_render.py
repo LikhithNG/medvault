@@ -27,14 +27,28 @@ def render_bill(run):
     if run["read"]:
         render_bill_read(run["read"], run["lines"])
     render_rights(run["protections"], run["still_open"])
+    render_credits(run.get("credits") or [])
     render_face(run["face"])
-    render_medicare(run["lines"], run["bench"], run["checker_took"])
+    render_medicare(run.get("charges", run["lines"]), run["bench"], run["checker_took"])
     if run["priced"]:
         render_published(run["priced"])
     render_against_records(run["checked"], run["summary"])
     if run["letter"]:
         render_letter(run["letter"], run["letter_took"])
     render_bill_question(run)
+
+
+def render_credits(credits):
+    """Credits, and the charges they reversed, said out loud rather than dropped."""
+    if not credits:
+        return
+    net = sum(c["charged"] for c in credits if isinstance(c.get("charged"), (int, float)))
+    st.markdown(ui.hint(
+        f"{len(credits)} line(s) set aside before checking: credits, and any charge a "
+        f"credit reverses in full (net {money(net)}).",
+        "A charge reversed on the same bill is not priced, compared or counted as a "
+        "repeat - it was taken off. A credit that matches no charge is set aside too."),
+        unsafe_allow_html=True)
 
 
 def render_bill_read(read, lines):

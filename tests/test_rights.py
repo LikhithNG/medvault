@@ -103,6 +103,20 @@ def test_the_highest_value_findings_come_first():
     assert found[-1]["severity"] == "info"
 
 
+
+def test_emergency_care_owes_no_good_faith_estimate():
+    """The estimate duty is for scheduled care; an emergency is not scheduled."""
+    found = rights.evaluate(BILL, 3100.0, rights.context(coverage="self_pay", emergency=True))
+    assert "gfe_missing" not in ids(found)
+
+
+def test_the_emergency_balance_billing_rule_is_for_insured_patients():
+    """It limits a patient to in-network cost sharing - which an uninsured patient has none of."""
+    selfpay = rights.evaluate(BILL, 3100.0, rights.context(coverage="self_pay", emergency=True))
+    insured = rights.evaluate(BILL, 3100.0, rights.context(coverage="insured", emergency=True))
+    assert "nsa_emergency" not in ids(selfpay) and "nsa_emergency" in ids(insured)
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

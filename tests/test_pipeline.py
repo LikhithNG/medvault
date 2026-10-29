@@ -96,6 +96,15 @@ def test_the_checker_is_told_each_lines_date():
     assert "DUPLICATE" not in [l["verdict"] for l in out["priced"]["lines"]]
 
 
+
+def test_a_charge_reversed_in_full_is_not_flagged_or_written_about():
+    """154 then -154 for the same code was a duplicate and a letter."""
+    out = _check("2026-03-14  70450  CT HEAD/BRAIN W/O CONTRAST  1  3,076.10\n"
+                 "2026-03-14  70450  CT HEAD REVERSAL  1  -3,076.10", "Doylestown Hospital")
+    assert out["charges"] == [] and len(out["credits"]) == 2
+    assert not out["letter"] and not [f for f in out["face"] if f["rule"] == "duplicate"]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

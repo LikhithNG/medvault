@@ -319,13 +319,15 @@ def check_bill_run(form, key, records, slot):
     steps = agentsui.finale(state["steps"],
                             {n for n, t in finished.items() if end - t < SEEN_SECONDS})
     priced, letter = result["priced"], result["letter"]
-    now = (f"Done. {len(lines)} line(s) checked against Medicare and your records"
+    now = (f"Done. {len(result['charges'])} line(s) checked against Medicare and your "
+           f"records"
            + (f"; {result['flagged']} flagged against {hospital}'s published prices"
               if priced else
               ". Choose the hospital above to compare against its own published prices")
            + ("; the letter is below." if letter else "."))
     show(steps, now)
     return {"key": key, "steps": steps, "now": now, "problem": None, "lines": lines,
+            "charges": result["charges"], "credits": result["credits"],
             "read": read, "protections": result["protections"],
             "still_open": result["still_open"], "face": result["face"],
             "bench": result["bench"], "priced": priced,

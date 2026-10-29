@@ -54,20 +54,42 @@ def _about_a_code(q, state):
     code = _find_code(q)
     if not code:
         return None
-    line = next((l for l in _lines(state) if (l.get("code") or "").upper() == code), None)
+    rows = [l for l in _lines(state) if (l.get("code") or "").upper() == code]
+    line = rows[0] if rows else None
     if not line:
         return (f"**{code} is not on the bill you checked.** The codes on it are "
                 + ", ".join(sorted({l["code"] for l in _lines(state) if l.get("code")}))
                 + "." if _lines(state) else
                 f"**{code} is not on the bill you checked.**")
 
+    units = line.get("units") or 1
     out = [f"**{code} — {line.get('description') or 'no description printed'}**", ""]
-    out.append(f"Billed {_m(line.get('charged'))} for {line.get('units', 1)} unit(s).")
+    out.append(f"Billed {_m(line.get('charged'))} for {units} unit(s).")
     if line.get("posted_price"):
-        out.append(f"This hospital publishes {_m(line['posted_price'])} for it.")
-    if line.get("amount_over"):
-        out.append(f"That is **{_m(line['amount_over'])} above** the published price.")
+        # Per unit, and for every unit billed: "publishes $154.00 ... $138.00 above" for
+        # three units billed $600 did not add up without the $462.
+        per = f"This hospital publishes {_m(line['posted_price'])} for it"
+        if units > 1 and line.get("expected_for_units"):
+            per += f" per unit — {_m(line['expected_for_units'])} for {units} units"
+        out.append(per + ".")
+    # Said the way the verdict was reached. Any non-zero difference used to be "above":
+    # "$-54.00 above ... Nothing to raise", and "$1.00 above ... Nothing to raise".
+    over = line.get("amount_over")
+    if isinstance(over, (int, float)) and over > 0 and line["verdict"] in (
+            "ABOVE_POSTED", "QUANTITY_SUSPECT"):
+        out.append(f"That is **{_m(over)} above** the published price.")
+    elif isinstance(over, (int, float)) and over > 0:
+        out.append(f"That is {_m(over)} above the published price — inside the 1% the check "
+                   "allows, so it is not flagged.")
+    elif isinstance(over, (int, float)) and over < 0:
+        out.append(f"That is {_m(-over)} below the published price.")
     out += ["", VERDICT_MEANING.get(line["verdict"], "")]
+    # Every row with the code, not only the first: a repeated code was explained from its
+    # first row - "matches, nothing to raise" - and the repeat was never mentioned.
+    if len(rows) > 1:
+        out += ["", f"{code} appears {len(rows)} times on this bill."
+                + (f" {VERDICT_MEANING['DUPLICATE']}"
+                   if any(r["verdict"] == "DUPLICATE" for r in rows) else "")]
     if line.get("source_url"):
         out += ["", f"Source: the standard-charge file this hospital publishes."]
     return "\n".join(out)
@@ -77,8 +99,25 @@ def _why_flagged(q, state):
     if not re.search(r"\bwhy\b|flag|wrong|problem|issue", q, re.I):
         return None
     flagged = [l for l in _lines(state) if l["verdict"] != "VERIFIED"]
-    if not _lines(state):
+    if not _lines(state) and state.get("face") is None:
         return "**Nothing has been checked yet.** Run a bill through the Bill tab first."
+    if not _lines(state):
+        # No hospital chosen. Medicare, the bill's own face and the records were still
+        # checked; this used to answer "nothing has been checked yet".
+        face = state.get("face") or []
+        gaps = [c for c in state.get("crosschecked") or []
+                if c.get("verdict") in ("NO_RECORD", "DATE_NO_MATCH")]
+        out = ["**No hospital was chosen, so no line was compared with its published "
+               "prices.**", ""]
+        if face:
+            out += ["On the bill's own face:"] + [f"- {f['title']}" for f in face]
+        if gaps:
+            out += ["", f"{len(gaps)} line(s) have nothing in your records behind them."]
+        if not face and not gaps:
+            out.append("Nothing on the bill's own face was wrong, and every line has "
+                       "something in your records behind it.")
+        out += ["", "Choose the hospital to compare each line with its published prices."]
+        return "\n".join(out)
     if not flagged:
         return ("**Nothing on this bill was flagged against the published prices.** Every "
                 "line matched what the hospital publishes.")
@@ -160,7 +199,10 @@ def _records(q, state):
 
 
 def _fraud(q, state):
-    if not re.search(r"fraud|illegal|crime|sue|lawyer|report them|scam", q, re.I):
+    # Whole words: "sue" matched inside "issue", so "what is the issue with my bill?" got
+    # the fraud disclaimer.
+    if not re.search(r"\b(fraud\w*|illegal|crime|criminal|sue|suing|lawyer|attorney"
+                     r"|scam\w*)\b|report them", q, re.I):
         return None
     return ("**Nothing here is evidence of fraud, and this tool will not say that it is.**\n\n"
             "A charge above a published price is usually a billing or coding error, a "

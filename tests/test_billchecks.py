@@ -132,6 +132,33 @@ def test_the_hospital_check_uses_the_same_rule():
     assert verdicts([_line("70450"), _line("70450")])[1] == "DUPLICATE"
 
 
+
+def test_a_reversal_cancels_the_charge_it_reverses_and_neither_is_checked():
+    lines = [_line("85025", charged=154.0), _line("70450", charged=3100.0),
+             _line("85025", charged=-154.0)]
+    charges, credits = billchecks.net_of_credits(lines)
+    assert [l["code"] for l in charges] == ["70450"]
+    assert [l["charged"] for l in credits] == [154.0, -154.0]
+
+
+def test_a_credit_that_matches_no_charge_is_set_aside_not_priced():
+    charges, credits = billchecks.net_of_credits([_line("70450", charged=3100.0),
+                                                  _line("", charged=-200.0)])
+    assert [l["code"] for l in charges] == ["70450"] and len(credits) == 1
+
+
+
+def test_a_line_with_no_code_is_not_code_none():
+    """str(None) made every uncoded line the code "None" - one code, repeated."""
+    import checker
+    bill = checker.check_bill({"hospital_name": "Doylestown Hospital",
+                               "line_items": [{"code": None, "charged": 10.0},
+                                              {"code": None, "charged": 10.0}]},
+                              checker.load_reference())
+    assert [l["code"] for l in bill["lines"]] == ["", ""]
+    assert "DUPLICATE" not in [l["verdict"] for l in bill["lines"]]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

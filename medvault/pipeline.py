@@ -43,6 +43,10 @@ def check_lines(lines, *, hospital, ctx, records, patient_name, price_table,
 
     runs = {}
 
+    # Credits, and the charges they reverse in full, are set aside before anything is
+    # priced, checked for repeats or added up: a reversal used to be a second charge.
+    lines, credits = billchecks.net_of_credits(lines)
+
     # ---- the Checker: every line against Medicare, and against the hospital's own file
     _emit(on_step, "Checker", "work", lines=len(lines), hospital=hospital)
     with runtime.span("Checker", trace=trace, done=lambda r: runs.update(Checker=r)):
@@ -85,6 +89,7 @@ def check_lines(lines, *, hospital, ctx, records, patient_name, price_table,
         _emit(on_step, "Advocate", "skip", priced=priced is not None)
 
     return {"bench": bench, "priced": priced, "flagged": flagged,
+            "charges": lines, "credits": credits,
             "checker_seconds": runs["Checker"].seconds,
             "protections": protections, "still_open": rights.unanswered(ctx),
             "face": face, "checked": checked, "summary": summary, "letter": letter,

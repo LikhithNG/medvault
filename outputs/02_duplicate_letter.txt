@@ -1,4 +1,4 @@
-26 October 2026
+29 October 2026
 
 To the billing office,
 Doylestown Hospital
@@ -14,7 +14,7 @@ Difference I am asking about:    $1,605.00
 Lines in question
 -----------------
 99284 — E/R VISIT LEVEL IV
-    Billed $1,605.00. This code appears more than once on the statement.
+    Billed $1,605.00. This code is billed more than once on the same day.
 
 Please send me a written explanation of each line above, and a corrected
 statement if any of them is wrong. I am not disputing that I received care —

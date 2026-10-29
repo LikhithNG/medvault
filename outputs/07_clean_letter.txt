@@ -1,4 +1,4 @@
-26 October 2026
+29 October 2026
 
 To the billing office,
 Doylestown Hospital
@@ -9,7 +9,6 @@ questions about the following lines.
 
 Billed on this statement:        $3,532.00
 Your published prices total:     $3,532.00
-Difference I am asking about:    $0.00
 
 Lines in question
 -----------------

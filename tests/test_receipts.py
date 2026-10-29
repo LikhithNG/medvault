@@ -134,6 +134,45 @@ def test_a_matched_hospital_says_how_it_was_matched():
     assert line["hospital_enforcement_actions"] == 2
 
 
+
+# ---- from the test pass: a letter whose arithmetic did not add up ------------------
+
+def _reviewed(lines, questionable):
+    return {"hospital_name": "A Hospital", "billed_total": 600.0, "posted_total": 462.0,
+            "questionable_amount": questionable, "lines": lines}
+
+
+RECEIPT = {"source_url": "https://example.org/prices.csv", "basis": "hospital gross charge",
+           "collected_date": "2026-10-02"}
+
+
+def test_a_multi_unit_line_in_the_letter_adds_up():
+    """ "Billed $600.00. Your published price is $154.00. Difference: $138.00." - the $462
+    for three units, the figure that makes it add up, was never printed."""
+    text = dispute.letter(_reviewed([{"code": "85025", "description": "CBC", "units": 3,
+                                      "charged": 600.0, "posted_price": 154.0,
+                                      "expected_for_units": 462.0, "amount_over": 138.0,
+                                      "verdict": "ABOVE_POSTED", **RECEIPT}], 138.0))
+    assert "$462.00 for 3 units" in text and "Difference: $138.00" in text
+
+
+def test_a_letter_with_nothing_to_quantify_does_not_ask_about_zero_dollars():
+    text = dispute.letter(_reviewed([{"code": "J3490", "description": "DRUG", "units": 1,
+                                      "charged": 420.0, "verdict": "NOT_POSTED"}], 0.0))
+    assert "$0.00" not in text and "J3490" in text
+
+
+def test_the_letter_to_the_hospital_carries_no_advice_meant_for_the_patient():
+    found = [{"title": "This bill is $900.00 above your estimate",
+              "todo": "Start dispute resolution within 120 days of the bill.",
+              "source": "No Surprises Act · 45 CFR 149.620"}]
+    text = dispute.letter(_reviewed([{"code": "J3490", "description": "DRUG", "units": 1,
+                                      "charged": 420.0, "verdict": "NOT_POSTED"}], 0.0),
+                          rights_findings=found)
+    assert "Start dispute resolution" not in text
+    assert "This bill is $900.00 above your estimate" in text and "149.620" in text
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

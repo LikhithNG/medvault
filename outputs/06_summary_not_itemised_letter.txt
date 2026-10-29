@@ -1,4 +1,4 @@
-26 October 2026
+29 October 2026
 
 To the billing office,
 Doylestown Hospital
@@ -9,15 +9,14 @@ questions about the following lines.
 
 Billed on this statement:        $9,600.00
 Your published prices total:     $0.00
-Difference I am asking about:    $1,180.00
 
 Lines in question
 -----------------
-None — HOSPITAL SERVICES
+(no code) — HOSPITAL SERVICES
     Billed $8,420.00. This code is not in your published standard-charge file, so I cannot check it.
 
-None — PHARMACY
-    Billed $1,180.00. This code appears more than once on the statement.
+(no code) — PHARMACY
+    Billed $1,180.00. This code is not in your published standard-charge file, so I cannot check it.
 
 Please send me a written explanation of each line above, and a corrected
 statement if any of them is wrong. I am not disputing that I received care —

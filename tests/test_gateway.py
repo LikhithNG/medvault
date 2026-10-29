@@ -354,6 +354,15 @@ def test_a_transparent_image_is_shrunk_onto_white_not_black():
     assert Image.open(io.BytesIO(data)).convert("RGB").getpixel((10, 10)) == (255, 255, 255)
 
 
+
+def test_the_readers_money_keeps_a_credits_sign():
+    assert extract._as_money("(150.00)") == -150.0
+    assert extract._as_money("1,234.50 CR") == -1234.5
+    assert extract._as_money("-154.00") == -154.0
+    assert extract._as_money("$3,100.00") == 3100.0
+    assert extract._as_money(3100) == 3100.0
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

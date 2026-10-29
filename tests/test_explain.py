@@ -120,6 +120,56 @@ def test_without_a_hospital_the_duplicate_question_answers_from_the_bill_itself(
     assert "No duplicate" in reply and "same day" in reply
 
 
+
+# ---- from the test pass: answers that contradicted the findings ---------------------
+
+def _row(**kw):
+    return {"code": "85025", "description": "CBC", "units": 1, "charged": 154.0,
+            "posted_price": 154.0, "amount_over": 0.0, "verdict": "VERIFIED", **kw}
+
+
+def _about(lines, q="tell me about 85025"):
+    return explain.answer(q, {"priced": {"lines": lines, "billed_total": 0, "posted_total": 0,
+                                         "questionable_amount": 0},
+                              "rights": [], "crosschecked": [], "face": []})
+
+
+def test_a_charge_below_the_published_price_is_not_called_above():
+    reply = _about([_row(charged=100.0, amount_over=-54.0)])
+    assert "above" not in reply and "$54.00 below" in reply
+
+
+def test_a_charge_inside_the_tolerance_is_not_called_above_then_nothing_to_raise():
+    reply = _about([_row(charged=155.0, amount_over=1.0)])
+    assert "inside the 1%" in reply
+
+
+def test_a_code_billed_twice_mentions_the_repeat():
+    reply = _about([_row(), _row(verdict="DUPLICATE", posted_price=None, amount_over=None)])
+    assert "more than once" in reply
+
+
+def test_a_multi_unit_line_shows_the_price_for_all_its_units():
+    reply = _about([_row(units=3, charged=600.0, expected_for_units=462.0, amount_over=138.0,
+                         verdict="ABOVE_POSTED")])
+    assert "$462.00 for 3 units" in reply and "$138.00 above" in reply
+
+
+def test_asking_about_an_issue_is_not_answered_as_a_question_about_fraud():
+    """ "sue" matched inside "issue"."""
+    assert "evidence of fraud" not in explain.answer("what is the issue with my bill?", STATE)
+
+
+def test_why_flagged_without_a_hospital_says_what_was_checked():
+    import billchecks
+    lines = [{"code": "70450", "service_date": "2026-03-14", "charged": 3076.10, "units": 1,
+              "description": "CT"}] * 2
+    face = [f for _, f in billchecks.run(lines)]
+    reply = explain.answer("why was it flagged?",
+                           {"priced": None, "face": face, "rights": [], "crosschecked": []})
+    assert "Nothing has been checked" not in reply and "70450" in reply
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

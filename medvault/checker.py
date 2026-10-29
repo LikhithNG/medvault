@@ -43,7 +43,7 @@ def check_line(item, hospital, table, seen):
     """One line item in, one verdict out. Returns a new dict; nothing is mutated.
 
     `seen` holds billchecks.repeat_key() for every earlier line on the bill."""
-    code = str(item.get('code','')).strip()
+    code = str(item.get('code') or '').strip()
     units = int(item.get('units') or 1)
     charged = _f(item.get('charged'))
     ref = table.get((hospital.strip().lower(), code))
@@ -90,8 +90,10 @@ def check_line(item, hospital, table, seen):
 
     if ref is None:
         return {**base, 'verdict': 'NOT_POSTED',
-                'reason': f'{hospital} publishes no price for code {code}, '
-                          'so this charge cannot be checked against its own price file'}
+                'reason': (f'{hospital} publishes no price for code {code}, '
+                           'so this charge cannot be checked against its own price file'
+                           if code else 'this line carries no billing code, so there is '
+                           'no published price to check it against')}
 
     posted   = _f(ref['hospital_gross_charge'])
     cash     = _f(ref['hospital_cash_price'])

@@ -77,6 +77,30 @@ def unspecified(line):
     }
 
 
+def net_of_credits(lines):
+    """The lines to check, and the credits set aside: (charges, credits), in bill order.
+
+    A credit - a negative amount - is not a charge to price. One that matches an earlier
+    charge, the same code for the same amount, reverses it, and the charge it reverses is
+    set aside with it: "154.00 then -154.00" was a $154 charge, a duplicate, and a letter.
+    """
+    aside = set()
+    for i, line in enumerate(lines):
+        charged = line.get("charged")
+        if not isinstance(charged, (int, float)) or charged >= 0:
+            continue
+        aside.add(i)
+        code = (line.get("code") or "").strip().upper()
+        reversed_ = next((j for j in range(i) if j not in aside and code
+                          and (lines[j].get("code") or "").strip().upper() == code
+                          and isinstance(lines[j].get("charged"), (int, float))
+                          and abs(lines[j]["charged"] + charged) <= TOLERANCE), None)
+        if reversed_ is not None:
+            aside.add(reversed_)
+    return ([l for k, l in enumerate(lines) if k not in aside],
+            [l for k, l in enumerate(lines) if k in aside])
+
+
 def repeat_key(line):
     """What makes two lines the same charge: the same code on the same day. None for a line
     that cannot be a repeat - no code, or no positive amount.

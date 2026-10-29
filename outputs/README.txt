@@ -15,7 +15,7 @@ bill                         lines  flagged   unexplained  no receipt
 03_quantity                      3        1         $0.00           0
 04_unspecified                   3        2         $0.00           0
 05_ambulance                     3        2       $642.00           0
-06_summary_not_itemised          2        2     $1,180.00           0
+06_summary_not_itemised          2        2         $0.00           0
 07_clean                         4        0         $0.00           0
 
 14 files.

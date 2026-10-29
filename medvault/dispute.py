@@ -15,6 +15,12 @@ VERDICT_LINE = {
     "ABOVE_POSTED": ("{code} — {desc}\n"
                      "    Billed {charged}. Your published price for this code is {posted}.\n"
                      "    Difference: {over}."),
+    # More than one unit: the price for all of them, or the difference does not add up -
+    # "Billed $600.00 ... $154.00 ... Difference: $138.00" left the $462 unsaid.
+    "ABOVE_POSTED_UNITS": ("{code} — {desc}\n"
+                           "    Billed {charged} for {units} units. Your published price is "
+                           "{posted} per unit — {expected} for {units} units.\n"
+                           "    Difference: {over}."),
     "QUANTITY_SUSPECT": ("{code} — {desc}\n"
                          "    Billed {charged} for {units} units. This is normally provided "
                          "once per visit.\n"
@@ -48,7 +54,12 @@ def letter(reviewed, patient_name=None, rights_findings=None, account=None,
         "",
         f"Billed on this statement:        {money(reviewed['billed_total'])}",
         f"Your published prices total:     {money(reviewed['posted_total'])}",
-        f"Difference I am asking about:    {money(reviewed['questionable_amount'])}",
+    ]
+    # Only when there is a difference to name: a letter about unpublished codes or a
+    # quantity at the posted price asked about "$0.00".
+    if (reviewed.get("questionable_amount") or 0) > 0:
+        out.append(f"Difference I am asking about:    {money(reviewed['questionable_amount'])}")
+    out += [
         "",
         "Lines in question",
         "-----------------",
@@ -63,13 +74,18 @@ def letter(reviewed, patient_name=None, rights_findings=None, account=None,
     quotable, withheld = receipts.quotable(sorted(flagged, key=at_stake, reverse=True))
 
     for l in quotable:
-        tmpl = VERDICT_LINE.get(l["verdict"])
+        verdict = l["verdict"]
+        if verdict == "ABOVE_POSTED" and (l.get("units") or 1) > 1 \
+                and l.get("expected_for_units"):
+            verdict = "ABOVE_POSTED_UNITS"
+        tmpl = VERDICT_LINE.get(verdict)
         if not tmpl:
             continue
         out.append(tmpl.format(
-            code=l.get("code") or "—", desc=(l.get("description") or "")[:56],
+            code=l.get("code") or "(no code)", desc=(l.get("description") or "")[:56],
             charged=money(l.get("charged")), posted=money(l.get("posted_price")),
-            over=money(l.get("amount_over")), units=l.get("units", 1)))
+            over=money(l.get("amount_over")), units=l.get("units", 1),
+            expected=money(l.get("expected_for_units"))))
         if l.get("source_url"):
             out.append(f"    Source: your {l['basis']} for this code, published at")
             out.append(f"    {l['source_url']} (collected {l['collected_date']}).")
@@ -96,9 +112,12 @@ def letter(reviewed, patient_name=None, rights_findings=None, account=None,
         out.append("")
 
     if rights_findings:
-        out += ["Separately", "----------"]
+        # What may apply, and the rule it comes from - not the patient's own to-do list,
+        # which used to be pasted in ("Start dispute resolution within 120 days...").
+        out += ["Separately, these protections may apply to this bill",
+                "-----------------------------------------------------"]
         for f in rights_findings:
-            out += [f"{f['title']}", f"    {f['todo']}", f"    ({f['source']})", ""]
+            out += [f"{f['title']}", f"    ({f['source']})", ""]
 
     out += [
         "Please send me a written explanation of each line above, and a corrected",

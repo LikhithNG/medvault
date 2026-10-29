@@ -43,6 +43,8 @@ def good_faith_estimate(total, ctx):
     """A self-pay patient is owed a written estimate before scheduled care."""
     if ctx.get("coverage") != "self_pay":
         return []
+    if ctx.get("emergency") is True:
+        return []          # emergency care is not scheduled, so no estimate was owed
 
     gfe = ctx.get("gfe_amount")
     if gfe is None:
@@ -100,7 +102,9 @@ def charity_care(total, ctx):
 def surprise_billing(total, ctx):
     """Balance billing is prohibited outright in two situations."""
     out = []
-    if ctx.get("emergency") is True:
+    # It limits a patient to in-network cost sharing, which an uninsured patient has none
+    # of; it fired for self-pay emergency patients alongside an estimate they were not owed.
+    if ctx.get("emergency") is True and ctx.get("coverage") != "self_pay":
         out.append(_finding(
             "nsa_emergency", "high",
             "Emergency care is protected from balance billing",

@@ -73,6 +73,47 @@ def test_everything_can_still_be_asked_for():
     assert len(paste.lines(CLEAN, charges_only=False)) > len(paste.lines(CLEAN))
 
 
+
+# ---- from the test pass ------------------------------------------------------------
+
+def test_a_credit_keeps_its_minus_sign_however_it_is_written():
+    """The money pattern ignored "-", "(...)" and "CR": a reversal of $154 became a second
+    $154 charge, reported as a duplicate, with a letter asking about it."""
+    for row in ("2026-03-14  85025  CBC REVERSAL  1  -154.00",
+                "2026-03-14  85025  CBC REVERSAL  1  (154.00)",
+                "2026-03-14  85025  CBC REVERSAL  1  154.00 CR",
+                "2026-03-14  85025  CBC REVERSAL  1  -$154.00"):
+        assert paste.line(row)["charged"] == -154.0, row
+
+
+def test_a_level_in_a_description_is_not_a_quantity():
+    """ "ED VISIT LEVEL 5 8,025.00" was read as five visits, so 5x the posted price came
+    out matching it exactly."""
+    item = paste.line("2026-03-14  99285  ED VISIT LEVEL 5  8,025.00")
+    assert item["units"] == 1 and item["charged"] == 8025.0
+    assert paste.line("OFFICE VISIT LEVEL 3 150.00")["units"] == 1
+    assert paste.line("2026-03-14  99284  ED VISIT LEVEL 4  2  3,210.00")["units"] == 2
+
+
+def test_the_quantity_is_found_beside_a_unit_price_or_a_dollar_sign():
+    """With a unit-price column, or "$" before the amount, the quantity was missed and the
+    line read as one unit - a false "$308 over" that went into the letter."""
+    item = paste.line("2026-03-14  85025  CBC  3  154.00  462.00")
+    assert (item["units"], item["charged"]) == (3, 462.0)
+    item = paste.line("2026-03-14  85025  CBC  3  $462.00")
+    assert (item["units"], item["charged"]) == (3, 462.0)
+
+
+def test_payments_adjustments_and_discounts_are_not_charges():
+    for row in ("INSURANCE ADJUSTMENT -1,200.00", "PAYMENT RECEIVED -500.00",
+                "CONTRACTUAL ADJUSTMENT 500.00", "DISCOUNT 50.00", "COPAY 20.00",
+                "PATIENT PAYMENT 75.00", "WRITE OFF 10.00"):
+        assert not paste.is_charge(paste.line(row)), row
+    assert paste.is_charge(paste.line("ROOM AND BOARD 2,400.00"))
+    # An uncoded credit is an adjustment however it is labelled.
+    assert not paste.is_charge(paste.line("ADJ 03/14 -50.00"))
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
