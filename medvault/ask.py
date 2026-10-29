@@ -83,10 +83,19 @@ def _family_of(name):
             if fam in low or any(m in low for m in members)}
 
 
+# The allergy box saying there is nothing to be allergic to. Only the whole entry counts:
+# "none" anywhere in it switched the check off for "Penicillin - anaphylaxis. None to latex
+# or food." - and the Ask screen then said nothing collided with the patient's allergies
+# while amoxicillin was on their card.
+NO_ALLERGIES = re.compile(
+    r"^\s*(none(\s+known)?|no\s+known(\s+drug)?\s+allergies|no\s+allergies|nka|nkda|nil"
+    r"|n/?a|no)\s*\.?\s*$", re.I)
+
+
 def allergy_conflicts(meds, profile):
     """Medicines whose name, or whose drug family, matches a recorded allergy."""
     allergy_text = (profile.get("allergies") or "").lower()
-    if not allergy_text or "none" in allergy_text:
+    if not allergy_text or NO_ALLERGIES.match(allergy_text):
         return []
     allergy_words = {w for w in _words(allergy_text) if len(w) > 3}
     allergy_families = _family_of(allergy_text)
@@ -129,6 +138,35 @@ def course_ended(med, today=None):
 
 def _norm(name):
     return re.sub(r"[^a-z]", "", (name or "").lower())
+
+
+# Words in a medicine's name that say nothing about which medicine it is. Matching on a
+# name's first word named the prescriber of "Low dose aspirin" for any question saying
+# "low", and of "Extra Strength Tylenol" for "should I take an extra dose of warfarin?".
+GENERIC_WORDS = {
+    "low", "dose", "high", "extra", "strength", "regular", "tablet", "tablets", "capsule",
+    "capsules", "cream", "spray", "inhaler", "oral", "nasal", "drops", "solution",
+    "suspension", "chewable", "patch", "injection", "release", "extended", "delayed",
+    "children", "childrens", "junior", "adult", "plus", "forte", "daily", "once", "twice",
+    "with", "and", "the", "for", "gel", "pen", "liquid", "syrup", "film", "coated",
+}
+
+
+def _words_of(text):
+    """The words of a text as names are compared: lowercased, hyphens dropped, so
+    "co-codamol" in a question meets "Co-codamol" on the card."""
+    return {_norm(w) for w in re.findall(r"[a-z][a-z-]*", (text or "").lower())} - {""}
+
+
+def _names(med):
+    """The words in a medicine's name that identify it."""
+    return {w for w in _words_of(med.get("name")) if len(w) >= 4 and w not in GENERIC_WORDS}
+
+
+def _named_in(text, meds):
+    """The medicines a text names, by any identifying word of their name."""
+    words = _words_of(text)
+    return [m for m in meds if _names(m) & words]
 
 
 def brief(con, owner_id, today=None):
@@ -334,18 +372,19 @@ def decision(con, owner_id, question):
     who decides, and exactly what the record says, read out of the record.
     """
     meds = db.list_medications(con, active_only=False, owner_id=owner_id)
-    words = set(re.findall(r"[a-z]+", question.lower()))
-    named = [m for m in meds if _norm((m.get("name") or "").split(" ")[0]) in words]
+    named = _named_in(question, meds)
     shown = named or [m for m in meds if m.get("active")]
-    who = next((m.get("provider") for m in named if m.get("provider")), None)
+    # Every prescriber of every medicine asked about, in the order the record lists them.
+    who = ", ".join(dict.fromkeys(m["provider"] for m in named if m.get("provider"))) or None
 
     def fact(m):
         bits = [m.get("name")] + [m.get(k) for k in ("dose", "frequency")]
         if m.get("duration"):
             bits.append(f"for {m['duration']}")
         if m.get("service_date") or m.get("provider"):
-            bits.append("prescribed " + " by ".join(
-                x for x in (m.get("service_date"), m.get("provider")) if x))
+            bits.append("prescribed"
+                        + (f" {m['service_date']}" if m.get("service_date") else "")
+                        + (f" by {m['provider']}" if m.get("provider") else ""))
         return " · ".join(b for b in bits if b)
 
     answer = (f"That is a decision for whoever prescribed it{f' — {who} —' if who else ''} "
@@ -373,12 +412,11 @@ def _attributed(con, owner_id, answer_text, sources):
     without where they came from. Attribution by name is deterministic and cannot invent
     a source: it only attaches records already in this patient's context.
     """
-    words = set(re.findall(r"[a-z]+", (answer_text or "").lower()))
     out = []
-    for m in db.list_medications(con, active_only=False, owner_id=owner_id):
-        first = _norm((m.get("name") or "").split(" ")[0])
+    for m in _named_in(answer_text, db.list_medications(con, active_only=False,
+                                                         owner_id=owner_id)):
         rid = m.get("record_id")
-        if first and first in words and rid in sources and rid not in out:
+        if rid in sources and rid not in out:
             out.append(rid)
     return out
 
@@ -440,9 +478,20 @@ def answer(con, owner_id, question, reader=None, deadline=None, permit=None):
                 "model": result.get("model"), "error": result.get("error"),
                 "attempts": result.get("attempts"), "timed_out": result.get("timed_out")}
 
-    out = result.get("json") or {}
-    kind = out.get("kind") if out.get("kind") in KIND_LABEL else "general"
-    used = [i for i in (out.get("records_used") or []) if i in sources]
+    # Nothing in the answer is trusted, its shape included. {} or a blank answer was shown
+    # as an empty "general information" bubble and recorded as a success; a list, a string
+    # or an odd type raised, and the patient saw a traceback.
+    out = result.get("json")
+    text = out.get("answer") if isinstance(out, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        return {"kind": "error", "answer": None, "records_used": [], "sources": {},
+                "model": result.get("model"), "attempts": result.get("attempts"),
+                "error": "the reader did not return an answer"}
+    kind = out.get("kind") if isinstance(out.get("kind"), str) and out["kind"] in KIND_LABEL \
+        else "general"
+    cited = out.get("records_used")
+    used = [i for i in (cited if isinstance(cited, list) else [])
+            if isinstance(i, int) and not isinstance(i, bool) and i in sources]
     used += [i for i in _attributed(con, owner_id, out.get("answer"), sources) if i not in used]
 
     # A "from your records" answer that cites nothing is not from the records. Relabel it
@@ -460,7 +509,7 @@ def answer(con, owner_id, question, reader=None, deadline=None, permit=None):
     # The second lock. A question that did not look like a dose decision can still get an
     # answer that makes one; if the words tell somebody to stop, skip or double a dose,
     # they are not shown, whatever the label.
-    text = (out.get("answer") or "").strip()
+    text = text.strip()
     if directs(text):
         return {**decision(con, owner_id, question), "model": result.get("model"),
                 "attempts": result.get("attempts"), "guarded": "directive"}

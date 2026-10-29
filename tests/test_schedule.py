@@ -170,6 +170,37 @@ def test_text_is_escaped_for_the_calendar():
     assert schedule._escape("a;b,c\\d\ne") == r"a\;b\,c\\d\ne"
 
 
+
+# ---- from the test pass ------------------------------------------------------------
+
+def test_a_medicine_taken_some_days_is_never_rung_every_day():
+    """ "twice a week" was read as twice a DAY, "once a month" as daily: for a weekly drug
+    like methotrexate, a daily reminder is exactly how people get hurt."""
+    for f in ("twice a week", "three times a week", "3 times weekly", "once a month",
+              "monthly", "once every 2 weeks", "fortnightly", "every other day",
+              "every other day at bedtime", "on alternate days", "every 3 days",
+              "on Mondays at bedtime", "once weekly"):
+        day = schedule.plan([med("Methotrexate", f)], TODAY)
+        assert day["doses"] == [] and len(day["weekly"]) == 1, f
+
+
+def test_five_and_six_times_a_day_are_read_as_five_and_six():
+    assert schedule.parse("five times daily")["per_day"] == 5
+    assert schedule.parse("6 times a day")["per_day"] == 6
+    assert len(schedule.times_for(schedule.parse("five times daily"))) == 5
+
+
+def test_every_way_of_saying_only_if_needed_is_never_rung():
+    for f in ("twice daily if required", "when required", "as necessary",
+              "if necessary", "one tablet when needed"):
+        assert schedule.parse(f)["prn"], f
+
+
+def test_an_evening_dose_is_given_an_evening_time():
+    assert schedule.times_for(schedule.parse("once daily in the evening")) == ["18:00"]
+    assert schedule.times_for(schedule.parse("every evening")) == ["18:00"]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

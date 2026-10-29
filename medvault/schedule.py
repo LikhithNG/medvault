@@ -32,9 +32,12 @@ import re
 
 # ---- reading the frequency ---------------------------------------------------
 
-PRN = re.compile(r"\b(as needed|as required|when needed|if needed|prn|p\.r\.n\.?)\b", re.I)
+PRN = re.compile(r"\b(as needed|as required|when needed|if needed|when required|if required"
+                 r"|as necessary|if necessary|when necessary|prn|p\.r\.n\.?)\b", re.I)
 
 COUNT_WORDS = (
+    (re.compile(r"\b(six times|6 times)\b", re.I), 6),
+    (re.compile(r"\b(five times|5 times)\b", re.I), 5),
     (re.compile(r"\b(four times|4 times|qid|q\.i\.d\.?)\b", re.I), 4),
     (re.compile(r"\b(three times|3 times|thrice|tid|t\.i\.d\.?)\b", re.I), 3),
     (re.compile(r"\b(twice|two times|2 times|bid|b\.i\.d\.?)\b", re.I), 2),
@@ -42,17 +45,29 @@ COUNT_WORDS = (
 )
 EVERY_HOURS = re.compile(r"\bevery\s+(\d{1,2})\s*(?:-\s*\d{1,2}\s*)?(?:hours?|hrs?|h)\b|\bq(\d{1,2})h\b",
                          re.I)
-WEEKLY = re.compile(r"\b(weekly|once a week|every week|each week)\b", re.I)
+# Taken on some days, not every day. "twice a week" contains "twice" and was read as twice
+# a day; "once a month" as daily. For a weekly drug such as methotrexate a daily alarm is
+# exactly how people get hurt, so anything said per week, per month, every other day or on
+# a named weekday is kept off the daily clock.
+WEEKLY = re.compile(
+    r"\b(weekly|fortnightly|monthly)\b|\b(a|per|each|every|/)\s*(week|month|fortnight)\b"
+    r"|\bevery\s+(other|alternate|second|\d+)\s+(days?|weeks?|months?)\b|\balternate\s+days\b"
+    r"|\b(on\s+)?(mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?)\b",
+    re.I)
 BEDTIME = re.compile(r"\b(at bed ?time|before bed|at night|nightly|qhs|h\.s\.?)\b", re.I)
 MORNING = re.compile(r"\b(in the morning|every morning|each morning|on waking)\b", re.I)
+EVENING = re.compile(r"\b(in the evening|every evening|each evening|with (?:dinner|supper))\b",
+                     re.I)
 WITH_FOOD = re.compile(r"\b(with (?:food|meals?)|after (?:food|meals?)|after eating)\b", re.I)
 EMPTY = re.compile(r"\b(before (?:food|meals?|breakfast)|on an empty stomach)\b", re.I)
 
 # Conventional spacing for N doses across a waking day, as offsets in minutes from the
 # patient's own day start. A convention, not a prescription - see the module docstring.
-SPACING = {1: (0,), 2: (0, 720), 3: (0, 360, 720), 4: (0, 240, 480, 720)}
+SPACING = {1: (0,), 2: (0, 720), 3: (0, 360, 720), 4: (0, 240, 480, 720),
+           5: (0, 180, 360, 540, 720), 6: (0, 144, 288, 432, 576, 720)}
 DEFAULT_DAY_START = "08:00"
 BEDTIME_AT = "22:00"
+EVENING_AT = "18:00"
 
 
 def parse(frequency):
@@ -60,7 +75,8 @@ def parse(frequency):
     text = (frequency or "").strip()
     out = {"text": text, "per_day": None, "every_hours": None, "weekly": False,
            "prn": bool(PRN.search(text)), "bedtime": bool(BEDTIME.search(text)),
-           "morning": bool(MORNING.search(text)), "with_food": bool(WITH_FOOD.search(text)),
+           "morning": bool(MORNING.search(text)), "evening": bool(EVENING.search(text)),
+           "with_food": bool(WITH_FOOD.search(text)),
            "empty_stomach": bool(EMPTY.search(text)), "understood": False}
     if not text:
         return out
@@ -84,7 +100,7 @@ def parse(frequency):
             out.update(per_day=count, understood=True)
             return out
 
-    if out["bedtime"] or out["morning"]:
+    if out["bedtime"] or out["morning"] or out["evening"]:
         out.update(per_day=1, understood=True)
     return out
 
@@ -107,6 +123,8 @@ def times_for(parsed, day_start=DEFAULT_DAY_START):
         return []
     if parsed["bedtime"] and parsed["per_day"] == 1:
         return [BEDTIME_AT]
+    if parsed.get("evening") and parsed["per_day"] == 1:
+        return [EVENING_AT]
     start = _minutes(day_start or DEFAULT_DAY_START)
     if parsed["every_hours"]:
         step = parsed["every_hours"] * 60

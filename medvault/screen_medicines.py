@@ -68,7 +68,7 @@ def screen_today():
                         f"Taking it on a timetable is not what the prescription says.</div>"
                         f"</div>", unsafe_allow_html=True)
     if day["weekly"]:
-        st.markdown(ui.section("Weekly"), unsafe_allow_html=True)
+        st.markdown(ui.section("Not every day"), unsafe_allow_html=True)
         for e in day["weekly"]:
             st.markdown(f"<div class='med'><div class='n'>{esc(e['med']['name'])}</div>"
                         f"<div class='d'>{esc(e['parsed']['text'])} — pick the day with your "

@@ -112,11 +112,18 @@ EMERGENCY = tuple(re.compile(p) for p in (
     r"(swallowed|ate|got\s+into)\s+(\w+\s+){0,2}(some|all)\s+of",
     r"(swallowed|ate|drank|downed)\s+all\s+(my|her|his|the|their)",
     r"took\s+.{0,40}on\s+purpose",
+    # a count, not a word: "I took 20 tablets", "I swallowed 30 pills"
+    r"(took|taken|swallowed|had)\s+(\d{2,}|ten|twenty|thirty|forty|fifty|a\s+dozen)\s+(\w+\s+)?"
+    r"(tablets|pills|capsules|tabs|caps)\b",
+    r"(taken|took|swallowed)\s+all\s+(of\s+)?(my|her|his|the)\s+(\w+\s+)?(tablets|pills)\b"
+    r"(?!.{0,30}(as\s+prescribed|this\s+morning|today|for\s+the\s+day))",
     # harm to oneself
     r"suicid|kill\s+myself|end\s+my\s+life|harm\s+myself|hurt(ing)?\s+myself|want\s+to\s+die"
     r"|wanna\s+die",
     r"cut\s+(myself|(my|her|his|their)\s+wrists?)",
     r"thoughts\s+of\s+(hurting|killing|ending|harming)",
+    r"end\s+it\s+all|better\s+off\s+dead|can'?t\s+go\s+on|no\s+reason\s+to\s+live",
+    r"(has|have|got)\s+no\s+pulse|no\s+heartbeat|can'?t\s+feel\s+(my|his|her)\s+(face|arm|leg)",
     r"don'?t\s+want\s+to\s+(be\s+here|live|be\s+alive|wake\s+up)|(tablets|pills)\s+lined\s+up"
     r"|thinking\s+about\s+(driving|crashing|jumping|ending|killing)",
 ))

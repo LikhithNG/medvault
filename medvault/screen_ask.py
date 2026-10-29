@@ -26,7 +26,7 @@ def _render_turn(turn):
     """One question and its answer, with the badge that says where the answer came from."""
     st.markdown(f"<div class='qa'><div class='bubble q ag-in'>{ui.safe(turn['q'])}</div>",
                 unsafe_allow_html=True)
-    a = turn["a"]
+    a = turn.get("a") or {"kind": "error", "error": "no answer was given"}
     if a.get("kind") == "capped":
         # The 911 line comes first and is unconditional. The triage only knows the
         # phrasings it knows: "my dad is not breathing" once came back with nothing but
@@ -153,7 +153,9 @@ def screen_ask():
     with st.form("askform", border=False, clear_on_submit=True):
         q = st.text_input("Your question", key="ask_box", label_visibility="collapsed",
                           placeholder="what is the fluticasone for?")
-        if st.form_submit_button("Ask", type="primary", use_container_width=True) and q:
+        # q.strip(): a question of only spaces got no answer, and drawing "no answer"
+        # raised on every rerun after.
+        if st.form_submit_button("Ask", type="primary", use_container_width=True) and q.strip():
             run(q)
 
     if not log:

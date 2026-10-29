@@ -187,6 +187,42 @@ def test_white_text_on_a_gradient_starts_dark_enough():
         assert rule in ui.CSS, rule
 
 
+
+# ---- from the test pass ------------------------------------------------------------
+
+def test_a_question_of_only_spaces_is_ignored_not_logged_as_a_crash():
+    """It was logged with no answer, and drawing that answer raised on every rerun after,
+    with "Clear this conversation" below the crash where nobody could reach it."""
+    from test_quota import READY, _env, _no_network
+    with offline_vault() as (_, alice, _), _env(**READY), _no_network():
+        at = _app(alice)
+        at.text_input(key="ask_box").input("     ")
+        next(b for b in at.button if b.label == "Ask").click().run()
+        assert not at.exception, [e.value for e in at.exception]
+        assert not at.session_state["ask_log"]
+        at.run()
+        assert not at.exception
+
+
+def test_the_emergency_card_lists_every_current_medicine():
+    """It showed the newest six under "Taking now · 8": insulin and warfarin, the oldest,
+    were the two left off the card somebody reads when the patient cannot speak."""
+    import db
+    with offline_vault() as (con, alice, _):
+        db.save_profile(con, alice["id"], {"full_name": "Alice Anderson", "blood_type": "O+",
+                                           "allergies": "none", "emergency_name": "Bob"})
+        names = [f"Medicine{n}" for n in range(8)]
+        for n, name in enumerate(names):
+            rid = db.add_record(con, kind="prescription", title=f"Rx {n}",
+                                service_date=f"2026-0{n + 1}-01", owner_id=alice["id"])
+            db.add_medication(con, rid, {"name": name, "dose": "1 mg"})
+        at = _app(alice)
+        card = at.tabs[[t.label for t in at.tabs].index("Card")]
+        shown = " ".join(m.value for m in card.markdown)
+        missing = [n for n in names if f">{n}<" not in shown]
+        assert not missing, missing
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

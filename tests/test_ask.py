@@ -377,6 +377,87 @@ def test_the_companion_is_held_to_its_budget_by_default():
     assert reader.deadline == 7
 
 
+
+# ---- from the test pass ------------------------------------------------------------
+
+def test_the_word_none_elsewhere_in_the_box_does_not_switch_the_allergy_check_off():
+    """ "Penicillin - anaphylaxis. None to latex or food." was read as "no allergies", and
+    the Ask screen said nothing collides with them while amoxicillin was on the card."""
+    profile = {"allergies": "Penicillin - anaphylaxis. None to latex or food."}
+    assert ask.allergy_conflicts([{"name": "Amoxicillin"}], profile)
+    profile = {"allergies": "Nonetheless I react to penicillin"}
+    assert ask.allergy_conflicts([{"name": "Amoxicillin"}], profile)
+    for nothing in ("None", "none known", "No known allergies", "NKDA", "nil", "N/A"):
+        assert ask.allergy_conflicts([{"name": "Amoxicillin"}], {"allergies": nothing}) == [], nothing
+
+
+def _two_prescribers():
+    con, owner = a_patient()
+    rid = db.add_record(con, kind="prescription", title="Aspirin", service_date="2026-01-01",
+                        provider="Dr Aspirin", owner_id=owner)
+    db.add_medication(con, rid, {"name": "Low dose aspirin", "dose": "75 mg"})
+    rid = db.add_record(con, kind="prescription", title="Warfarin", service_date="2026-02-01",
+                        provider="Dr Heart", owner_id=owner)
+    db.add_medication(con, rid, {"name": "Warfarin", "dose": "5 mg"})
+    rid = db.add_record(con, kind="prescription", title="Pain", service_date="2026-03-01",
+                        provider="Dr Pharm", owner_id=owner)
+    db.add_medication(con, rid, {"name": "Extra Strength Tylenol", "dose": "500 mg"})
+    rid = db.add_record(con, kind="prescription", title="Codeine", service_date="2026-03-02",
+                        provider="Dr Cod", owner_id=owner)
+    db.add_medication(con, rid, {"name": "Co-codamol", "dose": "30/500"})
+    return con, owner
+
+
+def test_the_prescriber_named_is_the_one_who_prescribed_the_medicine_asked_about():
+    """It matched a medicine by its first word, so "low" in a question named the
+    prescriber of "Low dose aspirin", and "extra" the prescriber of "Extra Strength
+    Tylenol" - for a question about warfarin."""
+    con, owner = _two_prescribers()
+    out = ask.decision(con, owner, "my blood pressure is low, should I skip the warfarin?")
+    assert "Dr Heart" in out["answer"] and "Dr Aspirin" not in out["answer"]
+    out = ask.decision(con, owner, "should I take an extra dose of warfarin?")
+    assert "Dr Heart" in out["answer"] and "Dr Pharm" not in out["answer"]
+    out = ask.decision(con, owner, "should I stop co-codamol?")
+    assert "Dr Cod" in out["answer"]
+    out = ask.decision(con, owner, "can I take warfarin with tylenol?")
+    who = out["answer"].split("whoever prescribed it — ")[1].split(" — ")[0]
+    assert set(who.split(", ")) == {"Dr Heart", "Dr Pharm"}, who
+
+
+def test_a_prescription_with_no_date_reads_prescribed_by():
+    con, owner = a_patient()
+    rid = db.add_record(con, kind="prescription", title="Rx", provider="Dr X", owner_id=owner)
+    db.add_medication(con, rid, {"name": "Warfarin", "dose": "5 mg"})
+    out = ask.decision(con, owner, "should I stop the warfarin?")
+    assert "prescribed by Dr X" in out["answer"] and "prescribed Dr X" not in out["answer"]
+
+
+def test_an_answer_of_the_wrong_shape_is_a_failure_not_a_blank_bubble():
+    """{} or a blank answer was shown as an empty "general information" bubble, recorded as
+    a success; a list, a string or an odd type raised and showed a traceback."""
+    con, owner = a_patient()
+    a_prescription(con, owner, [{"name": "Amoxicillin"}])
+    for payload in ({}, {"kind": "from_records", "answer": "  ", "records_used": [1]},
+                    {"kind": "from_records", "answer": None}, [], "not json", 7,
+                    {"kind": {"a": 1}, "answer": ["Hi."], "records_used": [[1]]},
+                    {"kind": "general", "answer": 42, "records_used": "1,2"}):
+        out = ask.answer(con, owner, "what is amoxicillin for?", reader=FakeReader(payload))
+        assert out["kind"] == "error" and out["error"], payload
+    out = ask.answer(con, owner, "what is amoxicillin for?", reader=FakeReader(
+        {"kind": ["x"], "answer": "It treats infections.", "records_used": ["1", None, {}]}))
+    assert out["kind"] == "general" and out["answer"] == "It treats infections."
+
+
+def test_more_plain_ways_of_saying_it_is_an_emergency_are_caught():
+    for urgent in ("I took 20 tablets of paracetamol", "I swallowed 30 pills",
+                   "I've taken all my sleeping tablets", "I want to end it all",
+                   "I'd be better off dead", "he has no pulse", "I can't feel my face"):
+        assert (ask.triage(urgent) or {}).get("kind") == "emergency", urgent
+    for calm in ("I take 2 tablets a day, what are they for?",
+                 "how many pills are in my prescription?"):
+        assert ask.triage(calm) is None, calm
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

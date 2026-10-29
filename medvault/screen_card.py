@@ -143,7 +143,9 @@ def screen_card():
     if not meds:
         st.markdown(ui.empty("No current medicines.<br>Add a prescription and they appear here."),
                     unsafe_allow_html=True)
-    for m in meds[:6]:
+    # Every one of them. It showed the newest six under "Taking now · 8", and the two left
+    # off were the oldest prescriptions - insulin and warfarin, in the case that found it.
+    for m in meds:
         bits = " · ".join(e(x) for x in (m.get("dose"), m.get("frequency")) if x)
         st.markdown(f"<div class='med'><div class='n'>{e(m['name'])}</div>"
                     f"<div class='d'>{bits or 'no dose recorded'}</div>"
