@@ -81,7 +81,7 @@ def test_a_dose_decision_is_answered_without_asking_a_model():
     assert out["kind"] == "for_prescriber" and reader.prompt is None
     assert "halve" not in out["answer"].lower()
     assert "Amoxicillin · 500 mg · three times daily · for 7 days" in out["answer"]
-    assert not ask.DIRECTIVE.search(out["answer"])
+    assert not ask.directs(out["answer"])
 
 
 def test_a_model_answer_that_makes_a_dose_decision_is_not_shown():
@@ -95,11 +95,33 @@ def test_a_model_answer_that_makes_a_dose_decision_is_not_shown():
         assert said not in out["answer"]
 
 
+def test_when_the_model_itself_calls_it_a_prescriber_question_its_words_are_not_shown():
+    """The keyword list misses phrasings; the model, told to label dose decisions, catches
+    some of them. Either one is enough - and then the patient reads the fixed answer, not
+    the model's own words under the label, which is where "you can stop" once appeared."""
+    con, owner = a_patient()
+    a_prescription(con, owner, [{"name": "Amoxicillin", "dose": "500 mg",
+                                 "frequency": "three times daily"}])
+    said = "Finishing early is usually reasonable once symptoms clear."
+    reader = FakeReader({"kind": "for_prescriber", "answer": said, "records_used": []})
+    out = ask.answer(con, owner, "thinking of finishing the amoxicillin early", reader=reader)
+    assert out["kind"] == "for_prescriber" and out.get("guarded") == "label"
+    assert said not in out["answer"] and "decision for whoever prescribed" in out["answer"]
+    assert "Amoxicillin · 500 mg" in out["answer"]
+    assert out["model"] == "fake"
+
+
+def test_the_dose_check_is_one_function_the_measurement_can_call():
+    assert ask.is_decision("Should I stop taking the amoxicillin?")
+    assert ask.is_decision("Is it okay to skip tonight\u2019s dose?")
+    assert not ask.is_decision("what is fluticasone?")
+
+
 def test_telling_somebody_to_ask_first_is_not_mistaken_for_a_decision():
     for fine in ("You should not stop it without asking your prescriber.",
                  "Ask your pharmacist before you change anything.",
                  "Amoxicillin is an antibiotic in the penicillin family."):
-        assert not ask.DIRECTIVE.search(fine), fine
+        assert not ask.directs(fine), fine
 
 
 # ---- the checks that run before it -----------------------------------------
@@ -288,6 +310,20 @@ def test_plain_ways_of_saying_it_is_an_emergency_are_caught():
     for calm in ("was my breathing test normal?", "the leaflet mentions a choking hazard",
                  "what did the doctor say about my chest X-ray?"):
         assert ask.triage(calm) is None, calm
+
+
+def test_a_question_about_a_page_is_not_an_emergency_unless_it_is_happening_now():
+    """"What does my discharge note say about chest pain?" is a records question, and got
+    the 911 answer. But the same words with the thing happening now are an emergency - and
+    no phrasing in the measured bench happened to test that side, so these do."""
+    for calm in ("what does my discharge note say about chest pain?",
+                 "my brother overdosed two years ago, where is his letter?",
+                 "is heavy bleeding a side effect of apixaban"):
+        assert ask.triage(calm) is None, calm
+    for urgent in ("my lips are swelling, is this a side effect of amoxicillin?",
+                   "what does my note say about chest pain, I have it right now",
+                   "I had a seizure in 2019 and I'm having one again"):
+        assert (ask.triage(urgent) or {}).get("kind") == "emergency", urgent
 
 
 def test_plain_ways_of_asking_to_skip_or_add_a_dose_go_to_the_prescriber():

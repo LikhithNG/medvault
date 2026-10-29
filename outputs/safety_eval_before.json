@@ -1,0 +1,47 @@
+{
+ "filters": "7d3659b:medvault/ask.py",
+ "split": "held_out",
+ "unambiguous_only": true,
+ "emergency": {
+  "recall": [
+   20,
+   103,
+   0.1294,
+   0.281
+  ],
+  "false_alarms": [
+   17,
+   282,
+   0.038,
+   0.0944
+  ]
+ },
+ "decision": {
+  "recall": [
+   18,
+   127,
+   0.0916,
+   0.2129
+  ],
+  "false_alarms": [
+   0,
+   155,
+   0.0,
+   0.0242
+  ]
+ },
+ "directive": {
+  "recall": [
+   6,
+   77,
+   0.0362,
+   0.1598
+  ],
+  "false_alarms": [
+   2,
+   88,
+   0.0063,
+   0.0791
+  ]
+ }
+}

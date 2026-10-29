@@ -34,57 +34,12 @@ import datetime
 import re
 
 import db
+from safety import directs, is_decision, is_emergency  # noqa: F401
 
 # ---- what the model may never do -------------------------------------------
 
-# Asked in the middle of something happening, the right output is six words and a phone
-# number, not a paragraph. These never reach a model.
-#
-# Patterns rather than substrings, because people do not type the canonical phrasing:
-# "my throat is closing" does not contain "throat closing", which a first version of this
-# list missed. And the ambiguous ones — stroke, seizure — need a present-tense marker, or
-# "what was I given after my stroke in 2019?" is answered by telling somebody to call 911.
-EMERGENCY = tuple(re.compile(p) for p in (
-    r"chest\s+(pain|tight|hurts|is\s+hurting)",
-    r"can'?t\s+breath|cannot\s+breath|not\s+able\s+to\s+breath",
-    r"(is|are|'s|'re|i'?m|i\s+am)\s+not\s+breathing|(isn'?t|aren'?t)\s+breathing|"
-    r"stopped\s+breathing",
-    r"(is|are|'s|'re|i'?m|i\s+am)\s+choking",
-    r"(trouble|difficulty|struggling|hard)\s+\w*\s*breath",
-    r"short(ness)?\s+of\s+breath",
-    r"anaphyla",
-    r"(severe|heavy|heavily|badly|won'?t\s+stop|can'?t\s+stop)\s+\w*\s*bleed",
-    r"bleeding\s+(heavily|badly|a\s+lot)",
-    r"unconscious|passed\s+out|blacked\s+out|collapsed",
-    r"overdose|took\s+too\s+many|swallowed\s+the\s+whole",
-    r"suicid|kill\s+myself|end\s+my\s+life|harm\s+myself|want\s+to\s+die|wanna\s+die",
-    r"slurr\w*\s+speech",
-    r"face\s+\w*\s*droop",
-    r"(having|signs\s+of|think\s+\w+\s+having)\s+a?\s*(stroke|seizure|heart\s+attack)",
-    r"stroke\s+symptoms|heart\s+attack\s+symptoms",
-    r"lips\s+\w*\s*blue|blue\s+lips",
-    r"throat\s+\w*\s*clos|tongue\s+\w*\s*swell|swollen\s+tongue",
-))
-
-# A decision about a dose belongs to the person who prescribed it. The app's job is to put
-# what the record actually says in front of them, not to answer instead of the prescriber.
-DECISION = (
-    "should i stop", "should i take", "can i stop", "can i skip", "should i skip",
-    "can i double", "should i double", "can i take more", "how much should i take",
-    "is it safe for me", "is it safe to take", "can i take both", "should i increase",
-    "should i reduce", "can i drink", "is it ok to take", "do i still need",
-    "is it ok to skip", "is it okay to skip", "is it okay to take", "can i take two",
-    "can i take another", "can i take extra",
-)
-
-# What a dose instruction looks like in an answer - "you can stop", "it is fine to double",
-# "you should keep taking it". Negatives ("you should not stop without asking") do not
-# match: telling somebody to ask first is the answer this app wants to give.
-DIRECTIVE = re.compile(
-    r"\b(you|it)\b[^.?!]{0,30}?\b(can|could|should|may|might want to|are fine to|"
-    r"(is|'s) (fine|safe|ok|okay)) (to )?(safely )?(stop|start|skip|double|halve|"
-    r"increase|decrease|reduce|cut|split|combine|take (more|less|extra|both)|"
-    r"keep taking|continue taking)\b", re.I)
+# The three checks - an emergency, a dose decision, a dose instruction in an answer - are in
+# safety.py, where tools/safety_eval.py measures them.
 
 # HTML, not markdown: this is rendered inside a raw HTML bubble, and markdown does not
 # run inside a block of HTML — the first version printed its own asterisks.
@@ -428,16 +383,9 @@ def _attributed(con, owner_id, answer_text, sources):
     return out
 
 
-def _plain(question):
-    """Lowercase, single-spaced, and with a phone's curly apostrophe made straight - iOS
-    types "can’t breathe", and every pattern above is written with "'"."""
-    return " ".join((question or "").lower().replace("\u2019", "'").split())
-
-
 def triage(question):
-    """The two questions a model never gets to answer."""
-    q = _plain(question)
-    if any(p.search(q) for p in EMERGENCY):
+    """An emergency, answered without a model. None for anything else."""
+    if is_emergency(question):
         return {"kind": "emergency", "answer": EMERGENCY_ANSWER, "records_used": []}
     return None
 
@@ -470,8 +418,7 @@ def answer(con, owner_id, question, reader=None, deadline=None, permit=None):
     urgent = triage(question)
     if urgent:
         return {**urgent, "sources": {}, "model": None}
-    q = _plain(question)
-    if any(p in q for p in DECISION):
+    if is_decision(question):
         return decision(con, owner_id, question)
     if permit is not None and not permit():
         return {"kind": "capped", "answer": None, "records_used": [], "sources": {},
@@ -503,13 +450,20 @@ def answer(con, owner_id, question, reader=None, deadline=None, permit=None):
     if kind == "from_records" and not used:
         kind = "general"
 
+    # The model is told to label a dose decision for_prescriber, and it catches phrasings
+    # the keyword list does not. Either is enough: the patient then reads decision()'s
+    # fixed words, not the model's own under that label.
+    if kind == "for_prescriber":
+        return {**decision(con, owner_id, question), "model": result.get("model"),
+                "attempts": result.get("attempts"), "guarded": "label"}
+
     # The second lock. A question that did not look like a dose decision can still get an
     # answer that makes one; if the words tell somebody to stop, skip or double a dose,
     # they are not shown, whatever the label.
     text = (out.get("answer") or "").strip()
-    if DIRECTIVE.search(text):
+    if directs(text):
         return {**decision(con, owner_id, question), "model": result.get("model"),
-                "attempts": result.get("attempts"), "guarded": True}
+                "attempts": result.get("attempts"), "guarded": "directive"}
 
     return {"kind": kind, "answer": text,
             "records_used": used, "sources": {i: sources[i] for i in used},

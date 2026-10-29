@@ -282,9 +282,11 @@ So `ask.py` calls a model, with a fence around it:
   over the vault, and the answers must not vary with a model's mood, so they do not.
 - **Two questions never reach it.** Anything that reads like an emergency is answered with a
   phone number. Anything asking for a dose decision is answered by naming the prescriber and
-  then quoting what the record actually says. Both are pattern-matched in Python, and the
-  dose relabelling is applied *after* the model answers, so the badge does not depend on the
-  model having classified itself honestly.
+  then quoting what the record actually says. Both are pattern-matched in Python
+  (`medvault/safety.py`), and measured - see below. A question the patterns miss but the
+  model itself labels a prescriber question gets the same fixed answer, not the model's
+  words; and an answer that tells somebody to change a dose is replaced after the model
+  writes it, whatever label it carries.
 - **Every answer says where it came from.** *From your records* must cite at least one
   record, and an answer claiming the records while citing none is relabelled *general* before
   it is shown. A citation of a record belonging to someone else is dropped.
@@ -295,6 +297,44 @@ The allergy check knows a short, hand-written table of drug families, because "a
 penicillin" and "amoxicillin" share no letters and a name-only check would call that pair
 unrelated. The table is five families long and the interface says so on every card it
 produces. It is a prompt to ask a question, not a clearance.
+
+### How often the safety checks catch what they should
+
+The three checks in `medvault/safety.py` were short keyword lists with a handful of unit
+tests, and nobody knew what they missed. `tools/safety_eval.py` measures them against 1,157
+phrasings (812 questions, 345 answer sentences) written and labelled by two separate model
+instances from written definitions, with instructions not to open this repository: whoever
+writes the cases while looking at the patterns writes cases the patterns catch. The second
+writer was asked for deliberately indirect phrasing - slang, euphemism, UK and Indian English,
+the key fact buried at the end of a long message.
+
+Each writer's set was halved at random with a fixed seed, label by label. The patterns were
+rewritten against the **tuning** half only, where they now catch everything - which proves
+nothing. The **held-out** half was never used to change them, and its misses were not looked
+at until the patterns were frozen. These are the held-out numbers, unambiguous items only,
+with 95% Wilson intervals, for the previous commit's checks and for these:
+
+| Check | Catches the real cases: before → after | Fires on the rest: before → after |
+|---|---|---|
+| Emergency in a question | 20/103 · 19% [13–28] → **56/103 · 54% [45–64]** | 6.0% → 3.5% (10/282) |
+| Dose decision in a question | 18/127 · 14% [9–21] → **80/127 · 63% [54–71]** | 0.0% → 0.7% (1/155) |
+| Dose instruction in an answer | 6/77 · 8% [4–16] → **41/77 · 53% [42–64]** | 2.3% → 3.4% (3/88) |
+
+Split by writer, the first writer's held-out phrasings are caught 65–70% of the time, and the
+second writer's indirect ones only 40–56%. That gap is the finding: keyword patterns catch
+the ways of asking somebody has thought of, and roughly half of an emergency or a dose
+question worded some other way still reaches the model. What stands behind them when they
+miss: a dose question the model labels for the prescriber gets the fixed answer; a dose
+instruction in an answer is replaced; and the "AI unavailable" reply always leads with 911.
+The next step is a model-based check measured on this same held-out set before it ships -
+which needs model calls, so it was not done before the presentation.
+
+Limits: the phrasings are synthetic, English and model-written, labelled by their writers
+without clinical review; 71 items the writers marked ambiguous are scored separately. The
+held-out misses are now listed in `outputs/safety_eval.json`, so the next round of changes
+needs a fresh blind set to be measured honestly. `python3 tools/safety_eval.py` reruns it
+offline in under a second; `tests/test_safety_filters.py` fails if a change makes any of
+these numbers worse.
 
 ## Where your data lives
 
