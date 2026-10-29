@@ -173,15 +173,19 @@ place in this app where record text leaves the server other than a document bein
 
 ## 9. Two zeros in the enforcement data that are not zeros
 
-The reference table records, per hospital, how many price-transparency enforcement actions
-CMS has taken against it. Those counts were verified against the full live CMS file on
-26 October 2026 — all 13,355 actions, not the first page — and **all nine hospitals agree
-exactly**. `tools/verify_enforcement.py` is that check, and it can be re-run.
+The reference table records, per hospital, how many entries CMS's price-transparency
+enforcement file holds for it. Those counts were verified against the full live CMS file on
+26 October 2026 — all 13,355 entries, not the first page — and **all nine hospitals agree
+exactly**. An entry is not always an action against the hospital: of the 13,355, 5,782 are
+warnings, corrective-action requests or fines, and 7,573 are closure notices, findings that
+the hospital met the rule, or administrative closures. The Bill screen therefore says
+"entries" and names the latest one in CMS's words; it once said "enforcement actions
+against this hospital", which the demo hospital's own entries did not support. `tools/verify_enforcement.py` is that check, and it can be re-run.
 
 The same check found something the build did not: **two of the nine are recorded as 0, and
 both are failed joins rather than clean records.**
 
-| The table says | CMS lists it as | Actual actions |
+| The table says | CMS lists it as | Actual entries |
 |---|---|---|
 | `BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER - FORT WORTH` → 0 | `BAYLOR SCOTT & WHITE ALL SAINTS MEDICAL CENTER` | **2** |
 | `Community Hospital of Stokes` → 0 | `LIFEBRITE COMMUNITY HOSPITAL OF STOKES` | **5** |

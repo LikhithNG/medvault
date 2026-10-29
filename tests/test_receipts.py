@@ -132,6 +132,31 @@ def test_a_matched_hospital_says_how_it_was_matched():
 
     assert line["enforcement_match"] == "name+state"
     assert line["hospital_enforcement_actions"] == 2
+    assert line["hospital_latest_cms_action"] == "Closure Notice"
+    assert line["hospital_latest_action_date"] == "2025-09-18"
+
+
+def test_cms_entries_are_not_called_actions_against_the_hospital():
+    """The count is every row CMS's price-transparency file holds for the hospital -
+    closure notices and "Met Requirements" included - and the screen called all of them
+    "enforcement actions against this hospital". Across the whole file, 7,573 of 13,355
+    rows are closures or findings that a hospital met the rule. Found checking the deck."""
+    import bill_render
+    line = {"enforcement_match": "name+state", "hospital_enforcement_actions": 2,
+            "hospital_latest_cms_action": "Closure Notice",
+            "hospital_latest_action_date": "2025-09-18"}
+    kind, head, why = bill_render.enforcement_note([line])
+    assert kind == "hint"
+    assert "2 entries" in head and "Closure Notice" in head and "18 September 2025" in head
+    assert "against this hospital" not in head + why
+    kind, head, _ = bill_render.enforcement_note([{**line, "hospital_enforcement_actions": 1,
+                                                   "hospital_latest_cms_action": "Met Requirements"}])
+    assert "1 entry" in head and "Met Requirements" in head
+    kind, head, _ = bill_render.enforcement_note([{**line, "hospital_enforcement_actions": 0}])
+    assert kind == "caption" and "no entries" in head
+    kind, head, _ = bill_render.enforcement_note([{**line, "enforcement_match": "none",
+                                                   "hospital_enforcement_actions": 0}])
+    assert kind == "hint" and "not a clean record" in head
 
 
 

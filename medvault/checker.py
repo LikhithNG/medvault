@@ -72,6 +72,10 @@ def check_line(item, hospital, table, seen):
         # and an operator prefix each broke a join and the miss was recorded as a zero.
         # tools/verify_enforcement.py is what found them.
         'enforcement_match': None,
+        # CMS's own words for the latest entry, and its date: a count alone read as
+        # "actions against" a hospital whose latest entry says it met the rule.
+        'hospital_latest_cms_action': None,
+        'hospital_latest_action_date': None,
     }
 
     if charged is None:
@@ -112,6 +116,8 @@ def check_line(item, hospital, table, seen):
         'basis': 'hospital gross charge' if posted is not None else None,
         'hospital_enforcement_actions': int(ref['hospital_cms_enforcement_actions'] or 0),
         'enforcement_match': ref.get('enforcement_match_method') or 'none',
+        'hospital_latest_cms_action': ref.get('hospital_latest_cms_action') or None,
+        'hospital_latest_action_date': ref.get('hospital_latest_action_date') or None,
         'posted_description': ref['description'],
     }
 

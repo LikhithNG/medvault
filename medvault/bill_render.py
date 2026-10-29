@@ -179,33 +179,18 @@ def render_published(priced):
                f"estimate. Published prices collected {when}; a hospital may have "
                "republished since.")
 
-    # Attached to every flag since the Checker was written and never shown until now.
-    # The PRD promised it as what this screen says when a price file cannot settle a
-    # line: how often CMS has already had to act against this hospital.
+    # Attached to every flag since the Checker was written. The PRD promised it as what
+    # this screen says when a price file cannot settle a line: what CMS's own
+    # price-transparency file records about this hospital (see enforcement_note).
     #
-    # Three states, not two. A hospital the enforcement file was never joined to is not a
-    # hospital with a clean record, and saying "0 actions" for one would be the same
-    # mistake this app refuses to make about a missing medical record.
-    matched = next((l.get("enforcement_match") for l in priced["lines"]
-                    if l.get("enforcement_match")), "none")
-    actions = max((l.get("hospital_enforcement_actions") or 0)
-                  for l in priced["lines"]) if priced["lines"] else 0
-    if matched == "none":
-        st.markdown(ui.hint("No enforcement history found for this hospital — <b>that is "
-                            "not a clean record</b>.",
-                            "It could not be matched to CMS's price-transparency enforcement "
-                            "file by name and state. That usually means CMS lists the "
-                            "hospital under a slightly different name."),
-                    unsafe_allow_html=True)
-    elif actions:
-        st.markdown(ui.hint(f"CMS has recorded <b>{actions} price-transparency enforcement "
-                            f"action(s)</b> against this hospital.",
-                            "That is about whether it published its prices properly, not "
-                            "about your bill — but it is context for how much weight the "
-                            "file above deserves."), unsafe_allow_html=True)
+    # Three states, not two. A hospital the file was never joined to is not a hospital
+    # with a clean record, and saying "no entries" for one would be the same mistake this
+    # app refuses to make about a missing medical record.
+    kind, head, why = enforcement_note(priced["lines"])
+    if kind == "hint":
+        st.markdown(ui.hint(head, why), unsafe_allow_html=True)
     else:
-        st.caption("CMS has recorded no price-transparency enforcement actions "
-                   "against this hospital.")
+        st.caption(head)
 
     flagged_lines = [l for l in priced["lines"] if l["verdict"] != "VERIFIED"]
     if not flagged_lines:
@@ -249,6 +234,36 @@ def _backed_by(row):
     """The record a matched line was found in, for printing on that line."""
     found = row.get("matches") if row.get("verdict") == "MATCHED" else None
     return f"<i>backed by “{ui.safe(found[0]['title'])}”</i>" if found else None
+
+
+def enforcement_note(lines):
+    """What CMS's price-transparency file holds for this hospital, said as what it is.
+
+    The count is every entry the file has - warnings, demands for a corrective plan and
+    fines, but also closure notices and findings that the hospital met the rule. It was
+    shown as "enforcement actions against this hospital", which the demo hospital's own
+    entries (latest: a Closure Notice) did not support. Returns (kind, head, why).
+    """
+    matched = next((l.get("enforcement_match") for l in lines if l.get("enforcement_match")),
+                   "none")
+    if matched == "none":
+        return ("hint", "No CMS price-transparency record found for this hospital — <b>that "
+                "is not a clean record</b>.",
+                "It could not be matched to CMS's price-transparency file by name and state. "
+                "That usually means CMS lists the hospital under a slightly different name.")
+    n = max((l.get("hospital_enforcement_actions") or 0) for l in lines) if lines else 0
+    if not n:
+        return ("caption", "CMS's price-transparency file has no entries for this hospital.",
+                None)
+    latest = next((l for l in lines if l.get("hospital_latest_cms_action")), {})
+    when = latest.get("hospital_latest_action_date")
+    said = (f", the latest a {ui.safe(latest['hospital_latest_cms_action'])}"
+            + (f" on {long_date(when)}" if when else "")) if latest else ""
+    return ("hint", f"CMS's price-transparency file has <b>{n} {'entry' if n == 1 else 'entries'}"
+            f"</b> for this hospital{said}.",
+            "CMS records each review of whether a hospital published its prices: warnings, "
+            "demands for a corrective plan, fines, and closures once it is resolved. It is "
+            "about the price file, not your bill.")
 
 
 def render_against_records(checked, summary):

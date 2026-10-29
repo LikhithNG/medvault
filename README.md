@@ -19,8 +19,9 @@ or it is not quoted at all — `receipts.py` enforces that rather than asking fo
 
 **Checked rather than asserted.** The reference data was verified against the live CMS
 file on 26 October 2026 by a second implementation written from the data's side
-(`tools/verify_enforcement.py`, which paginates all 13,355 enforcement actions rather than
-the first page). All nine hospitals' counts agree exactly — and the same check found two
+(`tools/verify_enforcement.py`, which paginates all 13,355 entries rather than the first
+page; 5,782 of them are warnings, corrective-action requests or fines, and the rest are
+closures and findings that a hospital met the rule). All nine hospitals' counts agree exactly — and the same check found two
 zeros that are failed name joins rather than clean records, which CAVEATS §9 names.
 
 **The four success metrics, measured.** The Assignment 2 PRD set four targets and none
