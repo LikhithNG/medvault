@@ -136,6 +136,9 @@ def run(reader=None, cases_path=CASES):
                         "answer": (out or {}).get("answer"),
                         "error": (out or {}).get("error")})
     times = sorted(r["seconds"] for r in results)
+    # Also over the answers a model gave: an emergency or a dose question never reaches
+    # one and answers in no time, and folded into the median that flattered it.
+    asked = sorted(r["seconds"] for r in results if r["model"])
     report = {
         "when": datetime.datetime.now().isoformat(timespec="seconds"),
         "reader": "stub" if reader is not None else "configured model pool",
@@ -144,6 +147,10 @@ def run(reader=None, cases_path=CASES):
         "p50_s": round(statistics.median(times), 2),
         "p95_s": round(statistics.quantiles(times, n=20, method="inclusive")[-1], 2)
                  if len(times) > 1 else times[0],
+        "model_answers": len(asked),
+        "p50_model_s": round(statistics.median(asked), 2) if asked else None,
+        "p95_model_s": (round(statistics.quantiles(asked, n=20, method="inclusive")[-1], 2)
+                        if len(asked) > 1 else (asked[0] if asked else None)),
         "results": results,
     }
     return report
@@ -160,6 +167,8 @@ def main():
               + ("" if r["passed"] else "  " + "; ".join(r["why"])))
     print(f"\n{report['passed']}/{report['cases']} passed · p50 {report['p50_s']}s · "
           f"p95 {report['p95_s']}s · budget {report['budget_s']}s")
+    print(f"over the {report['model_answers']} answers a model gave: p50 "
+          f"{report['p50_model_s']}s · p95 {report['p95_model_s']}s")
     if not args.stub:
         OUT.parent.mkdir(exist_ok=True)
         OUT.write_text(json.dumps(report, indent=2))

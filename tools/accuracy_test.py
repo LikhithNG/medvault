@@ -112,6 +112,11 @@ def build_bill(rng, hospital, prices, unpublished, index):
         if label == "duplicate" and used:
             code = rng.choice(sorted(used))
         else:
+            # A "duplicate" drawn as the bill's first line has nothing to repeat, so it is
+            # a fresh code at the published price - and labelled as one. It kept the label
+            # "duplicate" while the documented rules expected VERIFIED, three times.
+            if label == "duplicate":
+                label = "at_published"
             remaining = [c for c in codes if c not in used]
             if not remaining:
                 continue
@@ -119,7 +124,7 @@ def build_bill(rng, hospital, prices, unpublished, index):
         posted = posted_for(code)
 
         if label == "quantity":
-            code = rng.choice([c for c in ONCE_PER_VISIT if c in prices] or [code])
+            code = rng.choice([c for c in sorted(ONCE_PER_VISIT) if c in prices] or [code])
             posted = posted_for(code)
             units, multiple = rng.randint(UNIT_SUSPICION, 24), 1.0
         elif label == "above_published":

@@ -107,6 +107,44 @@ def test_the_benchmark_notices_when_the_checker_is_broken():
     assert rows["tolerance widened to 2.0x"][1] < 0.90, "widening tolerance should cost recall"
 
 
+
+def test_every_line_is_what_it_was_built_to_be():
+    """ "Labelled by construction" is only true if the label a line was built with is the
+    verdict the documented rules give it. Three lines built as "duplicate" were the first
+    line on their bill - there was nothing yet to repeat - so they were built as a fresh
+    code and expected VERIFIED under a label that said otherwise."""
+    built = {"at_published": "VERIFIED", "above_published": "ABOVE_POSTED",
+             "duplicate": "DUPLICATE", "quantity": "QUANTITY_SUSPECT",
+             "not_posted": "NOT_POSTED", "just_inside_tolerance": "VERIFIED"}
+    table = checker.load_reference()
+    catalogue = bench.by_hospital(table)
+    hospitals, every_code = sorted(catalogue), {c for (_, c) in table}
+    rng = random.Random(SEED)
+    published = bench.label_corpus(
+        [bench.build_bill(rng, hospitals[i % len(hospitals)],
+                          catalogue[hospitals[i % len(hospitals)]],
+                          sorted(every_code - set(catalogue[hospitals[i % len(hospitals)]])), i)
+         for i in range(50)], catalogue)                      # the 50 bills the README cites
+    off = [(l["label"], l["expect"]) for b in published for l in b["line_items"]
+           if built[l["label"]] != l["expect"]]
+    assert not off, off
+
+
+def test_the_corpus_does_not_depend_on_the_hash_seed():
+    """It chose from a set, so it changed with PYTHONHASHSEED: 296 lines on one run, 299
+    on another, and the README's figures reproduced only by luck."""
+    import os
+    import subprocess
+    counts = set()
+    for seed in ("0", "3", "11"):
+        out = subprocess.run([sys.executable, str(ROOT / "tools" / "accuracy_test.py")],
+                             capture_output=True, text=True,
+                             env={**os.environ, "PYTHONHASHSEED": seed,
+                                  "TURSO_DATABASE_URL": "", "TURSO_AUTH_TOKEN": ""}).stdout
+        counts.add(next(l for l in out.splitlines() if "lines across" in l))
+    assert len(counts) == 1, counts
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

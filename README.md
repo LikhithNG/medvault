@@ -28,10 +28,16 @@ of them had a number. `tools/accuracy_test.py` builds a labelled corpus and repo
 
 | Metric | Target | Measured |
 |---|---|---|
-| Precision of the overcharge flag | ≥90% | **100%** · 95% CI [97.0%, 100%] · 123 flags |
+| Precision of the overcharge flag | ≥90% | **100%** · 95% CI [97.0%, 100%] · 126 flags |
 | Extraction, code **and** amount | ≥85% | **100%** · 95% CI [98.7%, 100%] · 296 lines |
 | Upload to annotated bill | <60 s | **0.11 ms** p99, deterministic path |
 | Flags carrying a receipt | 100% | **100%**, enforced by `receipts.py` |
+
+These are the numbers `python3 tools/accuracy_test.py` prints, on any machine: the corpus
+used to depend on Python's hash seed (296 lines on one run, 299 on another), and the figures
+above were corrected when that was fixed. `tests/test_accuracy.py` now holds the corpus to
+one shape whatever the seed, and holds every line's construction label to the verdict the
+documented rules give it.
 
 The labels are **by construction, not by hand** — a line is built as "this code, at 3.4×
 the price this hospital publishes for it, 1 unit", so what it is, is a fact about how it
@@ -45,9 +51,9 @@ checks the measurement notices:
 | Defect introduced | Precision | Recall | Verdict |
 |---|---|---|---|
 | none (as shipped) | 100% | 100% | clean |
-| units forced to 1 — *the bug that shipped* | 75.9% | 100% | caught |
+| units forced to 1 — *the bug that shipped* | 75.0% | 100% | caught |
 | cash price used as the basis | 61.8% | 100% | caught |
-| every bill priced against one hospital | 67.6% | 74.6% | caught |
+| every bill priced against one hospital | 67.6% | 73.0% | caught |
 | tolerance widened to 2.0× | 100% | 83.3% | caught |
 
 A first version of the corpus used Doylestown alone — and Doylestown is one of only two

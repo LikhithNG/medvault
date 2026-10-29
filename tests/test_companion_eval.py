@@ -57,6 +57,16 @@ def test_the_harness_runs_offline_and_the_guards_hold_without_a_model():
         assert by_id[guarded]["model"] is None, f"{guarded} reached a model"
 
 
+
+def test_latency_is_also_reported_over_the_answers_a_model_gave():
+    """Three cases never reach a model and answer in 0.0 s; folded into the median they
+    flattered it (0.92 s published, 1.03 s over the seven model answers)."""
+    report = companion_eval.run(reader=companion_eval.StubReader())
+    asked = [r for r in report["results"] if r["model"]]
+    assert report["model_answers"] == len(asked) < report["cases"]
+    assert "p50_model_s" in report and "p95_model_s" in report
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

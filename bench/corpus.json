@@ -135,12 +135,12 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "99281",
-     "description": "HC EMERGENCY DEPT LEVEL I",
+     "code": "G0379",
+     "description": "HC DIRECT REFER HOSPITAL OBSERV",
      "units": 24,
-     "charged": 11477.52,
+     "charged": 22173.12,
      "label": "quantity",
-     "posted": 478.23,
+     "posted": 923.88,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     }
@@ -151,12 +151,12 @@
    "hospital_name": "Community Hospital of Stokes",
    "line_items": [
     {
-     "code": "G0379",
-     "description": "DIRECT ADMISSION PATIENT FOR HOSPITAL ",
+     "code": "71046",
+     "description": "CHEST 2V W/FLUORO",
      "units": 13,
-     "charged": 4759.56,
+     "charged": 11167.0,
      "label": "quantity",
-     "posted": 366.12,
+     "posted": 859.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -171,42 +171,42 @@
      "expect": "NOT_POSTED"
     },
     {
-     "code": "G0378",
-     "description": "OBSERVATION PER HOUR",
+     "code": "G0379",
+     "description": "DIRECT ADMISSION PATIENT FOR HOSPITAL ",
      "units": 1,
-     "charged": 1134.26,
+     "charged": 1934.21,
      "label": "above_published",
-     "posted": 214.7,
+     "posted": 366.12,
      "multiple": 5.283,
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "99284",
-     "description": "FAC FEE LEVEL IV",
+     "code": "99285",
+     "description": "FAC FEE LEVEL V",
      "units": 1,
-     "charged": 1492.24,
+     "charged": 2205.43,
      "label": "just_inside_tolerance",
-     "posted": 1484.82,
+     "posted": 2194.46,
      "multiple": 1.005,
-     "expect": "VERIFIED"
-    },
-    {
-     "code": "83036",
-     "description": "HGB A1C LC",
-     "units": 1,
-     "charged": 88.14,
-     "label": "at_published",
-     "posted": 88.14,
-     "multiple": 1.0,
      "expect": "VERIFIED"
     },
     {
      "code": "84443",
      "description": "TSH (THYROID STIMULATING HORMONE)",
      "units": 1,
-     "charged": 626.7,
-     "label": "above_published",
+     "charged": 106.22,
+     "label": "at_published",
      "posted": 106.22,
+     "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85025",
+     "description": "CBC WITH AUTOMATED DIFFERENTIAL",
+     "units": 1,
+     "charged": 1520.08,
+     "label": "above_published",
+     "posted": 257.64,
      "multiple": 5.9,
      "expect": "ABOVE_POSTED"
     }
@@ -293,12 +293,12 @@
    "hospital_name": "Inova Alexandria Hospital",
    "line_items": [
     {
-     "code": "71046",
-     "description": "HC XR CHEST 2 VIEWS",
+     "code": "99285",
+     "description": "HC LEVEL 5 E&M ED",
      "units": 10,
-     "charged": 4940.0,
+     "charged": 35570.0,
      "label": "quantity",
-     "posted": 494.0,
+     "posted": 3557.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -333,12 +333,12 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "76700",
-     "description": "HC US ABD W/IMAGE DOC COMP",
+     "code": "74177",
+     "description": "HC CT ABD-PEL W IV CONT",
      "units": 1,
-     "charged": 5238.41,
+     "charged": 6431.71,
      "label": "above_published",
-     "posted": 1734.0,
+     "posted": 2129.0,
      "multiple": 3.021,
      "expect": "ABOVE_POSTED"
     }
@@ -465,12 +465,12 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "72148",
-     "description": "HC MRI SPINE LUMBAR WITHOUT CONTRAST",
+     "code": "99284",
+     "description": "HC EMER ROOM LEVEL IV",
      "units": 15,
-     "charged": 14460.0,
+     "charged": 8805.0,
      "label": "quantity",
-     "posted": 964.0,
+     "posted": 587.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     }
@@ -521,12 +521,12 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "70450",
-     "description": "HC CT Head WO",
+     "code": "74177",
+     "description": "HC CT Abdomen & Pelvis W",
      "units": 23,
-     "charged": 79525.26,
+     "charged": 207000.0,
      "label": "quantity",
-     "posted": 3457.62,
+     "posted": 9000.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -663,12 +663,12 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "74177",
-     "description": "HCHG CT ABD & PELVIS W/CON",
+     "code": "72148",
+     "description": "HCHG MRI SPINE LUMB WO CONTR",
      "units": 15,
-     "charged": 124305.0,
+     "charged": 78255.0,
      "label": "quantity",
-     "posted": 8287.0,
+     "posted": 5217.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -851,14 +851,14 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "99281",
-     "description": "E/R VISIT LEVEL I",
+     "code": "G0379",
+     "description": "DIRECT OBSERVATION INC 1 HOUR",
      "units": 19,
-     "charged": 30495.0,
+     "charged": 5453.0,
      "label": "quantity",
-     "posted": 1605.0,
+     "posted": 287.0,
      "multiple": 1.0,
-     "expect": "DUPLICATE"
+     "expect": "QUANTITY_SUSPECT"
     },
     {
      "code": "80053",
@@ -1085,12 +1085,12 @@
    "hospital_name": "Scripps Green Hospital",
    "line_items": [
     {
-     "code": "71046",
-     "description": "HC Chest 2 Views",
+     "code": "99283",
+     "description": "HC ER Level III",
      "units": 16,
-     "charged": 15593.44,
+     "charged": 38636.32,
      "label": "quantity",
-     "posted": 974.59,
+     "posted": 2414.77,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -1115,22 +1115,22 @@
      "expect": "NOT_POSTED"
     },
     {
-     "code": "83036",
-     "description": "HC Hemoglobin; Glycated",
+     "code": "81001",
+     "description": "HC Urinalysis-Complete",
      "units": 2,
-     "charged": 498.91,
+     "charged": 1361.12,
      "label": "above_published",
-     "posted": 51.84,
+     "posted": 141.43,
      "multiple": 4.812,
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "99282",
-     "description": "HC ER Level II",
+     "code": "99281",
+     "description": "HC ER Level I",
      "units": 2,
-     "charged": 7141.97,
+     "charged": 4570.84,
      "label": "above_published",
-     "posted": 1312.38,
+     "posted": 839.92,
      "multiple": 2.721,
      "expect": "ABOVE_POSTED"
     }
@@ -1145,7 +1145,7 @@
      "description": "HC INJ IV PUSH SNGL/INITIAL",
      "units": 1,
      "charged": 876.0,
-     "label": "duplicate",
+     "label": "at_published",
      "posted": 876.0,
      "multiple": 1.0,
      "expect": "VERIFIED"
@@ -1201,12 +1201,12 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "74177",
-     "description": "HC CT ABD & PELV W/CONTRAST - CT ABDOM",
+     "code": "72148",
+     "description": "HC MRI LUMBAR SPINE - MRI LUMBAR SPINE",
      "units": 22,
-     "charged": 146476.0,
+     "charged": 91278.0,
      "label": "quantity",
-     "posted": 6658.0,
+     "posted": 4149.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     }
@@ -1303,12 +1303,12 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "G0378",
-     "description": "HC OBSERVATION PER HOUR",
+     "code": "99282",
+     "description": "HC EMERGENCY CARE LEVEL II",
      "units": 21,
-     "charged": 3773.49,
+     "charged": 16428.51,
      "label": "quantity",
-     "posted": 179.69,
+     "posted": 782.31,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -1323,12 +1323,12 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "99284",
-     "description": "HC EMERGENCY CARE LEVEL IV",
+     "code": "99285",
+     "description": "HC EMERGENCY CARE LEVEL V",
      "units": 2,
-     "charged": 6856.64,
+     "charged": 12531.33,
      "label": "above_published",
-     "posted": 2122.8,
+     "posted": 3879.67,
      "multiple": 1.615,
      "expect": "ABOVE_POSTED"
     },
@@ -1369,22 +1369,22 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "99285",
-     "description": "FAC FEE LEVEL V",
+     "code": "99281",
+     "description": "FAC FEE LEVEL I",
      "units": 10,
-     "charged": 21944.6,
+     "charged": 3412.6,
      "label": "quantity",
-     "posted": 2194.46,
+     "posted": 341.26,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "99284",
-     "description": "FAC FEE LEVEL IV",
+     "code": "99285",
+     "description": "FAC FEE LEVEL V",
      "units": 1,
-     "charged": 6478.27,
+     "charged": 9574.43,
      "label": "above_published",
-     "posted": 1484.82,
+     "posted": 2194.46,
      "multiple": 4.363,
      "expect": "ABOVE_POSTED"
     },
@@ -1399,12 +1399,12 @@
      "expect": "DUPLICATE"
     },
     {
-     "code": "99281",
-     "description": "FAC FEE LEVEL I",
+     "code": "99282",
+     "description": "FAC FEE LEVEL II",
      "units": 1,
-     "charged": 341.26,
+     "charged": 587.6,
      "label": "at_published",
-     "posted": 341.26,
+     "posted": 587.6,
      "multiple": 1.0,
      "expect": "VERIFIED"
     }
@@ -1425,22 +1425,22 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "99282",
-     "description": "E/R VISIT LEVEL II",
+     "code": "70450",
+     "description": "CT HEAD/BRAIN W/O CONTRAST",
      "units": 18,
-     "charged": 28890.0,
+     "charged": 29142.0,
      "label": "quantity",
-     "posted": 1605.0,
+     "posted": 1619.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "80061",
-     "description": "LIPID PANEL (CARDIOVASCULAR)",
+     "code": "83036",
+     "description": "LAB CHEM GLYCOHEMOGLOBIN",
      "units": 1,
-     "charged": 244.0,
+     "charged": 159.0,
      "label": "at_published",
-     "posted": 244.0,
+     "posted": 159.0,
      "multiple": 1.0,
      "expect": "VERIFIED"
     },
@@ -1455,8 +1455,8 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "85025",
-     "description": "COMPLETE BLOOD COUNT/DIFF",
+     "code": "85027",
+     "description": "CBC - NO DIFF",
      "units": 1,
      "charged": 154.77,
      "label": "just_inside_tolerance",
@@ -1465,12 +1465,12 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "84443",
-     "description": "LAB CHEM TSH",
+     "code": "85025",
+     "description": "COMPLETE BLOOD COUNT/DIFF",
      "units": 1,
-     "charged": 487.27,
+     "charged": 291.98,
      "label": "above_published",
-     "posted": 257.0,
+     "posted": 154.0,
      "multiple": 1.896,
      "expect": "ABOVE_POSTED"
     }
@@ -1491,12 +1491,12 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "70486",
-     "description": "HC CT MAXILLOFAC-SINUS WO IV CONT",
+     "code": "G0378",
+     "description": "HC OBS HOURLY CARVE OUT RC 0340-0342",
      "units": 17,
-     "charged": 21352.0,
+     "charged": 3400.0,
      "label": "quantity",
-     "posted": 1256.0,
+     "posted": 200.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -1521,32 +1521,32 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "99281",
-     "description": "HC LEVEL 1 E&M ED",
+     "code": "96374",
+     "description": "HC IV PUSH 1ST SBST/DRUG",
      "units": 1,
-     "charged": 775.86,
+     "charged": 536.67,
      "label": "just_inside_tolerance",
-     "posted": 772.0,
+     "posted": 534.0,
      "multiple": 1.005,
      "expect": "VERIFIED"
     },
     {
-     "code": "83036",
-     "description": "HC HEMOGLOBIN GLYCOSYLATED (A1C)",
+     "code": "81001",
+     "description": "HC URINALYSIS AUTO W/MICRO",
      "units": 1,
-     "charged": 218.0,
+     "charged": 89.0,
      "label": "at_published",
-     "posted": 218.0,
+     "posted": 89.0,
      "multiple": 1.0,
      "expect": "VERIFIED"
     },
     {
-     "code": "96365",
-     "description": "HC IV INF THER INITIAL UP TO 1 HR",
+     "code": "85027",
+     "description": "HC BLOOD COUNT COMP AUTO",
      "units": 1,
-     "charged": 1711.59,
+     "charged": 296.34,
      "label": "above_published",
-     "posted": 953.0,
+     "posted": 165.0,
      "multiple": 1.796,
      "expect": "ABOVE_POSTED"
     }
@@ -1653,12 +1653,12 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "70450",
-     "description": "HC CT HEAD W/O CONTRAST",
+     "code": "99281",
+     "description": "HC EMER ROOM LEVEL I",
      "units": 22,
-     "charged": 11858.0,
+     "charged": 3102.0,
      "label": "quantity",
-     "posted": 539.0,
+     "posted": 141.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -1673,22 +1673,22 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "84443",
-     "description": "HC TSH",
+     "code": "83036",
+     "description": "HC GLYCOSYLATED HB",
      "units": 2,
-     "charged": 764.74,
+     "charged": 446.1,
      "label": "above_published",
-     "posted": 96.0,
+     "posted": 56.0,
      "multiple": 3.983,
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "85025",
-     "description": "HC COMPL CBC W/PLT W/AUTOM DIFF",
+     "code": "99281",
+     "description": "HC EMER ROOM LEVEL I",
      "units": 1,
-     "charged": 45.0,
+     "charged": 141.0,
      "label": "duplicate",
-     "posted": 45.0,
+     "posted": 141.0,
      "multiple": 1.0,
      "expect": "DUPLICATE"
     }
@@ -1739,12 +1739,12 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "70486",
-     "description": "HC CT Maxillofacial WO",
+     "code": "99284",
+     "description": "HC ER Level IV Trauma",
      "units": 13,
-     "charged": 95292.34,
+     "charged": 255230.69,
      "label": "quantity",
-     "posted": 7330.18,
+     "posted": 19633.13,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -1805,22 +1805,22 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "G0378",
-     "description": "HC OBSERVATION CARVE-OUT - RESPIRATORY",
+     "code": "99282",
+     "description": "HC EMERGENCY DEPARTMENT LEVEL 2 VISIT ",
      "units": 16,
-     "charged": 7040.0,
+     "charged": 28880.0,
      "label": "quantity",
-     "posted": 440.0,
+     "posted": 1805.0,
      "multiple": 1.0,
-     "expect": "DUPLICATE"
+     "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "G0378",
-     "description": "HC OBSERVATION CARVE-OUT - RESPIRATORY",
+     "code": "99282",
+     "description": "HC EMERGENCY DEPARTMENT LEVEL 2 VISIT ",
      "units": 2,
-     "charged": 880.0,
+     "charged": 3610.0,
      "label": "duplicate",
-     "posted": 440.0,
+     "posted": 1805.0,
      "multiple": 1.0,
      "expect": "DUPLICATE"
     }
@@ -1891,7 +1891,7 @@
      "description": "HC THYROID STIMULATING HORMONE",
      "units": 1,
      "charged": 285.79,
-     "label": "duplicate",
+     "label": "at_published",
      "posted": 285.79,
      "multiple": 1.0,
      "expect": "VERIFIED"
@@ -1953,12 +1953,12 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "70486",
-     "description": "CT MAXILLOFACIALW/O CONT",
+     "code": "G0378",
+     "description": "OBSERVATION PER HOUR",
      "units": 22,
-     "charged": 38924.6,
+     "charged": 4723.4,
      "label": "quantity",
-     "posted": 1769.3,
+     "posted": 214.7,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
@@ -1973,22 +1973,22 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "85025",
-     "description": "CBC WITH AUTOMATED DIFFERENTIAL",
+     "code": "84443",
+     "description": "TSH (THYROID STIMULATING HORMONE)",
      "units": 1,
-     "charged": 257.64,
+     "charged": 106.22,
      "label": "at_published",
-     "posted": 257.64,
+     "posted": 106.22,
      "multiple": 1.0,
      "expect": "VERIFIED"
     },
     {
-     "code": "G0378",
-     "description": "OBSERVATION PER HOUR",
+     "code": "99285",
+     "description": "FAC FEE LEVEL V",
      "units": 1,
-     "charged": 214.7,
+     "charged": 2194.46,
      "label": "at_published",
-     "posted": 214.7,
+     "posted": 2194.46,
      "multiple": 1.0,
      "expect": "VERIFIED"
     },
@@ -2385,32 +2385,32 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "70486",
-     "description": "HCHG CT MAXILLOFACIAL WO CONTR",
+     "code": "G0378",
+     "description": "HCHG OBS PER HOUR",
      "units": 10,
-     "charged": 42720.0,
+     "charged": 2680.0,
      "label": "quantity",
-     "posted": 4272.0,
+     "posted": 268.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "83036",
-     "description": "HCHG CORE HEMOGLOBIN GLYCOSYLTD A1C",
+     "code": "81001",
+     "description": "HCHG CORE URNALYSIS AUTO W/ MICRO",
      "units": 1,
-     "charged": 714.56,
+     "charged": 496.32,
      "label": "above_published",
-     "posted": 203.0,
+     "posted": 141.0,
      "multiple": 3.52,
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "71046",
-     "description": "HCHG XR CHEST FRONTAL AND LATERAL 2 VI",
+     "code": "70486",
+     "description": "HCHG CT MAXILLOFACIAL WO CONTR",
      "units": 1,
-     "charged": 804.0,
+     "charged": 4272.0,
      "label": "at_published",
-     "posted": 804.0,
+     "posted": 4272.0,
      "multiple": 1.0,
      "expect": "VERIFIED"
     }
@@ -2461,22 +2461,22 @@
      "expect": "NOT_POSTED"
     },
     {
-     "code": "99283",
-     "description": "HC EMERGENCY CARE LEVEL III",
+     "code": "70486",
+     "description": "HC CT MAXILLOFACIAL AREA SCAN W/O",
      "units": 11,
-     "charged": 14117.4,
+     "charged": 31249.9,
      "label": "quantity",
-     "posted": 1283.4,
+     "posted": 2840.9,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "71046",
-     "description": "HC X-RAY EXAM CHEST 2 VIEWS",
+     "code": "72148",
+     "description": "HC MRI SPINE LUMBAR W/O CONTRA",
      "units": 1,
-     "charged": 656.37,
+     "charged": 3650.03,
      "label": "at_published",
-     "posted": 656.37,
+     "posted": 3650.03,
      "multiple": 1.0,
      "expect": "VERIFIED"
     }
@@ -2705,42 +2705,42 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "G0379",
-     "description": "DIRECT ADMIT HOSPITAL OBSERV",
+     "code": "71046",
+     "description": "11-OFFICE-X-ray exam chest 2 views",
      "units": 20,
-     "charged": 16900.0,
+     "charged": 1000.0,
      "label": "quantity",
-     "posted": 845.0,
+     "posted": 50.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "80053",
-     "description": "11-OFFICE-COMPREHENSIVRE METABOLIC PAN",
+     "code": "80061",
+     "description": "11-OFFICE-LIPID PANEL",
      "units": 2,
-     "charged": 80.0,
+     "charged": 90.0,
      "label": "at_published",
-     "posted": 40.0,
+     "posted": 45.0,
      "multiple": 1.0,
+     "expect": "VERIFIED"
+    },
+    {
+     "code": "85027",
+     "description": "Bld cnt; cmplt (CBC) atmtd",
+     "units": 1,
+     "charged": 20.1,
+     "label": "just_inside_tolerance",
+     "posted": 20.0,
+     "multiple": 1.005,
      "expect": "VERIFIED"
     },
     {
      "code": "84443",
      "description": "11-OFFICE-THYROID STIMULATING HORMONE ",
      "units": 1,
-     "charged": 40.2,
-     "label": "just_inside_tolerance",
-     "posted": 40.0,
-     "multiple": 1.005,
-     "expect": "VERIFIED"
-    },
-    {
-     "code": "83036",
-     "description": "11-OFFICE-Hemoglobin glycosylated a1c",
-     "units": 1,
-     "charged": 125.37,
+     "charged": 167.16,
      "label": "above_published",
-     "posted": 30.0,
+     "posted": 40.0,
      "multiple": 4.179,
      "expect": "ABOVE_POSTED"
     }
@@ -3045,22 +3045,22 @@
      "expect": "VERIFIED"
     },
     {
-     "code": "99282",
-     "description": "HC EMERGENCY CARE LEVEL II",
+     "code": "70450",
+     "description": "HC CT HEAD/BRAIN SCAN W/O CONTRAST",
      "units": 20,
-     "charged": 15646.2,
+     "charged": 63571.8,
      "label": "quantity",
-     "posted": 782.31,
+     "posted": 3178.59,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "80053",
-     "description": "HC COMPREHENSIVE METABOLIC PANEL",
+     "code": "80061",
+     "description": "HC LIPID PANEL",
      "units": 2,
-     "charged": 3041.52,
+     "charged": 2539.92,
      "label": "above_published",
-     "posted": 392.86,
+     "posted": 328.07,
      "multiple": 3.871,
      "expect": "ABOVE_POSTED"
     }
@@ -3075,7 +3075,7 @@
      "description": "0.45% NS 1000ML W/20MEQ (1/2 NS-20MEQ ",
      "units": 1,
      "charged": 30.0,
-     "label": "duplicate",
+     "label": "at_published",
      "posted": 30.0,
      "multiple": 1.0,
      "expect": "VERIFIED"
@@ -3157,22 +3157,22 @@
      "expect": "ABOVE_POSTED"
     },
     {
-     "code": "72148",
-     "description": "MRI LUMBAR WITHOUT",
+     "code": "99284",
+     "description": "E/R VISIT LEVEL IV",
      "units": 24,
-     "charged": 144216.0,
+     "charged": 38520.0,
      "label": "quantity",
-     "posted": 6009.0,
+     "posted": 1605.0,
      "multiple": 1.0,
      "expect": "QUANTITY_SUSPECT"
     },
     {
-     "code": "80048",
-     "description": "LAB BASIC METABOLIC PANEL",
+     "code": "76700",
+     "description": "U/S ABDOMEN COMPLETE",
      "units": 1,
-     "charged": 242.2,
+     "charged": 1379.86,
      "label": "just_inside_tolerance",
-     "posted": 241.0,
+     "posted": 1373.0,
      "multiple": 1.005,
      "expect": "VERIFIED"
     },
@@ -3187,18 +3187,18 @@
      "expect": "NOT_POSTED"
     },
     {
-     "code": "80048",
-     "description": "LAB BASIC METABOLIC PANEL",
+     "code": "99284",
+     "description": "E/R VISIT LEVEL IV",
      "units": 1,
-     "charged": 241.0,
+     "charged": 1605.0,
      "label": "duplicate",
-     "posted": 241.0,
+     "posted": 1605.0,
      "multiple": 1.0,
      "expect": "DUPLICATE"
     },
     {
-     "code": "85027",
-     "description": "CBC - NO DIFF",
+     "code": "85025",
+     "description": "COMPLETE BLOOD COUNT/DIFF",
      "units": 2,
      "charged": 1171.63,
      "label": "above_published",

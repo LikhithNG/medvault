@@ -3,11 +3,11 @@ Patient Financial Services    Account 00000000
 *** SYNTHETIC BENCHMARK BILL - NOT A REAL STATEMENT ***
 
 DATE        CODE    DESCRIPTION                      QTY       AMOUNT
-2026-03-14  G0379   DIRECT ADMISSION PATIENT FOR H   13     4,759.56
+2026-03-14  71046   CHEST 2V W/FLUORO                13    11,167.00
 2026-03-14  72148   ITEM 72148                        1       646.02
-2026-03-14  G0378   OBSERVATION PER HOUR              1     1,134.26
-2026-03-14  99284   FAC FEE LEVEL IV                  1     1,492.24
-2026-03-14  83036   HGB A1C LC                        1        88.14
-2026-03-14  84443   TSH (THYROID STIMULATING HORMO    1       626.70
+2026-03-14  G0379   DIRECT ADMISSION PATIENT FOR H    1     1,934.21
+2026-03-14  99285   FAC FEE LEVEL V                   1     2,205.43
+2026-03-14  84443   TSH (THYROID STIMULATING HORMO    1       106.22
+2026-03-14  85025   CBC WITH AUTOMATED DIFFERENTIA    1     1,520.08
 
-                                                 TOTAL DUE     8,746.92
+                                                 TOTAL DUE    17,578.96

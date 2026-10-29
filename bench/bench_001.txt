@@ -9,6 +9,6 @@ DATE        CODE    DESCRIPTION                      QTY       AMOUNT
 2026-03-14  93010   ITEM 93010                        1       357.40
 2026-03-14  J7030   HC NORMAL SALINE 1000CC IV        1        65.46
 2026-03-14  80061   HC LIPID PANEL                    1       328.07
-2026-03-14  99281   HC EMERGENCY DEPT LEVEL I        24    11,477.52
+2026-03-14  G0379   HC DIRECT REFER HOSPITAL OBSER   24    22,173.12
 
-                                                 TOTAL DUE    13,253.39
+                                                 TOTAL DUE    23,948.99
