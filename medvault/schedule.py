@@ -45,6 +45,9 @@ COUNT_WORDS = (
 )
 EVERY_HOURS = re.compile(r"\bevery\s+(\d{1,2})\s*(?:-\s*\d{1,2}\s*)?(?:hours?|hrs?|h)\b|\bq(\d{1,2})h\b",
                          re.I)
+# "every eight hours": the same, in words.
+HOURS_IN_WORDS = re.compile(r"\bevery\s+(two|three|four|six|eight|twelve)\s+hours?\b", re.I)
+_HOUR_WORDS = {"two": 2, "three": 3, "four": 4, "six": 6, "eight": 8, "twelve": 12}
 # Taken on some days, not every day. "twice a week" contains "twice" and was read as twice
 # a day; "once a month" as daily. For a weekly drug such as methotrexate a daily alarm is
 # exactly how people get hurt, so anything said per week, per month, every other day or on
@@ -52,12 +55,19 @@ EVERY_HOURS = re.compile(r"\bevery\s+(\d{1,2})\s*(?:-\s*\d{1,2}\s*)?(?:hours?|hr
 WEEKLY = re.compile(
     r"\b(weekly|fortnightly|monthly)\b|\b(a|per|each|every|/)\s*(week|month|fortnight)\b"
     r"|\bevery\s+(other|alternate|second|\d+)\s+(days?|weeks?|months?)\b|\balternate\s+days\b"
-    r"|\b(on\s+)?(mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?)\b",
+    r"|\b(on\s+)?(mondays?|tuesdays?|wednesdays?|thursdays?|fridays?|saturdays?|sundays?)\b"
+    # a year, weekdays only, and a dose given once: a sweep of ordinary wording found
+    # "once a year", "take once only" and "twice daily on weekdays" rung every day
+    r"|\b(yearly|annual(ly)?|a\s+year|per\s+year|weekdays?|weekends?)\b"
+    r"|\b(once\s+only|one[\s-]time(\s+only)?|one[\s-]off|single\s+dose|one\s+dose|stat)\b"
+    r"|^\s*once\s*$",
     re.I)
-BEDTIME = re.compile(r"\b(at bed ?time|before bed|at night|nightly|qhs|h\.s\.?)\b", re.I)
-MORNING = re.compile(r"\b(in the morning|every morning|each morning|on waking)\b", re.I)
-EVENING = re.compile(r"\b(in the evening|every evening|each evening|with (?:dinner|supper))\b",
-                     re.I)
+BEDTIME = re.compile(r"\b(at bed ?time|before bed|at night|nightly|every night|each night|qhs"
+                     r"|h\.s\.?)\b", re.I)
+MORNING = re.compile(r"\b(in the morning|every morning|each morning|on waking|morning|qam"
+                     r"|q\.a\.m\.?)\b", re.I)
+EVENING = re.compile(r"\b(in the evening|every evening|each evening|evening|with (?:dinner|supper)"
+                     r"|qpm|q\.p\.m\.?)\b", re.I)
 WITH_FOOD = re.compile(r"\b(with (?:food|meals?)|after (?:food|meals?)|after eating)\b", re.I)
 EMPTY = re.compile(r"\b(before (?:food|meals?|breakfast)|on an empty stomach)\b", re.I)
 
@@ -82,8 +92,10 @@ def parse(frequency):
         return out
 
     hours = EVERY_HOURS.search(text)
-    if hours:
-        n = int(hours.group(1) or hours.group(2))
+    in_words = HOURS_IN_WORDS.search(text)
+    if hours or in_words:
+        n = int(hours.group(1) or hours.group(2)) if hours \
+            else _HOUR_WORDS[in_words.group(1).lower()]
         if 1 <= n <= 24 and 24 % n == 0:
             out.update(every_hours=n, per_day=24 // n, understood=True)
             return out
@@ -100,7 +112,10 @@ def parse(frequency):
             out.update(per_day=count, understood=True)
             return out
 
-    if out["bedtime"] or out["morning"] or out["evening"]:
+    # "in the morning and at night", "morning and evening": two doses, said by their times.
+    if out["morning"] and (out["bedtime"] or out["evening"]):
+        out.update(per_day=2, understood=True)
+    elif out["bedtime"] or out["morning"] or out["evening"]:
         out.update(per_day=1, understood=True)
     return out
 
@@ -127,6 +142,9 @@ def times_for(parsed, day_start=DEFAULT_DAY_START):
     """Suggested clock times for one day. Empty for as-needed, weekly, or unreadable."""
     if parsed["prn"] or not parsed["understood"] or not parsed["per_day"]:
         return []
+    if parsed["per_day"] == 2 and parsed["morning"] and (parsed["bedtime"] or parsed.get("evening")):
+        later = BEDTIME_AT if parsed["bedtime"] else EVENING_AT
+        return [_clock(_minutes(valid_day_start(day_start))), later]
     if parsed["bedtime"] and parsed["per_day"] == 1:
         return [BEDTIME_AT]
     if parsed.get("evening") and parsed["per_day"] == 1:

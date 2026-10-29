@@ -1,0 +1,231 @@
+{
+ "when": "2026-10-29T14:56:43",
+ "bills": [
+  {
+   "bill": "01_overcharged",
+   "ok": true,
+   "error": null,
+   "model": "gemini-3.6-flash",
+   "provider": "gemini (vision)",
+   "reconciled": true,
+   "attempts": 1,
+   "printed": 4,
+   "read_right": 4,
+   "missed": [],
+   "invented": [],
+   "seconds": 8.1
+  },
+  {
+   "bill": "02_duplicate",
+   "ok": true,
+   "error": null,
+   "model": "gemini-3.6-flash",
+   "provider": "gemini (vision)",
+   "reconciled": true,
+   "attempts": 1,
+   "printed": 4,
+   "read_right": 4,
+   "missed": [],
+   "invented": [],
+   "seconds": 10.1
+  },
+  {
+   "bill": "03_quantity",
+   "ok": true,
+   "error": null,
+   "model": "gemini-3.6-flash",
+   "provider": "gemini (vision)",
+   "reconciled": true,
+   "attempts": 1,
+   "printed": 3,
+   "read_right": 3,
+   "missed": [],
+   "invented": [],
+   "seconds": 6.0
+  },
+  {
+   "bill": "04_unspecified",
+   "ok": true,
+   "error": null,
+   "model": "gemini-3.6-flash",
+   "provider": "gemini (vision)",
+   "reconciled": true,
+   "attempts": 2,
+   "printed": 3,
+   "read_right": 3,
+   "missed": [],
+   "invented": [],
+   "seconds": 49.8
+  },
+  {
+   "bill": "05_ambulance",
+   "ok": true,
+   "error": null,
+   "model": "gemini-3.6-flash",
+   "provider": "gemini (vision)",
+   "reconciled": true,
+   "attempts": 1,
+   "printed": 3,
+   "read_right": 3,
+   "missed": [],
+   "invented": [],
+   "seconds": 30.8
+  },
+  {
+   "bill": "06_summary_not_itemised",
+   "ok": true,
+   "error": null,
+   "model": "gemini-3.6-flash",
+   "provider": "gemini (vision)",
+   "reconciled": true,
+   "attempts": 1,
+   "printed": 2,
+   "read_right": 2,
+   "missed": [],
+   "invented": [],
+   "seconds": 32.0
+  },
+  {
+   "bill": "07_clean",
+   "ok": true,
+   "error": null,
+   "model": "gemini-3.5-flash",
+   "provider": "gemini (vision)",
+   "reconciled": true,
+   "attempts": 1,
+   "printed": 4,
+   "read_right": 4,
+   "missed": [],
+   "invented": [],
+   "seconds": 14.0
+  }
+ ],
+ "prescription": {
+  "ok": true,
+  "error": null,
+  "model": "gemini-3.6-flash",
+  "checks": [
+   {
+    "check": "kind",
+    "passed": true
+   },
+   {
+    "check": "date",
+    "passed": true
+   },
+   {
+    "check": "provider",
+    "passed": true
+   },
+   {
+    "check": "medicine count",
+    "passed": true
+   },
+   {
+    "check": "amoxicillin: found",
+    "passed": true
+   },
+   {
+    "check": "amoxicillin: dose",
+    "passed": true
+   },
+   {
+    "check": "amoxicillin: as needed",
+    "passed": true
+   },
+   {
+    "check": "amoxicillin: times a day",
+    "passed": true
+   },
+   {
+    "check": "amoxicillin: duration",
+    "passed": true
+   },
+   {
+    "check": "fluticasone: found",
+    "passed": true
+   },
+   {
+    "check": "fluticasone: dose",
+    "passed": true
+   },
+   {
+    "check": "fluticasone: as needed",
+    "passed": true
+   },
+   {
+    "check": "fluticasone: times a day",
+    "passed": true
+   },
+   {
+    "check": "fluticasone: duration",
+    "passed": true
+   },
+   {
+    "check": "ibuprofen: found",
+    "passed": true
+   },
+   {
+    "check": "ibuprofen: dose",
+    "passed": true
+   },
+   {
+    "check": "ibuprofen: as needed",
+    "passed": true
+   },
+   {
+    "check": "ibuprofen: times a day",
+    "passed": true
+   },
+   {
+    "check": "ibuprofen: duration",
+    "passed": true
+   }
+  ],
+  "passed": 19,
+  "total": 19,
+  "seconds": 9.1,
+  "read": {
+   "kind": "prescription",
+   "service_date": "2026-09-18",
+   "provider": "Riverbend Community Hospital",
+   "title": "Prescription for Acute Bacterial Sinusitis",
+   "summary": "Prescription details from Dr. Amara Osei for acute bacterial sinusitis. Includes medications for sinus infection, nasal inflammation, and pain or fever.",
+   "medications": [
+    {
+     "name": "Amoxicillin-Clavulanate",
+     "dose": "875 mg / 125 mg, 1 tablet",
+     "frequency": "twice daily",
+     "duration": "10 days",
+     "reason": "For the sinus infection"
+    },
+    {
+     "name": "Fluticasone propionate nasal spray",
+     "dose": "50 mcg, 2 sprays each nostril",
+     "frequency": "once daily",
+     "duration": "21 days",
+     "reason": "To reduce nasal inflammation"
+    },
+    {
+     "name": "Ibuprofen",
+     "dose": "400 mg, 1 tablet",
+     "frequency": "every 8 hours as needed",
+     "duration": "5 days",
+     "reason": "For pain and fever"
+    }
+   ]
+  }
+ },
+ "totals": {
+  "printed_lines": 23,
+  "read_right": 23,
+  "line_accuracy": 1.0,
+  "ci": [
+   0.8569,
+   1.0
+  ],
+  "invented_lines": 0,
+  "bills_reconciled": 7,
+  "bills": 7
+ }
+}

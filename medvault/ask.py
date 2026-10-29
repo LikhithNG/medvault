@@ -77,10 +77,16 @@ def _words(text):
     return {w for w in re.findall(r"[a-z][a-z-]{2,}", (text or "").lower())}
 
 
+def _mentions(text, term):
+    """Whether `text` names `term` as a whole word, plural allowed. A substring test put
+    "statin" inside "nystatin", an antifungal, and called it a statin allergy."""
+    return re.search(rf"\b{re.escape(term)}s?\b", text) is not None
+
+
 def _family_of(name):
     low = (name or "").lower()
     return {fam for fam, members in FAMILIES.items()
-            if fam in low or any(m in low for m in members)}
+            if _mentions(low, fam) or any(_mentions(low, m) for m in members)}
 
 
 # The allergy box saying there is nothing to be allergic to. Only the whole entry counts:
@@ -105,7 +111,9 @@ def allergy_conflicts(meds, profile):
         name = (m.get("name") or "").lower()
         if not name:
             continue
-        by_name = sorted(w for w in allergy_words if w in name)
+        # From the start of a word: "amox" still finds amoxicillin, but "statin" is not
+        # found inside nystatin.
+        by_name = sorted(w for w in allergy_words if re.search(rf"\b{re.escape(w)}", name))
         shared = sorted(_family_of(name) & allergy_families)
         if by_name or shared:
             hits.append({"med": m, "matched": by_name, "family": shared})
@@ -138,6 +146,18 @@ def course_ended(med, today=None):
 
 def _norm(name):
     return re.sub(r"[^a-z]", "", (name or "").lower())
+
+
+_DOSE = re.compile(r"\b\d+(?:[.,/]\d+)*\s*(?:mg|mcg|µg|g|ml|iu|units?|%|tabs?|tablets?)?\b",
+                   re.I)
+
+
+def _drug_key(name):
+    """What makes two entries the same medicine: the name without its strength. _norm
+    dropped every digit, so Vitamin B12 and Vitamin B6 were "listed 2 times", and a name
+    in a script other than Latin dropped to nothing - every such medicine was one."""
+    low = (name or "").lower()
+    return re.sub(r"[^a-z0-9]", "", _DOSE.sub(" ", low)) or low.strip()
 
 
 # Words in a medicine's name that say nothing about which medicine it is. Matching on a
@@ -191,7 +211,7 @@ def brief(con, owner_id, today=None):
 
     seen = {}
     for m in meds:
-        seen.setdefault(_norm(m.get("name")), []).append(m)
+        seen.setdefault(_drug_key(m.get("name")), []).append(m)
     for name, group in seen.items():
         if len(group) > 1:
             dates = ", ".join(sorted({g.get("service_date") or "undated" for g in group}))
@@ -472,7 +492,7 @@ def answer(con, owner_id, question, reader=None, deadline=None, permit=None):
                                            question=_contained(question)),
                              schema=SCHEMA, temperature=0.2,
                              deadline=me["budget_s"] if deadline is None else deadline,
-                             request_timeout=me["request_s"])
+                             request_timeout=me["request_s"], prefer=me.get("prefer"))
     if not result.get("ok"):
         return {"kind": "error", "answer": None, "records_used": [], "sources": {},
                 "model": result.get("model"), "error": result.get("error"),

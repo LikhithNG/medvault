@@ -92,12 +92,15 @@ def _out_of_time(attempts, budget):
             'error': f'deadline reached ({budget:.0f}s budget)'}
 
 def generate(prompt, schema=None, temperature=0.0, model=None, image=None,
-             deadline=None, request_timeout=None):
+             deadline=None, request_timeout=None, prefer=None):
     """Calls the pool in order, skipping models already known to be out of daily quota.
     Returns the first success, or the last failure if every model is exhausted.
 
     `request_timeout` caps any one request, so a model that hangs is left for the next
     one in the pool rather than waited on for the whole budget.
+
+    `prefer` names models to try first, in that order; the rest of the pool stays behind
+    them as the fallback. Names not in the pool are ignored.
 
     `deadline` is the caller's whole budget in seconds, and it is a budget for the call,
     not a hint: no HTTP request is given longer than what is left of it. It used to cap
@@ -112,7 +115,8 @@ def generate(prompt, schema=None, temperature=0.0, model=None, image=None,
         return _generate_one(prompt, schema, temperature, model, image, stop_at=stop_at,
                              budget=budget, request_timeout=request_timeout)
     last = {'ok': False, 'error': 'no models available', 'attempts': 0}
-    for m in POOL:
+    first = [m for m in (prefer or ()) if m in POOL]
+    for m in first + [m for m in POOL if m not in first]:
         if pool_state.is_retired(_exhausted, m):
             continue
         if _remaining(stop_at) < MIN_CALL_SECONDS:

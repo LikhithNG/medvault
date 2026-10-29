@@ -363,6 +363,16 @@ def test_the_readers_money_keeps_a_credits_sign():
     assert extract._as_money(3100) == 3100.0
 
 
+
+def test_a_caller_can_put_its_preferred_models_first_and_keep_the_rest_behind_them():
+    out, asked, _ = _pool({"m0": _http_error(503, "overloaded"), "m1": OK, "m2": OK},
+                          deadline=30, prefer=("m2",))
+    assert out["ok"] and out["model"] == "m2" and asked == ["m2"], asked
+    out, asked, _ = _pool({"m0": OK, "m1": OK, "m2": _http_error(404, "not for this key")},
+                          deadline=30, prefer=("m2", "not-in-the-pool"))
+    assert out["model"] == "m0" and asked == ["m2", "m0"], asked
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

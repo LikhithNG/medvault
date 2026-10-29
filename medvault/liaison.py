@@ -34,12 +34,31 @@ import ask
 import db
 import schedule
 
+# A follow-up a record asks for, and how long after the record it falls due. Read with
+# care, because a test pass found this raising "Return to work after 2 days", "Please
+# return this form within 30 days" and "Follow up is not required in 2 weeks" as overdue
+# follow-ups - and missing "follow up in two weeks", "in 2-3 weeks" and "in 1 year".
+_NUMBER = (r"(\d{1,3}(?:\s*(?:-|–|to)\s*\d{1,3})?|one|two|three|four|five|six|seven|eight"
+           r"|nine|ten|eleven|twelve|a|an)")
 FOLLOW_UP = re.compile(
-    r"\b(follow[\s-]?up|review|re-?check|recheck|come back|return|repeat (?:the )?"
-    r"(?:test|scan|bloods?|labs?)|see (?:your|the) (?:gp|doctor|physician|clinician))"
-    r"[^.\n]{0,40}?\b(?:in|after|within)\s+(\d{1,3})\s*(day|week|month)s?\b",
+    r"\b(follow[\s-]?up|review(?!\s+of\b)|re-?check|recheck|come back"
+    r"|return(?!\s+(?:to\s+(?:work|school|normal|usual|activit\w*|sport\w*|driving|duty)"
+    r"|this|the\s+form|policy|of)\b)"
+    r"|repeat (?:the )?(?:test|scan|bloods?|labs?)|see (?:your|the) (?:gp|doctor|physician"
+    r"|clinician))\b"
+    rf"[^.\n]{{0,40}}?\b(?:in|after|within)\s+{_NUMBER}\s*(day|week|month|year)s?\b",
     re.I)
-_DAYS = {"day": 1, "week": 7, "month": 30}
+_DAYS = {"day": 1, "week": 7, "month": 30, "year": 365}
+_WORDS = {"a": 1, "an": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+          "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12}
+# "Follow up is not required in 2 weeks", "No need to follow up in 2 weeks".
+NOT_NEEDED = re.compile(r"\b(not|no need|unnecessary|isn'?t|aren'?t|never)\b", re.I)
+
+
+def _count(number):
+    """How many of the unit: the later end of a range ("2-3 weeks" is three)."""
+    digits = re.findall(r"\d{1,3}", number)
+    return int(digits[-1]) if digits else _WORDS[number.lower()]
 
 
 def _date(value):
@@ -67,8 +86,10 @@ def follow_ups(con, owner_id, today=None):
         full = db.get_record(con, r["id"]) or {}
         text = " ".join(filter(None, [r.get("summary"), full.get("raw_text")]))
         for match in FOLLOW_UP.finditer(text):
+            if NOT_NEEDED.search(text[max(0, match.start() - 20):match.end()]):
+                continue
             due = start + datetime.timedelta(
-                days=int(match.group(2)) * _DAYS[match.group(3).lower()])
+                days=_count(match.group(2)) * _DAYS[match.group(3).lower()])
             if due >= today:
                 continue
             if any(d >= due for d in dated):

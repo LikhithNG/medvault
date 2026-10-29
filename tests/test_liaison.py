@@ -289,6 +289,33 @@ def test_no_clinician_screen_in_the_app_reaches_for_every_record():
         assert not unscoped, f"unscoped record queries in {path.name}: {unscoped}"
 
 
+
+# ---- from the test pass: what the Liaison misread ----------------------------------
+
+def _due_after(summary, date="2026-01-01"):
+    con, pat, _, _, _ = world()
+    db.add_record(con, kind="visit", title="Note", service_date=date, summary=summary,
+                  owner_id=pat["id"])
+    return [(f["due"] - datetime.date.fromisoformat(date)).days
+            for f in liaison.follow_ups(con, pat["id"], TODAY)]
+
+
+def test_words_that_are_not_a_follow_up_raise_nothing():
+    for calm in ("Return to work after 2 days.", "Please return this form within 30 days.",
+                 "Our return policy allows returns within 30 days.",
+                 "Follow up is not required in 2 weeks.", "No need to follow up in 2 weeks.",
+                 "Review of systems negative in 3 days."):
+        assert _due_after(calm) == [], calm
+
+
+def test_follow_ups_written_in_words_ranges_and_years_are_found():
+    assert _due_after("Follow up in two weeks.") == [14]
+    assert _due_after("Review in 2-3 weeks.") == [21]          # the later end
+    assert _due_after("See your GP in a month.") == [30]
+    assert _due_after("Repeat bloods in 1 year.", date="2025-01-01") == [365]
+    assert _due_after("Return in 2 weeks for a wound check.") == [14]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

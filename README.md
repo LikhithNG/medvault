@@ -32,6 +32,12 @@ of them had a number. `tools/accuracy_test.py` builds a labelled corpus and repo
 | Extraction, code **and** amount | ≥85% | **100%** · 95% CI [98.7%, 100%] · 296 lines |
 | Upload to annotated bill | <60 s | **0.11 ms** p99, deterministic path |
 | Flags carrying a receipt | 100% | **100%**, enforced by `receipts.py` |
+| The Reader on bill **photographs** (a model) | ≥85% | **23/23 lines** · 95% CI [85.7%, 100%] · 0 invented · `tools/reader_eval.py` |
+
+The last row is the model reading the seven sample photographs, scored line by line (code,
+quantity and amount) against each bill's printed text; on the sample prescription photo it
+got 19 of 19 facts, including which medicine is as-needed. Seven bills is a small sample,
+which is why the interval's lower bound sits at the target rather than above it.
 
 These are the numbers `python3 tools/accuracy_test.py` prints, on any machine: the corpus
 used to depend on Python's hash seed (296 lines on one run, 299 on another), and the figures

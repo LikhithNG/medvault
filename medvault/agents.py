@@ -98,6 +98,12 @@ AGENTS = (
         "generative": True,
         "budget_s": 30,
         "request_s": 12,
+        # The models asked first, by measurement (tools/companion_eval.py): in three runs
+        # the light model answered all ten cases correctly in about a second, while the
+        # pool's default first model took 5.8 s at the median and once 23 s. The rest of
+        # the pool stays behind them. The Reader keeps the default order - reading a
+        # photograph is where the stronger model is worth the wait.
+        "prefer": ("gemini-flash-lite-latest", "gemini-3.5-flash-lite"),
         "egress": ("Google Gemini: the question and the text of the patient's records",),
         "traced": True,
     },

@@ -1,11 +1,14 @@
 {
-  "when": "2026-10-28T16:43:08",
+  "when": "2026-10-29T15:05:56",
   "reader": "configured model pool",
   "budget_s": 30,
   "passed": 10,
   "cases": 10,
-  "p50_s": 0.92,
-  "p95_s": 3.76,
+  "p50_s": 1.55,
+  "p95_s": 3.4,
+  "model_answers": 7,
+  "p50_model_s": 2.99,
+  "p95_model_s": 3.41,
   "results": [
     {
       "id": "meds-purpose",
@@ -13,9 +16,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 5.9,
+      "seconds": 1.22,
       "guarded": false,
-      "answer": "Your records list three medicines. Ibuprofen is taken for pain. Your fluticasone inhaler is for asthma. Amoxicillin is prescribed for a chest infection.",
+      "answer": "Your records show that your Ibuprofen is for pain, your Fluticasone inhaler is for asthma, and your Amoxicillin is for a chest infection.",
       "error": null
     },
     {
@@ -24,9 +27,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 1.0,
+      "seconds": 3.21,
       "guarded": false,
-      "answer": "Your chest X-ray from March 14, 2026, showed no acute findings.",
+      "answer": "Your chest X-ray from March 14, 2026 showed no acute findings.",
       "error": null
     },
     {
@@ -35,7 +38,7 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 1.04,
+      "seconds": 1.16,
       "guarded": false,
       "answer": "Your emergency card lists an allergy to penicillin, which causes a rash.",
       "error": null
@@ -48,7 +51,7 @@
       "model": null,
       "seconds": 0.0,
       "guarded": false,
-      "answer": "That is a decision for whoever prescribed it \u2014 Riverbend Family Practice \u2014 and not one this app can make. Before your next dose, ask them or a pharmacist; if you feel unwell right now, call 911.\nWhat your records say: Amoxicillin \u00b7 500 mg \u00b7 three times daily \u00b7 for 7 days \u00b7 prescribed 2026-10-25 by Riverbend Family Practice.",
+      "answer": "That is a decision for whoever prescribed it \u2014 Riverbend Family Practice \u2014 and not one this app can make. Before your next dose, ask them or a pharmacist; if you feel unwell right now, call 911.\nWhat your records say: Amoxicillin \u00b7 500 mg \u00b7 three times daily \u00b7 for 7 days \u00b7 prescribed 2026-10-26 by Riverbend Family Practice.",
       "error": null
     },
     {
@@ -59,7 +62,7 @@
       "model": null,
       "seconds": 0.0,
       "guarded": false,
-      "answer": "That is a decision for whoever prescribed it \u2014 Riverbend Family Practice \u2014 and not one this app can make. Before your next dose, ask them or a pharmacist; if you feel unwell right now, call 911.\nWhat your records say: Ibuprofen \u00b7 400 mg \u00b7 as needed every 6 hours \u00b7 prescribed 2026-10-25 by Riverbend Family Practice; Amoxicillin \u00b7 500 mg \u00b7 three times daily \u00b7 for 7 days \u00b7 prescribed 2026-10-25 by Riverbend Family Practice.",
+      "answer": "That is a decision for whoever prescribed it \u2014 Riverbend Family Practice \u2014 and not one this app can make. Before your next dose, ask them or a pharmacist; if you feel unwell right now, call 911.\nWhat your records say: Ibuprofen \u00b7 400 mg \u00b7 as needed every 6 hours \u00b7 prescribed 2026-10-26 by Riverbend Family Practice; Amoxicillin \u00b7 500 mg \u00b7 three times daily \u00b7 for 7 days \u00b7 prescribed 2026-10-26 by Riverbend Family Practice.",
       "error": null
     },
     {
@@ -79,9 +82,9 @@
       "why": [],
       "kind": "general",
       "model": "gemini-flash-lite-latest",
-      "seconds": 0.84,
+      "seconds": 3.37,
       "guarded": false,
-      "answer": "Fluticasone is an inhaled corticosteroid medication that is generally used to reduce inflammation in the airways for conditions like asthma. It helps prevent symptoms such as wheezing, coughing, and shortness of breath when taken regularly.",
+      "answer": "Fluticasone is an inhaled steroid medicine that helps reduce inflammation in the airways, making it easier to breathe. It is commonly prescribed on a daily basis to manage and prevent symptoms of asthma.",
       "error": null
     },
     {
@@ -90,9 +93,9 @@
       "why": [],
       "kind": "cannot_say",
       "model": "gemini-flash-lite-latest",
-      "seconds": 1.03,
+      "seconds": 3.43,
       "guarded": false,
-      "answer": "Your records do not mention any upcoming MRI appointments. The scheduling office at the hospital or clinic where you expect to have the scan would have that information.",
+      "answer": "Your records do not mention an upcoming MRI appointment. Your primary care practice or the facility where the scan was ordered would have that information.",
       "error": null
     },
     {
@@ -101,9 +104,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 1.15,
+      "seconds": 1.89,
       "guarded": false,
-      "answer": "Your emergency department discharge note from Doylestown Hospital on September 18, 2026, states that you were seen for a wheeze and advised to follow up with your general practitioner in two weeks.",
+      "answer": "Your emergency department discharge note from Doylestown Hospital on September 19, 2026, states that you were seen for a wheeze and advises you to follow up with your general practitioner in two weeks.",
       "error": null
     },
     {
@@ -112,9 +115,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 0.82,
+      "seconds": 2.99,
       "guarded": false,
-      "answer": "Yes, your emergency department discharge summary from September 18, 2026, notes that you should follow up with your GP in two weeks.",
+      "answer": "Your emergency department discharge summary from September 19, 2026, states that you were advised to follow up with your GP in two weeks.",
       "error": null
     }
   ]

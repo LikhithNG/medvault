@@ -98,7 +98,7 @@ class StubReader:
     """Answers every question the same way, so the harness itself can be tested offline."""
 
     def generate(self, prompt, schema=None, temperature=0.0, deadline=None,
-                 request_timeout=None):
+                 request_timeout=None, prefer=None):
         return {"ok": True, "model": "stub",
                 "json": {"kind": "cannot_say", "answer": "Your records do not say.",
                          "records_used": []}}

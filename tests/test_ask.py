@@ -45,8 +45,9 @@ class FakeReader:
         self.prompt = None
 
     def generate(self, prompt, schema=None, temperature=0.0, deadline=None,
-                 request_timeout=None):
+                 request_timeout=None, prefer=None):
         self.prompt, self.deadline, self.request_timeout = prompt, deadline, request_timeout
+        self.prefer = prefer
         if not self.ok:
             return {"ok": False, "error": self.error, "model": "fake"}
         return {"ok": True, "json": self.payload, "model": "fake"}
@@ -456,6 +457,47 @@ def test_more_plain_ways_of_saying_it_is_an_emergency_are_caught():
     for calm in ("I take 2 tablets a day, what are they for?",
                  "how many pills are in my prescription?"):
         assert ask.triage(calm) is None, calm
+
+
+
+def test_the_companion_asks_the_models_measured_fastest_first():
+    """Three evaluation runs: the light model answered all ten cases correctly in about a
+    second, where the default first model took 5.8 s at the median and once 23 s."""
+    import agents
+    con, owner = a_patient()
+    reader = FakeReader({"kind": "general", "answer": "An antibiotic.", "records_used": []})
+    ask.answer(con, owner, "what is amoxicillin?", reader=reader)
+    assert reader.prefer == agents.BY_NAME["Companion"]["prefer"]
+    assert reader.prefer[0] == "gemini-flash-lite-latest"
+
+
+
+def test_two_different_vitamins_are_not_one_medicine_listed_twice():
+    """Digits were stripped from names, so Vitamin B12 and Vitamin B6 were "listed 2 times"."""
+    con, owner = a_patient()
+    a_prescription(con, owner, [{"name": "Vitamin B12"}, {"name": "Vitamin B6"}])
+    assert not [f for f in ask.brief(con, owner) if "listed" in f["title"]]
+
+
+def test_one_medicine_at_two_strengths_is_still_listed_twice():
+    con, owner = a_patient()
+    a_prescription(con, owner, [{"name": "Amoxicillin 500 mg"}, {"name": "Amoxicillin 250mg"}])
+    assert [f for f in ask.brief(con, owner) if "listed 2 times" in f["title"]]
+
+
+def test_names_in_a_script_other_than_latin_are_not_all_one_medicine():
+    con, owner = a_patient()
+    a_prescription(con, owner, [{"name": "ロキソニン"}, {"name": "ムコダイン"}])
+    assert not [f for f in ask.brief(con, owner) if "listed" in f["title"]]
+
+
+def test_an_allergy_family_matches_whole_words_only():
+    """ "statin" is inside "nystatin", an antifungal - and was reported against a statin
+    allergy."""
+    assert ask.allergy_conflicts([{"name": "Nystatin"}], {"allergies": "Statins"}) == []
+    assert ask.allergy_conflicts([{"name": "Atorvastatin"}], {"allergies": "Statins"})
+    assert ask.allergy_conflicts([{"name": "Amoxicillin-Clavulanate"}],
+                                 {"allergies": "penicillins"})
 
 
 if __name__ == "__main__":

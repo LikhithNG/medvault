@@ -231,6 +231,33 @@ def test_a_carriage_return_in_a_name_cannot_break_the_file():
     assert [l for l in ics.split("\r\n") if l == "END:VEVENT"] == ["END:VEVENT"] * 2
 
 
+
+# ---- from a sweep of ordinary prescription wording -----------------------------------
+
+def _rung(frequency):
+    day = schedule.plan([{"id": 1, "name": "X", "frequency": frequency}], TODAY)
+    return [d["at"] for d in day["doses"]], day
+
+
+def test_a_one_off_or_yearly_dose_is_never_a_daily_alarm():
+    for f in ("once a year", "yearly", "take once only", "once", "single dose", "stat",
+              "twice daily on weekdays", "on weekends"):
+        times, day = _rung(f)
+        assert times == [] and len(day["weekly"]) == 1, f
+
+
+def test_morning_and_night_is_two_doses_not_one():
+    assert _rung("in the morning and at night")[0] == ["08:00", "22:00"]
+    assert _rung("morning and evening")[0] == ["08:00", "18:00"]
+
+
+def test_common_shorthand_is_timed():
+    assert _rung("every night")[0] == ["22:00"]
+    assert _rung("qam")[0] == ["08:00"]
+    assert _rung("qpm")[0] == ["18:00"]
+    assert _rung("every eight hours")[0] == ["00:00", "08:00", "16:00"]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
