@@ -79,7 +79,7 @@ def screen_review(account):
             f"<div class='rec'><div class='top'>"
             f"<span class='pill'>{kind_label(r['kind'])}</span>"
             f"{ui.provenance_badge(r)}"
-            f"<span class='when'>{when(r)}</span></div>"
+            f"<span class='when'>{ui.esc(when(r))}</span></div>"
             f"<div class='title'>{ui.safe(r['title'])}</div>"
             f"<div class='patient'>Filed by <b>{ui.safe(whose.get(r['owner_id'], 'a patient'))}"
             f"</b></div>"

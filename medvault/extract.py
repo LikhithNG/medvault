@@ -18,7 +18,10 @@ from schema import KIND_ORDER, RECORD_FIELDS, MED_FIELDS
 # printed text, and all of it is carried in the request body as base64, which is a third
 # bigger again. The first test photograph here was 147 KB and still ran past a 60-second
 # timeout; an un-resized phone photo would never have returned at all.
-MAX_EDGE = int(os.environ.get("MEDVAULT_MAX_EDGE", "1400"))
+try:
+    MAX_EDGE = int(os.environ.get("MEDVAULT_MAX_EDGE", "1400"))
+except ValueError:                 # "1400px" in a secret must not stop the app importing
+    MAX_EDGE = 1400
 JPEG_QUALITY = 82
 
 
@@ -32,7 +35,7 @@ def shrink(mime, data):
     it can open - a document that reads slowly is better than one that cannot be read.
     """
     try:
-        from PIL import Image
+        from PIL import Image, ImageOps
     except ImportError:
         return mime, data
     try:
@@ -42,7 +45,19 @@ def shrink(mime, data):
         return mime, data
     if max(im.size) <= MAX_EDGE and len(data) < 400_000:
         return mime, data
-    if im.mode not in ("RGB", "L"):
+    # The way up the phone showed it. The orientation lives in an EXIF tag that re-saving
+    # drops, so every large phone photo reached the reader on its side.
+    try:
+        im = ImageOps.exif_transpose(im)
+    except Exception:              # noqa: BLE001 - a broken tag is no reason to fail
+        pass
+    # Transparency onto white, as on paper: converting RGBA straight to RGB made it black.
+    if im.mode in ("RGBA", "LA") or (im.mode == "P" and "transparency" in im.info):
+        rgba = im.convert("RGBA")
+        page = Image.new("RGB", rgba.size, "white")
+        page.paste(rgba, mask=rgba.split()[-1])
+        im = page
+    elif im.mode not in ("RGB", "L"):
         im = im.convert("RGB")
     im.thumbnail((MAX_EDGE, MAX_EDGE))
     buf = _io.BytesIO()
@@ -433,7 +448,9 @@ def read_bill(*, text=None, image=None, prefer_open=True, deadline=None):
     lines = [c for c in (_clean_line(l) for l in _line_items(raw) if isinstance(l, dict))
              if c]
     try:
-        printed = round(float(raw["total_printed"]), 2) if raw.get("total_printed") else None
+        # As money: the schema-less path sends "$3,399.00", which float() refused, and the
+        # check against the bill's own total was lost.
+        printed = _as_money(raw.get("total_printed"))
     except (TypeError, ValueError):
         printed = None
     return lines, {"ok": True, "model": r.get("model"), "provider": provider,
@@ -463,7 +480,7 @@ def read_bill_verified(*, text=None, image=None, attempts=2, deadline=None):
     Returns (lines, meta) with meta['reconciled'] set to True, False or None, so the
     interface can say "this did not add up" instead of quietly showing a short bill.
     """
-    best, best_meta = [], {"ok": False, "error": "not attempted"}
+    best, best_meta, reads = [], None, 0
     stop_at = None if deadline is None else time.time() + deadline
     for attempt in range(1, attempts + 1):
         # A second read only if there is time for one: the budget is the whole Reader's,
@@ -472,8 +489,12 @@ def read_bill_verified(*, text=None, image=None, attempts=2, deadline=None):
         if best and left is not None and left < 10:
             break
         lines, meta = read_bill(text=text, image=image, deadline=left)
+        reads += 1
         meta["attempts"] = attempt
         if not meta.get("ok"):
+            # A failed second read does not cost the first one, which it used to discard.
+            if best_meta is not None:
+                return best, {**best_meta, "attempts": reads}
             return lines, meta
 
         agrees = reconciles(lines, meta.get("total_printed"))
@@ -486,7 +507,10 @@ def read_bill_verified(*, text=None, image=None, attempts=2, deadline=None):
         # lines also returned no total, so there was nothing left to catch it with. An
         # unverifiable read is therefore retried rather than accepted, and the fullest
         # attempt is what survives.
-        if len(lines) > len(best):
+        # The fullest read survives - and a read that found no charges is still a read: it
+        # used to come back as "not attempted", which the screen showed as a reader that
+        # never answered, so its "this may be a summary statement" advice was unreachable.
+        if best_meta is None or len(lines) > len(best):
             best, best_meta = lines, meta
-    return best, best_meta
+    return best, {**best_meta, "attempts": reads}
 

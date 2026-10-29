@@ -20,7 +20,7 @@ def screen_today():
     """
     con = vault()
     profile = db.get_profile(con, my_id())
-    day_start = profile.get("day_start") or schedule.DEFAULT_DAY_START
+    day_start = schedule.valid_day_start(profile.get("day_start"))
     meds = db.list_medications(con, active_only=True, owner_id=my_id())
     day = schedule.plan(meds, day_start=day_start)
 

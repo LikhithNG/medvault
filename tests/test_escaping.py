@@ -41,6 +41,10 @@ def _plant(con, alice, bob):
     rx = db.add_record(con, kind="prescription", title=PAYLOAD, service_date="2026-10-01",
                        provider=PAYLOAD, summary=PAYLOAD + " Follow up in 2 weeks.",
                        owner_id=alice["id"])
+    # A date is free text on the Add screen and in an import: a clinician's review
+    # screen printed it raw.
+    db.add_record(con, kind="lab", title="Panel", service_date=PAYLOAD,
+                  summary="line one\n\n![x](https://evil.example/p.png)", owner_id=alice["id"])
     for name in (PAYLOAD, "Amoxicillin"):
         db.add_medication(con, rx, {"name": name, "dose": PAYLOAD,
                                     "frequency": "twice daily", "duration": "7 days",

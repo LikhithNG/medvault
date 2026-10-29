@@ -107,6 +107,12 @@ def parse(frequency):
 
 # ---- turning it into clock times ---------------------------------------------
 
+def valid_day_start(value):
+    """The patient's day start, or the default when what is stored is not a time."""
+    text = str(value or "")
+    return text if re.fullmatch(r"([01]\d|2[0-3]):[0-5]\d", text) else DEFAULT_DAY_START
+
+
 def _minutes(hhmm):
     h, m = (int(x) for x in hhmm.split(":"))
     return h * 60 + m
@@ -125,7 +131,7 @@ def times_for(parsed, day_start=DEFAULT_DAY_START):
         return [BEDTIME_AT]
     if parsed.get("evening") and parsed["per_day"] == 1:
         return [EVENING_AT]
-    start = _minutes(day_start or DEFAULT_DAY_START)
+    start = _minutes(valid_day_start(day_start))
     if parsed["every_hours"]:
         step = parsed["every_hours"] * 60
         return [_clock(start + i * step) for i in range(parsed["per_day"])]
@@ -149,10 +155,13 @@ def course_end(med):
         return None
     try:
         begin = datetime.date.fromisoformat(str(started)[:10])
-    except ValueError:
+        return begin + datetime.timedelta(
+            days=int(match.group(1)) * _PER_UNIT[match.group(2).lower()] - 1)
+    except (ValueError, OverflowError):
+        # A date the calendar cannot hold - "9999-12-30" plus a week, or "999999999 days"
+        # - is no end date at all. It raised, and took the Medicines screen down, and with
+        # it a clinician's screen, because the Liaison reads course ends too.
         return None
-    return begin + datetime.timedelta(
-        days=int(match.group(1)) * _PER_UNIT[match.group(2).lower()] - 1)
 
 
 # ---- the day's plan -----------------------------------------------------------

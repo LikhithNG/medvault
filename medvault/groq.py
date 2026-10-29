@@ -68,7 +68,7 @@ def _out_of_time(attempts, budget):
     return {'ok': False, 'timed_out': True, 'attempts': attempts,
             'error': f'deadline reached ({budget:.0f}s budget)'}
 
-def _one(prompt, schema, temperature, model, stop_at=None, budget=None):
+def _one(prompt, schema, temperature, model, stop_at=None, budget=None, retry_slow=True):
     body = {'model': model, 'temperature': temperature,
             'messages': [{'role': 'user', 'content': prompt}]}
     if schema:
@@ -97,7 +97,10 @@ def _one(prompt, schema, temperature, model, stop_at=None, budget=None):
                             'error': f'malformed JSON from model: {ex}', 'text': text[:400]}
             return out
         except urllib.error.HTTPError as ex:
-            body_txt = ex.read()[:900].decode('utf-8', 'ignore')
+            try:
+                body_txt = ex.read()[:900].decode('utf-8', 'ignore')
+            except Exception:              # noqa: BLE001 - the body is only for the message
+                body_txt = ''
             last = f'HTTP {ex.code}: {body_txt}'
             # a per-day quota failure will not clear during a backoff window
             if ex.code == 429 and ('per day' in body_txt.lower() or 'rpd' in body_txt.lower()):
@@ -106,8 +109,11 @@ def _one(prompt, schema, temperature, model, stop_at=None, budget=None):
                 return {'ok': False, 'error': last, 'attempts': attempt}
         except (urllib.error.URLError, TimeoutError, OSError) as ex:
             last = f'{type(ex).__name__}: {ex}'
-            if attempt == ATTEMPTS:
+            if attempt == ATTEMPTS or (not retry_slow and pool_state.is_timeout(ex)):
                 return {'ok': False, 'error': last, 'attempts': attempt}
+        except Exception as ex:            # noqa: BLE001 - an unreadable answer, not a crash
+            return {'ok': False, 'attempts': attempt,
+                    'error': f'unreadable response: {type(ex).__name__}: {ex}'[:300]}
         pause = BACKOFF * (2 ** (attempt - 1))
         if stop_at is not None and stop_at - time.time() - pause < MIN_CALL_SECONDS:
             return {**_out_of_time(attempt, budget or 0), 'error': f'{last} · then out of time'}
@@ -130,15 +136,18 @@ def generate(prompt, schema=None, temperature=0.0, model=None, deadline=None):
         if stop_at is not None and stop_at - time.time() < MIN_CALL_SECONDS:
             return {**last, 'timed_out': True, 'model': None,
                     'error': f"gave up after {deadline:.0f}s · last: {last.get('error')}"}
-        r = _one(prompt, schema, temperature, m, stop_at, deadline)
+        r = _one(prompt, schema, temperature, m, stop_at, deadline, retry_slow=False)
         if r['ok']:
             r['model'] = m
             return r
         last = r
-        if r.get('quota') == 'daily':
+        # It moved on only after a daily quota, so a per-minute token limit (Groq's usual
+        # 429) or a model this key cannot reach ended the call. See pool_state.after_failure.
+        step = pool_state.after_failure(r)
+        if step == 'retire':
             _exhausted = pool_state.retire(_exhausted, m)
-            continue
-        return r
+        if step == 'stop':
+            return r
     last['model'] = None
     last['pool_exhausted'] = True
     return last

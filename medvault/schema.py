@@ -65,6 +65,7 @@ PROFILE_FIELDS = (
 # Blood type is picked, never typed. It is the one field on the card where a typo is a
 # safety problem rather than an inconvenience.
 BLOOD_TYPES = ("", "A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-")
+DONOR_CHOICES = ("Not stated", "Yes", "No")
 
 # What has to be filled in before the card is worth holding up at a desk.
 ESSENTIAL = ("full_name", "blood_type", "allergies", "emergency_name")

@@ -11,6 +11,7 @@ import os
 import pathlib
 import sys
 import time
+import urllib.error
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "medvault"))
@@ -43,10 +44,17 @@ class _Clock:
 def _key(name):
     """A stand-in key for the length of one test, removed again after: the network is
     stubbed, but the clients refuse to start without one."""
-    had = name in os.environ
-    if not had:
+    # A blank value is no key: the clients refuse one, and CI runs with them blank.
+    saved = os.environ.get(name)
+    if not (saved or "").strip():
         os.environ[name] = "test-key-not-real"
-    return lambda: None if had else os.environ.pop(name, None)
+
+    def undo():
+        if saved is None:
+            os.environ.pop(name, None)
+        else:
+            os.environ[name] = saved
+    return undo
 
 
 def _patched(module, clock, monkey):
@@ -178,6 +186,172 @@ def test_a_bill_answered_as_a_bare_list_is_read_as_its_lines():
     finally:
         if groq_key is not None:
             os.environ["GROQ_API_KEY"] = groq_key
+
+
+
+# ---- the pool, from the test pass ----------------------------------------------------
+
+def _http_error(code, body):
+    import io
+    return urllib.error.HTTPError("https://x", code, "err", {}, io.BytesIO(body.encode()))
+
+
+class _PerModel(_Clock):
+    """The network, answering per model: a dict of model name -> exception or answer."""
+
+    def __init__(self, behaviour):
+        super().__init__()
+        self.behaviour, self.asked = behaviour, []
+
+    def post(self, url, payload, timeout=None):
+        model = next(m for m in self.behaviour if f"/models/{m}:" in url)
+        self.asked.append(model)
+        self.timeouts.append(timeout)
+        what = self.behaviour[model]
+        if isinstance(what, BaseException):
+            if isinstance(what, TimeoutError):
+                self.now += timeout or 45
+            raise what
+        return what
+
+
+OK = {"candidates": [{"content": {"parts": [{"text": '{"answer": "fine"}'}]}}]}
+
+
+def _pool(behaviour, **kwargs):
+    clock, monkey, undo = _PerModel(behaviour), [], _key("GEMINI_API_KEY")
+    saved_pool, saved_state = gemini.POOL, gemini._exhausted
+    gemini.POOL, gemini._exhausted = list(behaviour), gemini.pool_state.new_state()
+    _patched(gemini, clock, monkey)
+    try:
+        out = gemini.generate("q", schema={"type": "object"}, **kwargs)
+        retired = [m for m in behaviour if gemini.pool_state.is_retired(gemini._exhausted, m)]
+    finally:
+        _restore(monkey); undo()
+        gemini.POOL, gemini._exhausted = saved_pool, saved_state
+    return out, clock.asked, retired
+
+
+def test_a_hung_model_hands_over_to_the_next_one_instead_of_being_asked_again():
+    """The first model hung to its 12-second cap, was asked again, and the budget ran out
+    without the healthy second model ever being tried."""
+    out, asked, _ = _pool({"m0": TimeoutError("timed out"), "m1": OK},
+                          deadline=30, request_timeout=12)
+    assert out["ok"] and out["model"] == "m1", out
+    assert asked == ["m0", "m1"], asked
+
+
+def test_a_model_this_key_cannot_reach_hands_over_to_the_next():
+    out, asked, _ = _pool({"m0": _http_error(404, "model not found"), "m1": OK}, deadline=30)
+    assert out["ok"] and asked == ["m0", "m1"], (out, asked)
+
+
+def test_a_per_minute_limit_moves_on_without_retiring_the_model_for_an_hour():
+    out, asked, retired = _pool({"m0": _http_error(429, "RESOURCE_EXHAUSTED per minute"),
+                                 "m1": OK}, deadline=30)
+    assert out["ok"] and retired == [], retired
+    out, asked, retired = _pool({"m0": _http_error(429, "GenerateRequestsPerDayPerProject"),
+                                 "m1": OK}, deadline=30)
+    assert out["ok"] and retired == ["m0"], retired
+
+
+def test_a_malformed_request_still_stops_the_pool():
+    out, asked, _ = _pool({"m0": _http_error(400, "bad request 14290 tokens"), "m1": OK},
+                          deadline=30)
+    assert not out["ok"] and asked == ["m0"], asked
+
+
+def test_an_unreadable_response_is_a_failure_not_a_traceback():
+    import http.client
+    for broken in (http.client.IncompleteRead(b"partial"), ["a", "json", "array"],
+                   ValueError("Expecting value: an HTML page")):
+        out, _, _ = _pool({"m0": broken}, deadline=30)
+        assert out["ok"] is False and out["error"], broken
+
+
+def test_groq_moves_on_after_a_per_minute_limit():
+    clock, monkey, undo = _Clock(), [], _key("GROQ_API_KEY")
+    asked = []
+
+    def post(payload, timeout=None):
+        asked.append(payload["model"])
+        if payload["model"] == "g0":
+            raise _http_error(429, "Rate limit reached: tokens per minute (TPM)")
+        return {"choices": [{"message": {"content": '{"answer": "fine"}'}}]}
+    saved_pool = groq.POOL
+    groq.POOL = ["g0", "g1"]
+    _patched(groq, clock, monkey)
+    groq._post = post
+    try:
+        out = groq.generate("q", schema={"type": "object"}, deadline=30)
+    finally:
+        _restore(monkey); undo()
+        groq.POOL = saved_pool
+    assert out["ok"] and out["model"] == "g1", (out, asked)
+
+
+# ---- the reader, from the test pass ------------------------------------------------
+
+def test_a_failed_second_read_does_not_cost_the_first_one():
+    reads = iter([([{"charged": 10.0}], {"ok": True, "total_printed": 99.0}),
+                  ([], {"ok": False, "error": "HTTP 503"})])
+    saved = extract.read_bill
+    extract.read_bill = lambda **k: next(reads)
+    try:
+        lines, meta = extract.read_bill_verified(text="x", deadline=60)
+    finally:
+        extract.read_bill = saved
+    assert lines == [{"charged": 10.0}] and meta["ok"] and meta["attempts"] == 2
+
+
+def test_a_bill_read_as_having_no_charges_says_so_rather_than_not_attempted():
+    saved = extract.read_bill
+    extract.read_bill = lambda **k: ([], {"ok": True, "total_printed": None})
+    try:
+        lines, meta = extract.read_bill_verified(text="x", deadline=60)
+    finally:
+        extract.read_bill = saved
+    assert lines == [] and meta["ok"] is True, meta
+
+
+def test_a_printed_total_written_as_money_is_still_a_total():
+    import gemini as g
+    saved = g.generate
+    g.generate = lambda *a, **k: {"ok": True, "model": "m", "json": {
+        "line_items": [{"code": "70450", "description": "CT", "units": 1, "charged": 3399}],
+        "total_printed": "$3,399.00"}}
+    groq_key = os.environ.pop("GROQ_API_KEY", None)
+    try:
+        lines, meta = extract.read_bill(text="a bill")
+    finally:
+        g.generate = saved
+        if groq_key is not None:
+            os.environ["GROQ_API_KEY"] = groq_key
+    assert meta["total_printed"] == 3399.0, meta
+
+
+def test_a_rotated_phone_photo_is_shrunk_the_right_way_up():
+    """Shrinking dropped the photo's orientation tag, so the reader got the page sideways."""
+    import io
+    from PIL import Image
+    im = Image.new("RGB", (3000, 2000), "white")
+    exif = im.getexif()
+    exif[0x0112] = 6                                  # rotate 90° clockwise to display
+    buf = io.BytesIO()
+    im.save(buf, "JPEG", exif=exif)
+    mime, data = extract.shrink("image/jpeg", buf.getvalue())
+    out = Image.open(io.BytesIO(data))
+    assert out.size[0] < out.size[1], out.size        # portrait, as the phone showed it
+
+
+def test_a_transparent_image_is_shrunk_onto_white_not_black():
+    import io
+    from PIL import Image
+    im = Image.new("RGBA", (3000, 2000), (0, 0, 0, 0))
+    buf = io.BytesIO()
+    im.save(buf, "PNG")
+    mime, data = extract.shrink("image/png", buf.getvalue())
+    assert Image.open(io.BytesIO(data)).convert("RGB").getpixel((10, 10)) == (255, 255, 255)
 
 
 if __name__ == "__main__":

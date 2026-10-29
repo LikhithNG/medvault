@@ -692,8 +692,10 @@ def safe(text):
     page as raw HTML. Bold is the one tag the fixed answers use on purpose - the emergency
     answer bolds "call 911" - so it is the one tag restored.
     """
+    # Line breaks as <br>: a blank line ends the HTML block this sits in, and whatever
+    # follows is read as markdown - "![x](https://evil/p.png)" in a record became an image.
     return (html.escape(str(text or "")).replace("&lt;b&gt;", "<b>")
-            .replace("&lt;/b&gt;", "</b>"))
+            .replace("&lt;/b&gt;", "</b>").replace("\n", "<br>"))
 
 
 PROV_CLASS = {"SELF": "self", "VERIFIED": "verified", "CLINICAL": "clinical"}

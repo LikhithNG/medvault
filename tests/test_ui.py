@@ -60,6 +60,14 @@ def test_data_is_escaped_completely_and_keeps_its_line_breaks():
     assert ui.esc(None) == "" and ui.esc(500) == "500"
 
 
+
+def test_a_bubbles_text_cannot_end_the_html_block_it_sits_in():
+    """A blank line inside one of these HTML blocks ends the block, and what follows is
+    read as markdown - so "![x](https://evil/p.png)" in a record became a real image."""
+    out = ui.safe("line one\n\n![x](https://evil.example/p.png)")
+    assert "\n" not in out and "<br><br>" in out
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

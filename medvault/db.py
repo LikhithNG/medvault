@@ -8,7 +8,7 @@ Everything returns plain dicts. No ORM, no models leaking into the interface, an
 schema changes: add_column() is explicit and additive so an existing vault is never dropped
 to make room for a new field.
 """
-import json, os, pathlib, sqlite3, time
+import json, os, pathlib, re, sqlite3, time
 
 DEFAULT_PATH = pathlib.Path(os.environ.get(
     "MEDVAULT_DB", pathlib.Path(__file__).resolve().parent.parent / "vault.db"))
@@ -238,11 +238,14 @@ def counts_by_kind(con, owner_id=None, owner_ids=None):
 # ---- medications -----------------------------------------------------------
 
 def add_medication(con, record_id, med):
+    """Store one medicine. `active` False keeps a finished one finished - an export then an
+    import used to bring every finished course back onto the emergency card."""
     con.execute(
-        "INSERT INTO medications (record_id, name, dose, frequency, duration, reason)"
-        " VALUES (?,?,?,?,?,?)",
+        "INSERT INTO medications (record_id, name, dose, frequency, duration, reason, active)"
+        " VALUES (?,?,?,?,?,?,?)",
         (record_id, med.get("name"), med.get("dose"), med.get("frequency"),
-         med.get("duration"), med.get("reason")))
+         med.get("duration"), med.get("reason"),
+         0 if med.get("active") in (0, False, "0") else 1))
     con.commit()
 
 
@@ -317,6 +320,84 @@ def export_vault(con, account_id):
 RESTORABLE = ("kind", "service_date", "provider", "title", "summary", "read_by",
               "provenance")
 
+# What one import may hold. A real vault's export is far under these; a file past them is
+# not one, and on the hosted copy every record is a round trip to the database.
+IMPORT_MAX_RECORDS = 2000
+IMPORT_MAX_MEDICATIONS = 5000
+_HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
+
+
+def _text(value, limit=20_000):
+    if value is None:
+        return None
+    return str(value).strip()[:limit] or None
+
+
+def _iso_date(value):
+    """A real calendar date in a year the date arithmetic can handle, or None. "9999-12-30"
+    plus a seven-day course overflowed and took the Medicines screen down."""
+    import datetime
+    text = str(value or "").strip()
+    if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", text):
+        return None
+    try:
+        day = datetime.date.fromisoformat(text)
+    except ValueError:
+        return None
+    return text if 1900 <= day.year <= 2100 else None
+
+
+def _vetted(data):
+    """An export, checked before anything is written: (records, medications, profile).
+
+    A file of the wrong shape raises ValueError and writes nothing. Values inside a
+    well-shaped file are cleaned rather than trusted - including card values a screen would
+    fail on, such as organ_donor "maybe", which made the Card screen raise on every load
+    with the restore control on that same screen.
+    """
+    from schema import BLOOD_TYPES, DONOR_CHOICES, KIND_ORDER, PROFILE_FIELDS
+    if not isinstance(data, dict) or not isinstance(data.get("records"), list):
+        raise ValueError("that file is not a MedVault export")
+    records, meds = data["records"], data.get("medications") or []
+    profile = data.get("profile") or {}
+    if not isinstance(meds, list) or not isinstance(profile, dict) \
+            or not all(isinstance(r, dict) for r in records + meds):
+        raise ValueError("that file is not a MedVault export")
+    if len(records) > IMPORT_MAX_RECORDS or len(meds) > IMPORT_MAX_MEDICATIONS:
+        raise ValueError(f"that file holds more than {IMPORT_MAX_RECORDS} records, so it "
+                         "is not an export of one vault")
+
+    def whole(v):
+        return v if isinstance(v, int) and not isinstance(v, bool) else None
+
+    clean_records = [{
+        "id": whole(r.get("id")),
+        "kind": r.get("kind") if r.get("kind") in KIND_ORDER else "other",
+        "title": _text(r.get("title"), 300) or "Untitled record",
+        "service_date": _iso_date(r.get("service_date")),
+        "provider": _text(r.get("provider"), 300),
+        "summary": _text(r.get("summary")),
+        "read_by": _text(r.get("read_by"), 100),
+    } for r in records]
+    clean_meds = [{
+        "record_id": whole(m.get("record_id")),
+        "name": _text(m.get("name"), 200),
+        **{k: _text(m.get(k), 500) for k in ("dose", "frequency", "duration", "reason")},
+        "active": m.get("active") not in (0, False, "0"),
+    } for m in meds if _text(m.get("name"))]
+    valid = {"organ_donor": DONOR_CHOICES, "blood_type": BLOOD_TYPES}
+    clean_profile = {}
+    for key, value in profile.items():
+        if key not in PROFILE_FIELDS and key != "day_start":
+            continue
+        value = _text(value, 2000) or ""
+        if key in valid and value not in valid[key]:
+            continue
+        if key == "day_start" and not _HHMM.fullmatch(value):
+            continue
+        clean_profile[key] = value
+    return clean_records, clean_meds, clean_profile
+
 
 def import_vault(con, account_id, payload):
     """Put an exported vault back, into this account. Returns what it did.
@@ -337,37 +418,34 @@ def import_vault(con, account_id, payload):
     if account_id is None:
         raise ValueError("import_vault needs to know whose vault it is importing into")
     data = json.loads(payload) if isinstance(payload, (str, bytes)) else payload
-    if not isinstance(data, dict) or "records" not in data:
-        raise ValueError("that file is not a MedVault export")
+    records, meds, profile = _vetted(data)
 
     existing = {(r["kind"], r["title"], r.get("service_date"))
                 for r in list_records(con, limit=10_000, owner_id=account_id)}
 
     added, skipped, meds_added = 0, 0, 0
     id_map = {}
-    for row in data.get("records") or []:
-        key = (row.get("kind"), row.get("title"), row.get("service_date"))
+    for row in records:
+        key = (row["kind"], row["title"], row["service_date"])
         if key in existing:
             skipped += 1
             continue
         fields = {k: row.get(k) for k in RESTORABLE}
-        fields["kind"] = fields.get("kind") or "other"
-        fields["title"] = fields.get("title") or "Untitled record"
         # Imported, so unverified: see the docstring.
         fields["provenance"] = "SELF"
         new_id = add_record(con, owner_id=account_id, **fields)
-        id_map[row.get("id")] = new_id
+        if row["id"] is not None:
+            id_map[row["id"]] = new_id
         existing.add(key)
         added += 1
 
-    for med in data.get("medications") or []:
-        target = id_map.get(med.get("record_id"))
+    for med in meds:
+        target = id_map.get(med["record_id"])
         if target is None:
-            continue            # its record was a duplicate, so the medicine is too
+            continue            # its record was a duplicate, or carried no id to match
         add_medication(con, target, med)
         meds_added += 1
 
-    profile = data.get("profile") or {}
     if profile:
         save_profile(con, account_id, profile)
 

@@ -46,3 +46,28 @@ def retired(state, pool, now=None):
 
 def available(state, pool, now=None):
     return [m for m in pool if not is_retired(state, m, now)]
+
+
+def after_failure(result):
+    """What a pool does after one model fails, for both clients alike.
+
+    'retire': out of its daily quota - skip it until the quota comes back, try the next.
+    'stop':   the request itself is malformed (another model rejects it too), or the
+              caller's budget is spent.
+    'next':   anything another model may not share - overloaded, unreachable, timed out,
+              not available to this key, a per-minute limit, an unreadable answer.
+
+    The clients used to stop on most of the 'next' cases, so one hung or retired model
+    ended the call with five others available; and Gemini retired a model for an hour on
+    any error containing "429", a per-minute limit or a 400 that mentioned 14290 tokens.
+    """
+    if result.get("quota") == "daily":
+        return "retire"
+    if result.get("timed_out") or str(result.get("error", "")).startswith("HTTP 400"):
+        return "stop"
+    return "next"
+
+
+def is_timeout(error):
+    """A request that ran out its own time cap - worth a different model, not the same one."""
+    return isinstance(error, TimeoutError) or "timed out" in str(error).lower()

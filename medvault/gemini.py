@@ -121,31 +121,28 @@ def generate(prompt, schema=None, temperature=0.0, model=None, image=None,
             break
         r = _generate_one(prompt, schema, temperature, m, image,
                           attempts=POOL_ATTEMPTS, stop_at=stop_at, budget=budget,
-                          request_timeout=request_timeout)
+                          request_timeout=request_timeout, retry_slow=False)
         if r['ok']:
             r['model'] = m
             return r
         last = r
-        err = str(r.get('error', ''))
-        if 'RESOURCE_EXHAUSTED' in err or '429' in err:
-            _exhausted = pool_state.retire(_exhausted, m)   # out of daily quota for now
-            continue
         # A 503 means this model is overloaded right now, which is the other thing a pool
-        # is for. The comment below used to say a non-quota failure is not fixed by another
-        # model; that is true of a malformed request and false of an overloaded one. Tried
-        # on a day when gemini-3.8-flash was returning 503 to every request, the pool gave
-        # up after one model while five others were available and working.
-        if any(code in err for code in ('HTTP 503', 'HTTP 502', 'HTTP 500', 'UNAVAILABLE')):
-            continue                   # overloaded, not broken - the next model may serve
-        if r.get('timed_out'):
-            break                      # the budget is spent; another model cannot help
-        return r                       # a malformed request is not fixed by another model
+        # is for; so is a model that hung, or that this key cannot reach. Tried on a day
+        # when gemini-3.8-flash returned 503 to every request, the pool gave up after one
+        # model while five others were available and working. See pool_state.after_failure.
+        step = pool_state.after_failure(r)
+        if step == 'retire':
+            _exhausted = pool_state.retire(_exhausted, m)   # out of daily quota for now
+        if step == 'stop':
+            if r.get('timed_out'):
+                break                  # the budget is spent; another model cannot help
+            return r                   # a malformed request is not fixed by another model
     last['model'] = None
     last['pool_exhausted'] = True
     return last
 
 def _generate_one(prompt, schema, temperature, model, image=None, attempts=None,
-                  stop_at=None, budget=None, request_timeout=None):
+                  stop_at=None, budget=None, request_timeout=None, retry_slow=True):
     """One model, with bounded retries and exponential backoff.
 
     `image` is an optional (mime_type, base64_data) pair. A photograph of a bill has no
@@ -191,7 +188,10 @@ def _generate_one(prompt, schema, temperature, model, image=None, attempts=None,
                             'error': f'malformed JSON from model: {ex}', 'text': text[:400]}
             return out
         except urllib.error.HTTPError as ex:
-            body = ex.read()[:900].decode('utf-8', 'ignore')
+            try:
+                body = ex.read()[:900].decode('utf-8', 'ignore')
+            except Exception:              # noqa: BLE001 - the body is only for the message
+                body = ''
             last = f'HTTP {ex.code}: {body}'
             # a per-day quota failure will not clear in 15 seconds; do not burn retries on it
             if ex.code == 429 and 'PerDay' in body:
@@ -200,8 +200,16 @@ def _generate_one(prompt, schema, temperature, model, image=None, attempts=None,
                 return {'ok': False, 'error': last, 'attempts': attempt}
         except (urllib.error.URLError, TimeoutError, OSError) as ex:
             last = f'{type(ex).__name__}: {ex}'
-            if attempt == attempts:
+            # In a pool, a model that ran out its request cap is left for the next one:
+            # asking it again spent the whole budget on one hung model.
+            if attempt == attempts or (not retry_slow and pool_state.is_timeout(ex)):
                 return {'ok': False, 'error': last, 'attempts': attempt}
+        except Exception as ex:            # noqa: BLE001 - see below
+            # A response cut off mid-way, an HTML page where JSON belongs, a JSON list: an
+            # answer that cannot be read is a failure to report, not a traceback for the
+            # patient to see.
+            return {'ok': False, 'attempts': attempt,
+                    'error': f'unreadable response: {type(ex).__name__}: {ex}'[:300]}
         pause = BACKOFF * (2 ** (attempt - 1))
         left = _remaining(stop_at)
         if left is not None and left - pause < MIN_CALL_SECONDS:

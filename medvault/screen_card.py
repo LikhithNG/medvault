@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """The Card screen: the emergency card, the care team, the vault as a file, signing out."""
-import json
+import logging
 import os
 import time
 
@@ -10,8 +10,10 @@ import careteam
 import db
 import store
 import ui
-from schema import BLOOD_TYPES, missing_essentials
+from schema import BLOOD_TYPES, DONOR_CHOICES, missing_essentials
 from session import my_id, vault
+
+log = logging.getLogger(__name__)
 
 
 def profile_editor(p, expanded):
@@ -36,9 +38,12 @@ def profile_editor(p, expanded):
         blood = c1.selectbox("Blood type", BLOOD_TYPES,
                              index=BLOOD_TYPES.index(blood_now) if blood_now in BLOOD_TYPES else 0,
                              format_func=lambda b: b or "— not set —")
-        donor = c2.selectbox("Organ donor", ("Not stated", "Yes", "No"),
-                             index=("Not stated", "Yes", "No").index(
-                                 p.get("organ_donor") or "Not stated"))
+        # A value outside the choices - an old import - falls back rather than raising on
+        # every load of the screen that holds the restore control.
+        donor_now = p.get("organ_donor")
+        donor = c2.selectbox("Organ donor", DONOR_CHOICES,
+                             index=DONOR_CHOICES.index(donor_now)
+                             if donor_now in DONOR_CHOICES else 0)
 
         st.markdown(ui.section("What they need to know first"), unsafe_allow_html=True)
         alle = st.text_area("Allergies", p.get("allergies", ""), height=70,
@@ -260,8 +265,12 @@ def vault_transfer(account):
     if back is not None and st.button("Restore it", use_container_width=True):
         try:
             done = db.import_vault(con, my_id(), back.getvalue())
-        except (ValueError, json.JSONDecodeError) as problem:
+        except ValueError as problem:              # JSONDecodeError is one too
             st.error(f"That file could not be read: {problem}")
+        except Exception:                          # noqa: BLE001 - never a traceback here
+            log.exception("vault import failed")
+            st.error("That file could not be put back. Nothing in it was trusted; if part "
+                     "of it was restored, restoring it again skips what is already here.")
         else:
             ui.flash(
                 f"Restored {done['records_added']} record(s)"
