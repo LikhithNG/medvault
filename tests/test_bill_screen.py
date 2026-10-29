@@ -127,6 +127,20 @@ def test_each_matched_line_names_its_own_record():
         assert "chest X-ray" in lines["71046"], lines["71046"]
 
 
+def test_a_day_with_more_records_than_named_says_how_many_more():
+    """"You have 5 record(s) from that day ("A", "B", "C")" named three and left the other
+    two unaccounted for. Seen on the demo vault."""
+    import db
+    with offline_vault() as (con, alice, _):
+        for title in ("Basic metabolic panel", "Emergency department visit",
+                      "Discharge prescription", "CT head"):
+            db.add_record(con, kind="other", title=title, service_date="2026-03-14",
+                          owner_id=alice["id"])
+        at = _check(_app(alice), "2026-03-14  72148  MRI LUMBAR WITHOUT  1  9,374.04")
+        card = next(m.value for m in at.markdown if "none mention this" in m.value)
+        assert "5 record(s)" in card and "and 2 more" in card, card
+
+
 def test_filing_the_missing_record_retires_the_old_finding():
     import db
     with offline_vault() as (con, alice, _):

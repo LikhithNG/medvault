@@ -284,8 +284,10 @@ def render_against_records(checked, summary):
             label, tone = crosscheck.VERDICTS[verdict]
             head = f"{label}{f' · {when_}' if when_ else ''}"
             if verdict == "DATE_NO_MATCH" and rows[0].get("matches"):
-                held = ", ".join(f"“{ui.safe(m['title'])}”" for m in rows[0]["matches"][:3])
-                why = (f"You have {len(rows[0]['matches'])} record(s) from that day "
+                found = rows[0]["matches"]
+                held = ", ".join(f"“{ui.safe(m['title'])}”" for m in found[:3]) + (
+                    f" and {len(found) - 3} more" if len(found) > 3 else "")
+                why = (f"You have {len(found)} record(s) from that day "
                        f"({held}) and none of them covers the charge"
                        f"{'s' if len(rows) > 1 else ''} below.")
             elif verdict == "NO_RECORD":
