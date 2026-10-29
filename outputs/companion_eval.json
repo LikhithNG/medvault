@@ -1,14 +1,14 @@
 {
-  "when": "2026-10-29T15:05:56",
+  "when": "2026-10-29T15:17:30",
   "reader": "configured model pool",
   "budget_s": 30,
   "passed": 10,
   "cases": 10,
-  "p50_s": 1.55,
-  "p95_s": 3.4,
+  "p50_s": 1.92,
+  "p95_s": 7.18,
   "model_answers": 7,
-  "p50_model_s": 2.99,
-  "p95_model_s": 3.41,
+  "p50_model_s": 2.25,
+  "p95_model_s": 7.51,
   "results": [
     {
       "id": "meds-purpose",
@@ -16,9 +16,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 1.22,
+      "seconds": 1.78,
       "guarded": false,
-      "answer": "Your records show that your Ibuprofen is for pain, your Fluticasone inhaler is for asthma, and your Amoxicillin is for a chest infection.",
+      "answer": "Your records show that you are taking ibuprofen for pain, a fluticasone inhaler for asthma, and amoxicillin for a chest infection.",
       "error": null
     },
     {
@@ -27,9 +27,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 3.21,
+      "seconds": 8.18,
       "guarded": false,
-      "answer": "Your chest X-ray from March 14, 2026 showed no acute findings.",
+      "answer": "Your chest X-ray showed no acute findings.",
       "error": null
     },
     {
@@ -38,9 +38,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 1.16,
+      "seconds": 2.07,
       "guarded": false,
-      "answer": "Your emergency card lists an allergy to penicillin, which causes a rash.",
+      "answer": "According to your emergency card, your only listed allergy is to penicillin, which causes a rash.",
       "error": null
     },
     {
@@ -82,9 +82,9 @@
       "why": [],
       "kind": "general",
       "model": "gemini-flash-lite-latest",
-      "seconds": 3.37,
+      "seconds": 5.49,
       "guarded": false,
-      "answer": "Fluticasone is an inhaled steroid medicine that helps reduce inflammation in the airways, making it easier to breathe. It is commonly prescribed on a daily basis to manage and prevent symptoms of asthma.",
+      "answer": "Fluticasone is an inhaled steroid medicine that is generally used to reduce inflammation in the airways for conditions like asthma. It helps prevent symptoms such as wheezing and shortness of breath when taken regularly.",
       "error": null
     },
     {
@@ -93,9 +93,9 @@
       "why": [],
       "kind": "cannot_say",
       "model": "gemini-flash-lite-latest",
-      "seconds": 3.43,
+      "seconds": 2.25,
       "guarded": false,
-      "answer": "Your records do not mention an upcoming MRI appointment. Your primary care practice or the facility where the scan was ordered would have that information.",
+      "answer": "Your records do not mention an upcoming MRI appointment. Your primary care practice or the hospital that ordered the test would have this information.",
       "error": null
     },
     {
@@ -104,9 +104,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 1.89,
+      "seconds": 5.95,
       "guarded": false,
-      "answer": "Your emergency department discharge note from Doylestown Hospital on September 19, 2026, states that you were seen for a wheeze and advises you to follow up with your general practitioner in two weeks.",
+      "answer": "Your emergency department discharge note from Doylestown Hospital on September 19, 2026, states that you were seen for a wheeze and advised to follow up with your GP in two weeks.",
       "error": null
     },
     {
@@ -115,9 +115,9 @@
       "why": [],
       "kind": "from_records",
       "model": "gemini-flash-lite-latest",
-      "seconds": 2.99,
+      "seconds": 1.47,
       "guarded": false,
-      "answer": "Your emergency department discharge summary from September 19, 2026, states that you were advised to follow up with your GP in two weeks.",
+      "answer": "Your emergency department discharge record from Doylestown Hospital states that you should follow up with your GP in 2 weeks.",
       "error": null
     }
   ]

@@ -39,9 +39,12 @@ def _render_turn(turn):
                     "</div></div></div>", unsafe_allow_html=True)
         return
     if a.get("kind") == "error":
+        # The 911 line first, as on the "AI unavailable" reply: the model is the second net
+        # for emergencies the patterns miss, so when it does not answer, nothing caught it.
         st.markdown("<div class='bubble a'><span class='badge bad'>Could not answer</span>"
-                    "<div>The reader did not respond. Nothing was made up to fill the "
-                    "gap.</div></div></div>", unsafe_allow_html=True)
+                    "<div><b>If this is an emergency, call 911</b> or your local emergency "
+                    "number.</div><div>The reader did not respond. Nothing was made up to "
+                    "fill the gap.</div></div></div>", unsafe_allow_html=True)
         st.caption(f"Reader said: {a.get('error')}")
         return
 

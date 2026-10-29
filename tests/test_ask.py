@@ -500,6 +500,27 @@ def test_an_allergy_family_matches_whole_words_only():
                                  {"allergies": "penicillins"})
 
 
+
+def test_an_emergency_the_patterns_missed_but_the_model_saw_gets_the_fixed_answer():
+    """The patterns catch about half of the emergencies nobody wrote them for. The model is
+    the second net: if it calls the question an emergency, the patient reads the 911 answer,
+    never the model's words - even when it sends no words at all."""
+    con, owner = a_patient()
+    for answer in ("Call 911 now.", "", None):
+        reader = FakeReader({"kind": "emergency", "answer": answer, "records_used": []})
+        out = ask.answer(con, owner, "my dad went grey and his left side is useless",
+                         reader=reader)
+        assert out["kind"] == "emergency" and out["answer"] == ask.EMERGENCY_ANSWER, answer
+        assert out["guarded"] == "label" and out["model"] == "fake"
+
+
+def test_the_model_is_told_the_same_rules_the_measurement_used():
+    prompt = ask.PROMPT.format(context="", question="")
+    assert ask.EMERGENCY_RULE in prompt and ask.DECISION_RULE in prompt
+    assert ask.NOT_AN_EMERGENCY in prompt
+    assert "emergency" in ask.SCHEMA["properties"]["kind"]["enum"]
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

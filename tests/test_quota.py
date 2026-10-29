@@ -467,6 +467,19 @@ def test_a_bill_read_is_counted_even_when_it_finds_nothing_to_check():
         assert quota.allowance(con, alice).used == 1
 
 
+
+def test_when_the_model_fails_the_reply_still_leads_with_911():
+    """With the model the second net for emergencies the patterns miss, a model that does
+    not answer must not leave a patient in an emergency with only "could not answer"."""
+    with offline_vault() as (con, alice, _), _env(**READY), _no_network():
+        at = _app(alice)
+        failed = {"ok": False, "model": None, "error": "HTTP 503: UNAVAILABLE"}
+        with _stand_in("gemini", "generate", lambda *a, **k: failed):
+            _ask(at, "she's slumped and mumbling and I can't get her to answer me")
+        shown = " ".join(m.value for m in at.markdown)
+        assert "Could not answer" in shown and "call 911" in shown
+
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):
