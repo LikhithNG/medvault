@@ -11,10 +11,12 @@ import streamlit as st
 import agentsui
 import db
 import paste
+import providers
+import quota
 import runtime
 import ui
 from bill_render import render_bill, render_bill_read
-from session import my_id, reader_ready, vault
+from session import ai_allowance, me, my_id, reader_ready, vault
 
 
 # The three agents a bill passes through, in the order it reaches them.
@@ -53,10 +55,15 @@ def bill_form():
             placeholder="2026-03-14  70450  CT HEAD/BRAIN WO CONTRAST   1   3,100.00")
         st.caption("One line per charge: a date, a description and an amount.")
     else:
+        st.markdown(ui.hint(*providers.notice("The bill is sent to an AI reader. Pasted "
+                                              "lines are not."),
+                            label="Where it goes"), unsafe_allow_html=True)
+        ai_allowance()
         upload = st.file_uploader("Photo or PDF of the bill",
                                   type=["jpg", "jpeg", "png", "webp", "pdf"],
                                   label_visibility="collapsed", key="bill_file")
-        st.markdown(ui.hint("On a phone this opens the camera. The bill is not stored.",
+        st.markdown(ui.hint("On a phone this opens the camera. MedVault does not keep the "
+                            "bill.",
                             "It is read once to pull out the codes, quantities and amounts. "
                             "To keep a copy, file it as a record on the Add screen."),
                     unsafe_allow_html=True)
@@ -156,6 +163,15 @@ def read_bill_upload(upload, steps, show):
     if held and held["sig"] == sig:
         return held["lines"], held["read"], None, \
             agentsui.advance(steps, "Reader", "done", "Read already")
+
+    # Taken here, after the bill already read is reused: changing the hospital on a bill
+    # read before the limit was reached costs nothing, so it is not refused. And taken
+    # before the model is asked, so a read that fails still counts.
+    if not quota.take(vault(), me()):
+        why = quota.note(quota.allowance(vault(), me())) or "No AI reads are left today."
+        return None, None, ("This bill cannot be read by AI right now",
+                            f"{why} Paste the lines instead — that never uses AI.", None), \
+            agentsui.advance(steps, "Reader", "fail", "Daily limit")
 
     from extract import read_bill_verified, pdf_text
     is_pdf = (upload.type or "").endswith("pdf") or upload.name.lower().endswith(".pdf")

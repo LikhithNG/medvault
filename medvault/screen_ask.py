@@ -8,9 +8,11 @@ import agentsui
 import ask
 import careteam
 import liaison
+import providers
+import quota
 import runtime
 import ui
-from session import me, my_id, reader_ready, vault
+from session import ai_allowance, me, my_id, reader_ready, vault
 
 
 EXAMPLE_QUESTIONS = [
@@ -25,6 +27,17 @@ def _render_turn(turn):
     st.markdown(f"<div class='qa'><div class='bubble q ag-in'>{ui.safe(turn['q'])}</div>",
                 unsafe_allow_html=True)
     a = turn["a"]
+    if a.get("kind") == "capped":
+        # The 911 line comes first and is unconditional. The triage only knows the
+        # phrasings it knows: "my dad is not breathing" once came back with nothing but
+        # "AI unavailable" and an assurance that emergencies were still answered.
+        st.markdown("<div class='bubble a'><span class='badge warn'>AI unavailable"
+                    "</span><div><b>If this is an emergency, call 911</b> or your local "
+                    "emergency number.</div><div>This question needs the AI reader, and "
+                    "AI reads are not available right now — the note above says why. For "
+                    "anything about a dose, ask whoever prescribed it or a pharmacist."
+                    "</div></div></div>", unsafe_allow_html=True)
+        return
     if a.get("kind") == "error":
         st.markdown("<div class='bubble a'><span class='badge bad'>Could not answer</span>"
                     "<div>The reader did not respond. Nothing was made up to fill the "
@@ -103,13 +116,16 @@ def screen_ask():
                 f"not need it and are complete.")
         return
 
-    st.markdown(ui.hint("Answers come from your own records. <b>Your question and the "
-                        "text of your records are sent to the AI reader to answer it.</b>",
-                        "It says so when an answer is general knowledge instead. It will not "
-                        "tell you to change a dose, judge whether something is safe for "
-                        "you, or check drug interactions — it has no interaction database "
-                        "and will not pretend otherwise.",
+    st.markdown(ui.hint(*providers.notice("Your question and the text of your records are "
+                                          "sent to an AI reader to answer it."),
+                        label="Where it goes"), unsafe_allow_html=True)
+    st.markdown(ui.hint("Answers come from your own records, and say so when they are "
+                        "general knowledge instead.",
+                        "It will not tell you to change a dose, judge whether something is "
+                        "safe for you, or check drug interactions — it has no interaction "
+                        "database and will not pretend otherwise.",
                         label="What it will not do"), unsafe_allow_html=True)
+    ai_allowance()
 
     log = st.session_state.setdefault("ask_log", [])
     for turn in log:
@@ -123,7 +139,11 @@ def screen_ask():
                       unsafe_allow_html=True)
         started = time.perf_counter()
         with runtime.span("Companion", trace=con) as span:
-            reply = span.saw(ask.answer(con, my_id(), question, deadline=span.left()))
+            # The read is taken only if the question gets as far as a model - never for
+            # an emergency or a dose decision - and before the request, so a failed one
+            # still counts.
+            reply = span.saw(ask.answer(con, my_id(), question, deadline=span.left(),
+                                        permit=lambda: quota.take(con, me())))
         st.session_state["ask_log"].append(
             {"q": question, "a": reply,
              "took": agentsui.took(time.perf_counter() - started)})

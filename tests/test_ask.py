@@ -275,6 +275,32 @@ def test_a_past_stroke_in_a_records_question_is_not_an_emergency():
     assert ask.triage("I think I'm having a stroke")["kind"] == "emergency"
 
 
+def test_plain_ways_of_saying_it_is_an_emergency_are_caught():
+    """A review found these going past the triage - to a model with no emergency rule, or,
+    past the daily limit, to a reply that said only "AI unavailable"."""
+    for urgent in ("my dad is not breathing", "she isn't breathing", "I'm choking",
+                   "my son is choking", "my chest hurts and my left arm is numb",
+                   "I want to die"):
+        assert (ask.triage(urgent) or {}).get("kind") == "emergency", urgent
+    # A phone types a curly apostrophe by default; "can’t breathe" is the same emergency.
+    for urgent in ("I\u2019m choking", "I can\u2019t breathe"):
+        assert (ask.triage(urgent) or {}).get("kind") == "emergency", urgent
+    for calm in ("was my breathing test normal?", "the leaflet mentions a choking hazard",
+                 "what did the doctor say about my chest X-ray?"):
+        assert ask.triage(calm) is None, calm
+
+
+def test_plain_ways_of_asking_to_skip_or_add_a_dose_go_to_the_prescriber():
+    con, me = a_patient()
+
+    class NoModel:
+        def generate(self, *args, **kwargs):
+            raise AssertionError("a dose question reached the model")
+    for q in ("Is it okay to skip tonight's metformin?", "can I take two of my pills",
+              "Can I take another ibuprofen?", "Is it okay to skip tonight\u2019s dose?"):
+        assert ask.answer(con, me, q, reader=NoModel())["kind"] == "for_prescriber", q
+
+
 def test_the_emergency_answer_is_html_not_markdown():
     """It is rendered inside a raw HTML bubble, where ** is just two asterisks."""
     answer = ask.triage("I have chest pain")["answer"]

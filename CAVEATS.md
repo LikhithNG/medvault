@@ -90,7 +90,10 @@ what is on it, and the name, the account number and the date of birth are printe
 same page as the codes. The PRD this project grew out of promised to send "only the code
 and the amount". That is achievable for a text PDF and not for a photograph, and this
 build does not do it for either. What it does instead: the page is sent once, for
-extraction, and is not retained by the model provider.
+extraction. Whether the provider keeps it is set by the provider's terms, and on the free
+Gemini tier this demo runs on, Google may use it to improve its products and its reviewers
+may read it (README, "Where your data lives"). So: sample paperwork only, and a paid tier
+before anything real.
 
 ## 6. What "clinician-verified" means, and does not
 

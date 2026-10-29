@@ -6,6 +6,7 @@ import accounts
 import agentsui
 import landing
 import npi
+import providers
 import ui
 from session import vault
 
@@ -31,7 +32,8 @@ def screen_signin():
                         "<div class='panelhead' id='open-your-vault'>Open your vault</div>"
                         "<div class='panelsub'>Patients and clinicians both sign in "
                         "here. A clinician is checked against the national provider "
-                        "registry when the account is made.</div>",
+                        f"registry when the account is made.</div>"
+                        f"<div class='panelsub'><b>{providers.SAMPLES_ONLY}</b></div>",
                         unsafe_allow_html=True)
             auth_panel()
 

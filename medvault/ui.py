@@ -336,6 +336,15 @@ div[data-testid="stFileUploader"] section{background:transparent;border:none}
 div[data-testid="stAlert"]{border-radius:12px;font-size:13.5px;background:var(--accent-soft);
   border:1px solid #CFE3FB}
 div[data-testid="stAlert"] *{color:#0B4F9E!important}
+/* ...except a warning, which is amber. Painted blue with Streamlit's yellow tint on top, it
+   came out green and "you have used today's AI reads" read as a success. Streamlit 1.37
+   names the marker stNotificationContentWarning and 1.66 stAlertContentWarning. */
+div[data-testid="stAlert"]:has([data-testid="stNotificationContentWarning"]){background:var(--warn-soft);border-color:#F7E0B5}
+div[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]){background:var(--warn-soft);border-color:#F7E0B5}
+div[data-testid="stAlert"]:has([data-testid="stNotificationContentWarning"]) > div,
+div[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) > div{background:transparent}
+div[data-testid="stAlert"]:has([data-testid="stNotificationContentWarning"]) *,
+div[data-testid="stAlert"]:has([data-testid="stAlertContentWarning"]) *{color:#92400E!important}
 
 /* Inputs. Streamlit inherits the viewer's dark-mode preference, which turned the paste box
    black with black text on a page that is otherwise light. Pinned explicitly. */

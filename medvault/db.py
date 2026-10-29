@@ -15,6 +15,10 @@ DEFAULT_PATH = pathlib.Path(os.environ.get(
 
 # agent_runs is how each agent run went - see runtime.py. Deliberately nothing about whose
 # run it was or what it read: agent, timing, outcome, model, attempts, kind of failure.
+#
+# ai_use is how many AI reads each account started on each day - see quota.py. An account,
+# a date and a count: never what was read, asked or answered. Days before today are
+# deleted as soon as a new one is counted.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS care_team (
     patient_id   INTEGER NOT NULL,
@@ -62,6 +66,12 @@ CREATE TABLE IF NOT EXISTS agent_runs (
     attempts    INTEGER,
     error_kind  TEXT,
     over_budget INTEGER NOT NULL DEFAULT 0
+);
+CREATE TABLE IF NOT EXISTS ai_use (
+    account_id INTEGER NOT NULL,
+    day        TEXT    NOT NULL,
+    n          INTEGER NOT NULL DEFAULT 0,
+    PRIMARY KEY (account_id, day)
 );
 CREATE INDEX IF NOT EXISTS idx_runs_agent ON agent_runs(agent, started_at);
 CREATE INDEX IF NOT EXISTS idx_records_date ON records(service_date);
@@ -409,3 +419,41 @@ def pending_verification(con, limit=200, owner_ids=None):
 def provenance_counts(con):
     return {r["provenance"]: r["n"] for r in _rows(con.execute(
         "SELECT provenance, COUNT(*) AS n FROM records GROUP BY provenance"))}
+
+
+def ai_use(con, account_id, day):
+    """(this account's AI reads on `day`, every account's) - the two counts quota.py needs."""
+    row = con.execute("SELECT COALESCE(SUM(CASE WHEN account_id = ? THEN n END), 0) AS mine,"
+                      " COALESCE(SUM(n), 0) AS site FROM ai_use WHERE day = ?",
+                      (account_id, day)).fetchone()
+    return int(row["mine"]), int(row["site"])
+
+
+def count_ai_use(con, account_id, day):
+    """One more AI read for this account on `day`. Earlier days go as this one is counted."""
+    con.execute("DELETE FROM ai_use WHERE day < ?", (day,))
+    con.execute("INSERT INTO ai_use (account_id, day, n) VALUES (?, ?, 1)"
+                " ON CONFLICT(account_id, day) DO UPDATE SET n = n + 1", (account_id, day))
+    con.commit()
+
+
+def take_ai_use(con, account_id, day, per_account, site):
+    """count_ai_use, only while this account is under `per_account` and everyone under
+    `site` on `day`. True when it counted.
+
+    The check and the count are one statement. As two, every tab and every person that
+    looked before the first count landed could start a read - three tabs at 9 of 10 ended
+    at 12. (The WHERE on the SELECT is also what lets SQLite parse the ON CONFLICT.)
+    """
+    con.execute("DELETE FROM ai_use WHERE day < ?", (day,))
+    cur = con.execute(
+        "INSERT INTO ai_use (account_id, day, n) SELECT ?, ?, 1"
+        " WHERE (SELECT COALESCE(SUM(n), 0) FROM ai_use WHERE day = ?) < ?"
+        " AND (SELECT COALESCE(SUM(n), 0) FROM ai_use"
+        "      WHERE day = ? AND account_id = ?) < ?"
+        " ON CONFLICT(account_id, day) DO UPDATE SET n = n + 1",
+        (account_id, day, day, site, day, account_id, per_account))
+    con.commit()
+    # -1 is "the database did not say" (store.Cursor's default). Read as counted: a
+    # missing number must not lock every account out of every read.
+    return cur.rowcount != 0

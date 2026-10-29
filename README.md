@@ -298,15 +298,38 @@ produces. It is a prompt to ask a question, not a clearance.
 
 ## Where your data lives
 
-In one SQLite file next to the app (`vault.db`, git-ignored). Uploaded originals are stored
-in it too, so the vault can hand back the actual page rather than only what a model made of
-it — a summary is useful, the original is evidence.
+On a laptop, in one SQLite file next to the app (`vault.db`, git-ignored). The hosted copy
+keeps it in a Turso (libSQL) database instead, because a free host wipes its disk on every
+restart. Uploaded originals are stored too, so the vault can hand back the actual page
+rather than only what a model made of it — a summary is useful, the original is evidence.
 
-Two things leave that machine, both only when you ask for them. A document you upload is
-sent once to a model to be read, and is not retained there. A question you type into the Ask
-screen is sent with the text of your records, because an answer about your records cannot be
-given without them. Everything else — every check, every price comparison, every finding —
-is computed locally.
+Two things leave the server, both only when you ask for them. A document you upload is sent
+to a model to be read. A question you type into the Ask screen is sent with the text of your
+records, because an answer about your records cannot be given without them. Everything
+else — every check, every price comparison, every finding — is computed on the server, and
+the price check sends Medicare's API billing codes and nothing about you.
+
+**Use sample paperwork, not real records.** The reader is Google Gemini on its free tier.
+Under [Google's terms for that tier](https://ai.google.dev/gemini-api/terms), what is sent
+may be used to improve Google's products, and reviewers at Google may read it; the terms ask
+that nothing sensitive, confidential or personal is sent. A bill with a text layer goes to
+Groq first, which [does not keep requests by default](https://console.groq.com/docs/your-data)
+but may log them for up to 30 days to investigate abuse, unless Zero Data Retention is
+switched on in its console. A real version would need Gemini's paid tier, where Google does
+not use what is sent to improve its products. Every screen that sends paperwork out says this
+before it does (`medvault/providers.py`).
+
+Each account may start 10 AI reads a day, and the whole site 50 (`medvault/quota.py`),
+because the free tier's daily quota is shared by everybody using the site. A read is checked
+and counted in one statement before the model is asked, so a failed read still counts and
+two tabs cannot both take the last one. Accounts listed in `MEDVAULT_UNCAPPED` are not
+limited. What is counted is an account, a date and a number, never what was read or asked.
+An emergency or a dose question never reaches a model, so it is never counted and never
+refused.
+
+This shares the quota out; it is not protection against abuse. An account costs nothing to
+make, so the site ceiling is the limit that actually holds. `MEDVAULT_UNCAPPED` matches an
+account's email, which is not verified, so list only addresses already registered.
 
 **This is a student project, not a medical device.** It holds a copy of your paperwork; it
 does not interpret results, and it is not a substitute for talking to your doctor.

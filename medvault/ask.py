@@ -45,8 +45,11 @@ import db
 # list missed. And the ambiguous ones — stroke, seizure — need a present-tense marker, or
 # "what was I given after my stroke in 2019?" is answered by telling somebody to call 911.
 EMERGENCY = tuple(re.compile(p) for p in (
-    r"chest\s+(pain|tight)",
+    r"chest\s+(pain|tight|hurts|is\s+hurting)",
     r"can'?t\s+breath|cannot\s+breath|not\s+able\s+to\s+breath",
+    r"(is|are|'s|'re|i'?m|i\s+am)\s+not\s+breathing|(isn'?t|aren'?t)\s+breathing|"
+    r"stopped\s+breathing",
+    r"(is|are|'s|'re|i'?m|i\s+am)\s+choking",
     r"(trouble|difficulty|struggling|hard)\s+\w*\s*breath",
     r"short(ness)?\s+of\s+breath",
     r"anaphyla",
@@ -54,7 +57,7 @@ EMERGENCY = tuple(re.compile(p) for p in (
     r"bleeding\s+(heavily|badly|a\s+lot)",
     r"unconscious|passed\s+out|blacked\s+out|collapsed",
     r"overdose|took\s+too\s+many|swallowed\s+the\s+whole",
-    r"suicid|kill\s+myself|end\s+my\s+life|harm\s+myself",
+    r"suicid|kill\s+myself|end\s+my\s+life|harm\s+myself|want\s+to\s+die|wanna\s+die",
     r"slurr\w*\s+speech",
     r"face\s+\w*\s*droop",
     r"(having|signs\s+of|think\s+\w+\s+having)\s+a?\s*(stroke|seizure|heart\s+attack)",
@@ -70,6 +73,8 @@ DECISION = (
     "can i double", "should i double", "can i take more", "how much should i take",
     "is it safe for me", "is it safe to take", "can i take both", "should i increase",
     "should i reduce", "can i drink", "is it ok to take", "do i still need",
+    "is it ok to skip", "is it okay to skip", "is it okay to take", "can i take two",
+    "can i take another", "can i take extra",
 )
 
 # What a dose instruction looks like in an answer - "you can stop", "it is fine to double",
@@ -423,9 +428,15 @@ def _attributed(con, owner_id, answer_text, sources):
     return out
 
 
+def _plain(question):
+    """Lowercase, single-spaced, and with a phone's curly apostrophe made straight - iOS
+    types "can’t breathe", and every pattern above is written with "'"."""
+    return " ".join((question or "").lower().replace("\u2019", "'").split())
+
+
 def triage(question):
     """The two questions a model never gets to answer."""
-    q = " ".join((question or "").lower().split())
+    q = _plain(question)
     if any(p.search(q) for p in EMERGENCY):
         return {"kind": "emergency", "answer": EMERGENCY_ANSWER, "records_used": []}
     return None
@@ -440,12 +451,17 @@ def _contained(text):
     return _TAGS.sub(lambda m: m.group(0).replace("<", "‹").replace(">", "›"), text or "")
 
 
-def answer(con, owner_id, question, reader=None, deadline=None):
+def answer(con, owner_id, question, reader=None, deadline=None, permit=None):
     """Returns {kind, answer, records_used, sources, model, error}.
 
     `deadline` is the seconds this answer may take, model calls included. The default is
     the Companion's budget in agents.py - long enough for one slow model and a fallback,
     short enough that nobody stares at a spinner wondering if it broke.
+
+    `permit`, if given, is asked once, just before a model would be - quota.take, the
+    daily allowance. If it says no, the answer is kind "capped" and no model is asked. An
+    emergency or a dose decision is answered before that point, so it is never refused
+    and never counted.
     """
     question = (question or "").strip()
     if not question:
@@ -454,9 +470,12 @@ def answer(con, owner_id, question, reader=None, deadline=None):
     urgent = triage(question)
     if urgent:
         return {**urgent, "sources": {}, "model": None}
-    q = " ".join(question.lower().split())
+    q = _plain(question)
     if any(p in q for p in DECISION):
         return decision(con, owner_id, question)
+    if permit is not None and not permit():
+        return {"kind": "capped", "answer": None, "records_used": [], "sources": {},
+                "model": None, "error": None}
 
     context, sources = context_pack(con, owner_id)
     if reader is None:

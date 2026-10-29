@@ -36,6 +36,7 @@ SECRET_KEYS = ("GEMINI_API_KEY", "GEMINI_MODEL", "GEMINI_POOL", "GEMINI_TIMEOUT"
                "GROQ_API_KEY", "GROQ_MODEL", "GROQ_POOL", "GROQ_TIMEOUT",
                "POOL_RETIRE_SECONDS", "MEDVAULT_MAX_EDGE",
                "MEDVAULT_DB", "MEDVAULT_HOSTED", "MEDVAULT_MEDICARE_CACHE",
+               "MEDVAULT_DAILY_PER_ACCOUNT", "MEDVAULT_DAILY_SITE", "MEDVAULT_UNCAPPED",
                "TURSO_DATABASE_URL", "TURSO_AUTH_TOKEN", "TURSO_TIMEOUT")
 CRED_TRACE = []
 
@@ -131,6 +132,9 @@ if not account:
         ui.to_top()
     st.stop()
 
+# Today's AI reads are looked up afresh each run, once - see session.ai_allowance.
+st.session_state.pop("ai_standing", None)
+
 # The header count is scoped like everything else. It used to be the whole server for a
 # clinician - a count, not records, but still a number about patients who never chose
 # them, and the line a source-scanning test missed because it spelled the check
@@ -194,6 +198,22 @@ if st.query_params.get("diag"):
     st.markdown("#### What leaves this server")
     for agent in agent_registry.AGENTS:
         st.text(f"{agent['name']:<10} " + ("; ".join(agent["egress"]) or "nothing"))
+    import providers
+    st.markdown(ui.hint(providers.WHY), unsafe_allow_html=True)
+
+    # Worth a look before a demo: what is left of today's AI reads, and which models the
+    # provider has already cut off for the day.
+    st.markdown("#### AI reads today")
+    import gemini
+    import quota
+    standing = quota.allowance(con, account)
+    st.text(f"Site      {standing.site_used} of {standing.site_limit} · resets at midnight "
+            f"Pacific")
+    st.text("You       " + (f"{standing.used} of {standing.limit}" if standing.limit is not None
+                            else f"{standing.used} · not limited (MEDVAULT_UNCAPPED)"))
+    pool = gemini.pool_status()
+    st.text(f"Gemini    {len(pool['available'])} of {len(pool['pool'])} models available"
+            + (f" · out for today: {', '.join(pool['exhausted'])}" if pool["exhausted"] else ""))
 
     st.markdown("#### Server diagnostics")
     for note in CRED_TRACE:

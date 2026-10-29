@@ -7,10 +7,13 @@ import streamlit as st
 import accounts
 import agentsui
 import db
+import providers
+import quota
 import runtime
 import ui
 from schema import KIND_ORDER, kind_label
-from session import clinician_view, me, reader_ready, vault, visible_owners, when
+from session import (ai_allowance, clinician_view, me, reader_ready, vault,
+                     visible_owners, when)
 
 
 def screen_add():
@@ -20,6 +23,9 @@ def screen_add():
     st.markdown(ui.section("Add a document"), unsafe_allow_html=True)
     st.caption("A photo of a prescription, a lab report PDF, a discharge summary — "
                "whatever you were handed. It is read once to pull out the details.")
+    st.markdown(ui.hint(*providers.notice("What you upload is sent to an AI reader."),
+                        label="Where it goes"), unsafe_allow_html=True)
+    standing = ai_allowance()
 
     up = st.file_uploader("Photo or PDF", type=["jpg", "jpeg", "png", "webp", "pdf"],
                           label_visibility="collapsed")
@@ -37,7 +43,15 @@ def screen_add():
                  f"Your file has not been stored anywhere.")
         return
 
-    if st.button("Read this document", type="primary", use_container_width=True):
+    # Past today's allowance there is no button to press - but a document read before the
+    # limit was reached can still be checked and filed below.
+    clicked = not standing.refused and st.button("Read this document", type="primary",
+                                                 use_container_width=True)
+    # Taken before the model is asked, so a failed read still counts. The button was drawn
+    # from a count read earlier, so another tab may have taken the last read since.
+    if clicked and not quota.take(con, me()):
+        st.warning(quota.note(quota.allowance(con, me())) or "No AI reads are left today.")
+    elif clicked:
         from extract import read_document, pdf_text
         # The Reader at work, saying which step it is on, then replaced by what it read.
         slot = st.empty()
@@ -72,6 +86,9 @@ def screen_add():
         st.session_state["draft"] = rec
         st.session_state["draft_file"] = (up.name, up.type, data)
         st.session_state["draft_model"] = meta.get("model")
+        # Drawn again from the top, so the count above, and whether there is still a
+        # button to press, include the read just taken.
+        st.rerun()
 
     draft = st.session_state.get("draft")
     if not draft:

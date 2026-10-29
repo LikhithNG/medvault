@@ -163,6 +163,18 @@ def test_every_text_colour_passes_wcag_aa_on_every_background_it_sits_on():
             assert _ratio(_token(text), back) >= 4.5, (text, back, _ratio(_token(text), back))
 
 
+def test_a_warning_is_amber_on_both_streamlit_versions():
+    """Every alert was painted blue, and Streamlit tints a warning yellow on top - the two
+    mixed into a green, so "you have used today's AI reads" read as a success. 1.37 marks
+    a warning stNotificationContentWarning, 1.66 stAlertContentWarning."""
+    for marker in ("stNotificationContentWarning", "stAlertContentWarning"):
+        rule = re.search(rf'\[data-testid="stAlert"\]:has\(\[data-testid="{marker}"\]\)'
+                         r'\{([^}]*)\}', ui.CSS)
+        assert rule and "var(--warn-soft)" in rule.group(1), marker
+    ink = re.search(r'stAlertContentWarning"\]\) \*\{color:(#[0-9A-Fa-f]{6})', ui.CSS)
+    assert ink and _ratio(ink.group(1), _token("warn-soft")) >= 4.5
+
+
 def test_white_text_on_a_gradient_starts_dark_enough():
     """Small white type on #3B8CFF was 3.3:1. Every gradient that carries white text -
     the buttons, your own chat bubble, the avatar - starts at --accent-strong."""

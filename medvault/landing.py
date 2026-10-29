@@ -137,7 +137,10 @@ def footer(durable=None):
         f"{SUPPORT}; the national benchmark is the CMS Physician Fee Schedule. The rights "
         "section follows the No Surprises Act and IRC 501(r) and tells you what may apply "
         "to a bill, never what will.</div>"
-        f"<div>{where} Two things leave it, and only when you ask for them: a document "
-        "you upload to be read, and — if you use the question box — your question and "
-        "the text of your records.</div>"
+        f"<div>{where} Besides billing codes sent to Medicare's price list, two things "
+        "leave it, and only when you ask for them: a document you upload to be read, and "
+        "— if you use the question box — your question and the text of your records. "
+        "They go to Google Gemini's free tier (a bill's text layer to Groq first), where "
+        "Google may use them to improve its products and its reviewers may read them, so "
+        "this demo is for sample paperwork, not real records.</div>"
         "</div>")

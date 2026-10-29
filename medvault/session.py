@@ -14,6 +14,7 @@ import streamlit as st
 import accounts
 import careteam
 import db
+import quota
 
 
 # No spinner. Each screen now asks for the connection itself, and a cached call with a
@@ -63,6 +64,25 @@ def me():
 
 def my_id():
     return me().get("id")
+
+
+def ai_allowance():
+    """Today's AI reads for whoever is signed in, saying so on screen when it matters:
+    a count when only a few are left, a warning when none are.
+
+    Looked up once per run and shared by the three screens that show it - every tab runs
+    on every click, and each lookup is a round trip to the remote database. app.py drops
+    it at the top of each run. It decides what is drawn, never whether a read happens:
+    that is quota.take, at the moment of the read.
+    """
+    standing = st.session_state.get("ai_standing")
+    if standing is None:
+        standing = quota.allowance(vault(), me())
+        st.session_state["ai_standing"] = standing
+    line = quota.note(standing)
+    if line:
+        (st.warning if standing.refused else st.caption)(line)
+    return standing
 
 
 def reader_ready():
