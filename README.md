@@ -2,6 +2,16 @@
 
 Every piece of your medical paperwork, on the phone in your pocket.
 
+**Live:** [medvault-wpcblvckvi6rzg9sk345eq.streamlit.app](https://medvault-wpcblvckvi6rzg9sk345eq.streamlit.app/)
+· **Diagrams:** [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) · Built for INFO 7375 (Branding
+and AI) at Northeastern, on the Madison Framework. Use sample paperwork, not real records.
+
+You photograph a prescription or a discharge summary once. MedVault reads it, files it, and
+pulls the medicines out of it. At a hospital desk you open one screen instead of carrying a
+folder — blood type, allergies, conditions, what you are currently taking, and the original
+document itself if anyone asks for it. When the bill arrives, MedVault checks every line of
+it against the hospital's own published prices and against your own records.
+
 ## Executive summary
 
 **What this is.** One app holding two things a patient needs at the same desk: every
@@ -30,7 +40,7 @@ of them had a number. `tools/accuracy_test.py` builds a labelled corpus and repo
 | Metric | Target | Measured |
 |---|---|---|
 | Precision of the overcharge flag | ≥90% | **100%** · 95% CI [97.0%, 100%] · 126 flags |
-| Extraction, code **and** amount | ≥85% | **100%** · 95% CI [98.7%, 100%] · 296 lines |
+| Extraction, code **and** amount (the deterministic parser) | ≥85% | **100%** · 95% CI [98.7%, 100%] · 296 lines |
 | Upload to annotated bill | <60 s | **0.11 ms** p99, deterministic path |
 | Flags carrying a receipt | 100% | **100%**, enforced by `receipts.py` |
 | The Reader on bill **photographs** (a model) | ≥85% | **23/23 lines** · 95% CI [85.7%, 100%] · 0 invented · `tools/reader_eval.py` |
@@ -96,11 +106,6 @@ A first version of the corpus used Doylestown alone — and Doylestown is one of
 hospitals here whose gross charge and cash price are identical on every row, so the
 wrong-basis mutation passed silently at 100%. The corpus spans all nine because of that.
 
-**The model reader is measured separately and does not meet the target.** Two bills,
-12 of 12 lines correct — but the 95% interval is [75.7%, 100%], whose lower bound is
-below 85%. The sample is small on purpose: 20 requests per day per model. The ≥85% above
-is the deterministic parser's number, not the reader's.
-
 **Measured, not estimated.** `tools/scale_test.py` runs the deterministic path at 1, 10,
 50, 100, 500 and 1,000 bills: **~10,000 bills per second, p99 0.11 ms**, flat across the
 range, with zero receipt failures at every volume. What breaks is the half that leaves the
@@ -109,15 +114,66 @@ machine — Gemini's free tier allows 20 requests per day *per model*, which is 
 `tools/make_outputs.py` writes what a person actually ends up holding into `outputs/`.
 
 **The honest limits.** The published-price table is **nine hospitals and 31 codes**,
-collected by hand on 2 October 2026; everything else falls back to the national Medicare
-benchmark, which is not a price cap. A clinician sees only the patients who chose them,
-but nothing logs who looked. The question box sends your records to a model to answer. **Read
-[CAVEATS.md](CAVEATS.md) before relying on anything this says.**
+collected on 2 October 2026; everything else falls back to the national Medicare
+benchmark, which is not a price cap. A clinician sees only the patients who chose them, and
+the patient sees when each last signed in, but not which records they read. The question
+box sends your records to a model to answer. **Read [CAVEATS.md](CAVEATS.md) before relying
+on anything this says.**
 
-You photograph a prescription or a discharge summary once. MedVault reads it, files it, and
-pulls the medicines out of it. At a hospital desk you open one screen instead of carrying a
-folder — blood type, allergies, conditions, what you are currently taking, and the original
-document itself if anyone asks for it.
+## How it fits together
+
+Six agents, two of which use AI. The rest is plain Python over published files and the
+patient's own records. Five more diagrams are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md):
+[checking a bill](docs/ARCHITECTURE.md#2-checking-a-bill),
+[filing a record](docs/ARCHITECTURE.md#3-filing-a-record-and-what-comes-of-it),
+[the fence around the Companion](docs/ARCHITECTURE.md#4-the-fence-around-the-companion),
+[where the reference data comes from](docs/ARCHITECTURE.md#5-where-the-reference-data-comes-from)
+and [what the vault stores](docs/ARCHITECTURE.md#6-what-the-vault-stores).
+
+```mermaid
+flowchart TB
+    people(["Patient on a phone or laptop · clinician with a checked NPI"])
+
+    subgraph app["The app · app.py"]
+        screens["Card · Add · Records · Medicines · Bill · Ask<br/>Review and Records for clinicians"]
+    end
+
+    subgraph ai["AI reads"]
+        reader["Reader<br/>extract.py"]
+        companion["Companion<br/>ask.py"]
+    end
+
+    subgraph math["Math decides"]
+        checker["Checker<br/>checker.py"]
+        advocate["Advocate<br/>dispute.py"]
+        scheduler["Scheduler<br/>schedule.py"]
+        liaison["Liaison<br/>liaison.py"]
+    end
+
+    guards["Around every agent: safety filter · receipts rule · records cross-check<br/>bill checks · rights check · daily AI limits"]
+
+    subgraph stored["Stored"]
+        vault[("The vault · db.py<br/>SQLite on a laptop, Turso when hosted")]
+        prices[("Published prices · 9 hospitals<br/>data/a3_reference_table.csv")]
+    end
+
+    subgraph outside["Outside services"]
+        models["Gemini and Groq<br/>read documents, answer questions"]
+        medicare["Medicare fee schedule<br/>medicare.py"]
+        registry["National provider registry<br/>npi.py"]
+    end
+
+    n8n["n8n workflow · workflow/"]
+
+    people --> app
+    app --> ai & math
+    ai --> models
+    ai & math --- guards
+    math --> prices & medicare
+    app --> vault
+    app -. "clinician sign-up" .-> registry
+    n8n -. "collects reference data" .-> prices
+```
 
 ## Why it exists
 
@@ -173,14 +229,29 @@ way data.cms.gov cannot.
 
 Coverage is CPT. HCPCS Level II — J-codes for drugs, G- and A-codes — is outside the
 dataset, and the screen says which codes it could not benchmark rather than leaving them out
-silently. Lookups are cached to disk — but the cache committed here holds **six codes**,
-so any other code needs the network at the moment it is asked for. Cached lookups cost
-nothing and nobody
-re-reads the same code off a free service.
+silently. Lookups are cached to disk — but the cache committed here holds **fifteen
+codes**, so any other code needs the network at the moment it is asked for. Cached lookups
+cost nothing, and nobody re-reads the same code off a free service.
 
 This also settles **Change 9** from the Itemized user testing, where a tester asked for
 `HCHG CT ABD & PELVIS W/CON` to be translated and the answer was no, because a plain-English
 description was the one thing on the card that would have been invented. It is sourced now.
+
+## Where the reference data comes from
+
+`workflow/Nagaralu_Gurumurthy_Likhith_MedVault_Workflow.json` is an n8n workflow of nine
+nodes. From one scope list — nine hospitals, 31 codes — it pulls CMS's price-transparency
+enforcement records and the Medicare fee schedule from data.cms.gov, fetches each
+hospital's `cms-hpt.txt` to find where its price file lives, joins them, and writes a dated
+CSV. The price rows themselves were read from each hospital's own file and checked; together
+they are `data/a3_reference_table.csv`, 262 rows.
+
+`node workflow/run_without_n8n.mjs workflow/Nagaralu_Gurumurthy_Likhith_MedVault_Workflow.json`
+runs the same Code nodes outside n8n, against the same endpoints, so the workflow can be
+checked before it is imported. It found two real defects on its first runs: the enforcement
+match missed two of the nine hospitals, and one hospital serves its `cms-hpt.txt` as UTF-16,
+which matched nothing. The diagram is in
+[docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#5-where-the-reference-data-comes-from).
 
 ## Who can say a record is real
 
@@ -254,9 +325,9 @@ coding error.
 | **Add** | Photograph or upload a document. It is read once, you check what was read, then it is filed. A lab report's results are kept one by one, as the lab printed them. |
 | **Records** | Everything in one timeline, searchable, filterable, with the original attached. A patient can delete a record, after a second tap; its medicines and results go with it. |
 | **Medicines** | Pulled out of prescriptions automatically, with dose, frequency and what it is for. |
-| **Check a bill** | A hospital bill against your own records. |
+| **Check a bill** | A hospital bill, line by line, against that hospital's published prices, Medicare's rate, the law that may cover it and your own records — then the letter. |
 | **Ask** | What your records already show, checked by arithmetic — then a bot you can ask about your medicines and treatment. |
-| **Review** | Clinicians only. The queue of patient-filed records waiting to be confirmed. |
+| **Review** | Clinicians only. What each patient who chose them has outstanding, and the patient-filed records waiting to be confirmed. Their Records tab shows only those patients' records. |
 
 Navigation is a fixed bar at the bottom of the screen with an icon above each label — where
 a thumb already is on a phone, and the clearest signal that this is an app rather than a web
@@ -266,13 +337,14 @@ from markdown so a class set from Python never arrives.
 
 ## Where the AI is, and where it deliberately is not
 
-Two jobs need a model: reading a photograph, and answering a question about what a
-document means. Nothing else here does.
+Two jobs need a model: reading a document — a photograph or a PDF — and answering a
+question about your records. Nothing else here does.
 
 | Step | How |
 |---|---|
 | Turn a **PDF** into line items | **Groq — open-source models** (gpt-oss, Qwen), free tier |
 | Turn a **photograph** into line items | Vision model, one call — see below |
+| Turn a prescription, report or lab result into a record | Gemini, one call — you check it before it is filed |
 | Duplicate codes | `checker.py` — pure Python |
 | Charged above the published price | `checker.py` — pure Python |
 | Quantity billed many times over | `checker.py` — pure Python |
@@ -574,7 +646,8 @@ The repository is deployable as it stands: a clean clone boots with no `.env` an
 database, creates the database on first use, and holds every data file it reads.
 
 On Streamlit Community Cloud, point it at `app.py`, add `GEMINI_API_KEY` under **Secrets**
-in the app's settings, and set `MEDVAULT_HOSTED = "1"` beside it. That second one turns on
+in the app's settings (and `GROQ_API_KEY`, so PDF bills are read on open models), and set
+`MEDVAULT_HOSTED = "1"` beside it. That second one turns on
 the warning the next paragraph explains.
 
 **Give it a database, or the vault empties on restart.** A free tier restarts an app when
@@ -614,13 +687,13 @@ pip install -r requirements.txt
 python3 -m streamlit run app.py
 ```
 
-Reads `GEMINI_API_KEY` from a local `.env` (git-ignored) or from Streamlit secrets when
-deployed. Two things need it: reading a new document, and the question box on the Ask
-screen. Everything else — the price comparison, the arithmetic, the rights checks, the
+Reads `GEMINI_API_KEY` (and `GROQ_API_KEY`, optional, for PDF bills) from a local `.env`
+(git-ignored) or from Streamlit secrets when deployed. Two things need a key: reading a new
+document, and the question box on the Ask screen. Everything else — the price comparison, the arithmetic, the rights checks, the
 record cross-check and the findings above the Ask box — runs without a key.
 
 ```bash
-python3 -m pytest tests -q        # all 121
+python3 -m pytest tests -q        # all 536
 python3 tests/test_receipts.py    # no receipt, no flag
 python3 tests/test_isolation.py   # one patient cannot see another's vault
 python3 tests/test_crosscheck.py  # the cross-check never accuses

@@ -9,7 +9,7 @@ it gives information and not advice (1); "no record found" is a question, not a 
 (2); an unanswered rights question is unknown, never "no" (3); the rights checks cover
 four federal protections and no state law (4); a model reads documents and can misread
 them (5); a verified NPI confirms the number, never the person typing it (6); a clinician sees only
-the patients who put them on their care team, but there is no log of who looked (7); the
+the patients who put them on their care team, and the patient sees when each signed in, not what they read (7); the
 question box sends your records to a model and does not check drug interactions (8); two
 hospitals' enforcement counts are failed joins recorded as zeros (9); hosted, the storage
 is temporary and the way out is a file you download (10); and none of this is a medical
@@ -126,7 +126,9 @@ care team closes it for every clinician screen, not only the new one, and
 them.
 
 What the care team does not do: confirm that the person signed in as a clinician is that
-clinician (see section 6), or log who looked at what. There is no audit trail of access.
+clinician (see section 6), or record which records a clinician read. What is recorded is
+each sign-in with access to the patient's records - the date and a count, shown to the
+patient under each doctor on the Card screen - not a read-by-read audit trail.
 
 Deployed to a hosted service, the database lives on that server, not on your phone. It is
 not encrypted at rest.
