@@ -473,16 +473,22 @@ Performance, honestly: both carry findings out to a third party.
 When an overdue follow-up came from the doctor named on the patient's own card, the item
 offers that number as a link a phone can dial: "To ask about it: Dr. Priya Nair, +1 617
 555 0190 — the number on your card." It is the patient's own number, offered only when
-every word of the doctor's name is in the record's provider; nothing is looked up, and
-the app never calls, books or sends anything. And under each doctor on the care team, the
-patient sees when that doctor last had their records on screen and how many visits that
-was (`careteam.note_view`; reloads within half an hour are the same visit, and a clinician
-off the team leaves no row).
+the doctor's name - two words at least, initials fitting - is in the record's provider,
+and shown without a link when it has words in it ("ext 5"); nothing is looked up, and the
+app never calls, books or sends anything. And under each doctor on the care team, the
+patient sees when that doctor last signed in with access to their records, and how many
+sign-ins (`careteam.note_view`). That is what it is, and it says so: a clinician's screens
+load their care team's records on sign-in, so it records access, not which records were
+read. Sign-ins within half an hour are one; a clinician off the team leaves no row, and
+removing one forgets theirs.
 
 **The Reader keeps a lab report's numbers.** A panel used to be filed as a title and a
 sentence. Each result is now kept on its own: name, value, unit, the lab's reference range,
-and a flag only if the lab printed one (`schema.LAB_FIELDS`). Nothing decides whether a
-result is normal, and the screen says so under every table. The Companion reads each result
+and a flag only if the lab printed one (`schema.LAB_FIELDS`). On a text read, a flag the
+result's own line does not print is dropped, whatever the model said. The results can be
+corrected row by row before filing, and once filed they are labelled as read by an AI, to
+check against the original. Nothing decides whether a result is normal, and the screen
+says so under every table. The Companion reads each result
 under its report, so "what was my potassium?" cites the report. Checked on Groq with a
 synthetic panel: 8 of 8 results, units, ranges and the one printed flag, and a prescription
 still read its three medicines with no results invented. Not yet measured on Gemini, the
