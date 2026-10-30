@@ -3,10 +3,10 @@
 # turned the paste box black and the captions invisible.
 [theme]
 base = "light"
-primaryColor = "#0F6FDE"
-backgroundColor = "#F7F9FC"
+primaryColor = "#403CD5"
+backgroundColor = "#F4F4F6"
 secondaryBackgroundColor = "#FFFFFF"
-textColor = "#10151C"
+textColor = "#16165C"
 font = "sans serif"
 
 [client]

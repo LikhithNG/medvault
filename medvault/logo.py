@@ -13,10 +13,11 @@ somebody remembering to re-export. tools/make_icons.py reads these same constant
 """
 from urllib.parse import quote
 
-ACCENT = "#0F6FDE"
-ACCENT_BRIGHT = "#3B8CFF"
-ACCENT_DEEP = "#0A4E9E"
-INK = "#0B1220"
+# Deep Iris: the same colours as theme_iris.py, so the icon on a home screen matches the app.
+ACCENT = "#403CD5"
+ACCENT_BRIGHT = "#524FE1"
+ACCENT_DEEP = "#232269"
+INK = "#16165C"
 
 BOX = 48.0  # everything below is in a 48x48 box
 
@@ -139,7 +140,7 @@ def css_url(svg):
 
 
 def wordmark(size=19, uid="w", ink=INK, accent=ACCENT):
-    """Mark plus name. The name is live text, not an outline: it picks up Inter from the
+    """Mark plus name. The name is live text, not an outline: it picks up the font of the
     page, stays selectable, and is read aloud by a screen reader."""
     # The size goes on the name itself. It was a custom property on the wrapper, which
     # Streamlit's markdown renderer drops from inline styles, so every lockup was 19px.

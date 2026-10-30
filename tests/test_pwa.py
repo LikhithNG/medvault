@@ -47,10 +47,10 @@ def test_the_manifest_and_the_apple_icon_are_both_declared():
     assert {"manifest", "apple-touch-icon"} <= rels
 
 
-def test_the_theme_colour_is_medvault_blue():
+def test_the_theme_colour_is_medvault_iris():
     theme = next(a["content"] for t, a in pwa.HEAD
                  if t == "meta" and a.get("name") == "theme-color")
-    assert theme == "#0F6FDE"
+    assert theme == "#16165C"
 
 
 def test_each_tag_replaces_rather_than_appends():
