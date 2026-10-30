@@ -336,6 +336,85 @@ def test_the_clinician_is_told_the_list_is_worded_for_the_patient():
         assert any("Worded for Alice Anderson" in c.value for c in at.caption)
 
 
+# ---- who to ask about an overdue follow-up -------------------------------------------
+
+def _overdue(con, pat, provider):
+    db.add_record(con, kind="visit", title="Clinic visit", service_date="2026-10-12",
+                  provider=provider, summary="Follow up in 1 week.", owner_id=pat["id"])
+    return liaison.follow_ups(con, pat["id"], TODAY)
+
+
+def test_an_overdue_follow_up_carries_the_doctors_number_from_the_card():
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. Priya Nair",
+                                     "gp_phone": "+1 617 555 0190"})
+    [item] = _overdue(con, pat, "Dr. Priya Nair, Back Bay Family Practice")
+    assert item["contact"] == {"name": "Dr. Priya Nair", "phone": "+1 617 555 0190",
+                               "dial": "+16175550190"}
+
+
+def test_no_number_when_the_record_is_from_a_different_doctor():
+    """The card's doctor is not everyone's doctor: a wrong number is worse than none."""
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. Priya Nair", "gp_phone": "617 555 0190"})
+    [item] = _overdue(con, pat, "Dr. Samuel Ortiz, Lahey Orthopaedics")
+    assert item["contact"] is None
+
+
+def test_no_number_when_the_card_has_none_or_the_record_names_nobody():
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. Priya Nair", "gp_phone": ""})
+    [item] = _overdue(con, pat, "Dr. Priya Nair")
+    assert item["contact"] is None
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. Priya Nair", "gp_phone": "617 555 0190"})
+    [item] = _overdue(con, pat, None)
+    assert item["contact"] is None
+
+
+def test_an_initial_on_the_card_is_not_matched_against_anyone():
+    """"Dr. P. Nair" must not need a word "p" in the provider, nor match on it."""
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. P. Nair", "gp_phone": "617 555 0190"})
+    [item] = _overdue(con, pat, "Back Bay Family Practice (Dr. Priya Nair)")
+    assert item["contact"]["dial"] == "6175550190"
+
+
+# ---- when a doctor on the team last saw the records --------------------------------------
+
+def test_a_clinicians_visit_is_recorded_for_the_patient():
+    con, pat, _, doc, _ = world()
+    careteam.add(con, pat["id"], "dr.osei@example.com")
+    assert careteam.note_view(con, doc["id"], pat["id"], now=1_000_000.0) is True
+    seen = careteam.last_seen(con, pat["id"])
+    assert seen == {doc["id"]: {"last_seen_at": 1_000_000.0, "visits": 1}}
+
+
+def test_reloading_within_half_an_hour_is_the_same_visit():
+    con, pat, _, doc, _ = world()
+    careteam.add(con, pat["id"], "dr.osei@example.com")
+    careteam.note_view(con, doc["id"], pat["id"], now=1_000_000.0)
+    assert careteam.note_view(con, doc["id"], pat["id"], now=1_000_000.0 + 29 * 60) is False
+    assert careteam.note_view(con, doc["id"], pat["id"], now=1_000_000.0 + 31 * 60) is True
+    seen = careteam.last_seen(con, pat["id"])[doc["id"]]
+    assert seen == {"last_seen_at": 1_000_000.0 + 31 * 60, "visits": 2}
+
+
+def test_a_clinician_off_the_team_leaves_no_trace_of_access():
+    """No row for a clinician who could not see the records: the log must never read as
+    if access was granted."""
+    con, pat, _, _, stranger = world()
+    assert careteam.note_view(con, stranger["id"], pat["id"]) is False
+    assert careteam.last_seen(con, pat["id"]) == {}
+
+
+def test_one_patients_visits_are_not_shown_to_another():
+    con, pat, other, doc, _ = world()
+    careteam.add(con, pat["id"], "dr.osei@example.com")
+    careteam.add(con, other["id"], "dr.osei@example.com")
+    careteam.note_view(con, doc["id"], pat["id"])
+    assert careteam.last_seen(con, other["id"]) == {}
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

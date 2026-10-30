@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """The Card screen: the emergency card, the care team, the vault as a file, signing out."""
+import datetime
 import logging
 import os
 import time
@@ -11,7 +12,7 @@ import db
 import store
 import ui
 from schema import BLOOD_TYPES, DONOR_CHOICES, missing_essentials
-from session import my_id, vault
+from session import long_date, my_id, vault
 
 log = logging.getLogger(__name__)
 
@@ -191,12 +192,15 @@ def care_team_panel():
     if not team:
         st.markdown(ui.empty("No one yet.<br>Add your doctor with the email they use for "
                              "MedVault."), unsafe_allow_html=True)
+    seen = careteam.last_seen(con, my_id())
     for doc in team:
         name = ui.safe(doc.get("display_name") or doc["email"])
         c1, c2 = st.columns([3, 1])
         c1.markdown(f"<div class='med'><div class='n'>{name}</div><div class='d'>"
                     f"{ui.safe(doc.get('npi_specialty') or 'Clinician')} · NPI "
-                    f"{ui.safe(doc.get('npi'))} verified</div></div>", unsafe_allow_html=True)
+                    f"{ui.safe(doc.get('npi'))} verified</div>"
+                    f"<div class='d'>{_last_saw(seen.get(doc['id']))}</div></div>",
+                    unsafe_allow_html=True)
         # Removing someone ends their access to every record at once, so it asks first.
         # It was one tap, beside the name, on a phone - exactly where a thumb lands by
         # accident.
@@ -226,6 +230,17 @@ def care_team_panel():
                 ui.flash(f"Added {added.get('display_name') or added['email']} to your "
                          f"care team.")
                 st.rerun()
+
+
+def _last_saw(view):
+    """The date only: the server's clock is not the patient's, and a time of day in the
+    wrong zone would be a wrong fact."""
+    if not view:
+        return "Has not seen your records yet"
+    day = long_date(datetime.datetime.fromtimestamp(view["last_seen_at"],
+                                                    datetime.timezone.utc).date())
+    visits = view["visits"]
+    return f"Last saw your records {day} · {visits} visit{'' if visits == 1 else 's'}"
 
 
 def vault_transfer(account):

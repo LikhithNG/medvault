@@ -60,15 +60,68 @@ def test_search_reaches_the_text_read_off_the_page():
 def test_deleting_a_record_takes_its_medicines_with_it():
     # Arrange
     con = fresh()
-    rid = db.add_record(con, kind="prescription", title="Course of antibiotics")
+    rid = db.add_record(con, kind="prescription", title="Course of antibiotics", owner_id=1)
     db.add_medication(con, rid, {"name": "Amoxicillin", "dose": "500 mg"})
     assert len(db.list_medications(con)) == 1
 
     # Act
-    db.delete_record(con, rid)
+    assert db.delete_record(con, rid, owner_id=1) is True
 
     # Assert — an orphaned medicine with no source is a medicine nobody can verify
     assert db.list_medications(con) == []
+
+
+def test_medicines_go_with_the_record_even_without_foreign_keys():
+    """The hosted vault's HTTP connection never turns foreign keys on, so ON DELETE
+    CASCADE does nothing there. The delete has to take the medicines itself."""
+    # Arrange
+    con = fresh()
+    con.execute("PRAGMA foreign_keys = OFF")
+    rid = db.add_record(con, kind="prescription", title="Script", owner_id=1)
+    db.add_medication(con, rid, {"name": "Fluticasone"})
+
+    # Act
+    db.delete_record(con, rid, owner_id=1)
+
+    # Assert
+    assert db.list_medications(con, active_only=False) == []
+    assert con.execute("SELECT COUNT(*) AS n FROM medications").fetchone()["n"] == 0
+
+
+def test_only_the_owner_can_delete_a_record():
+    # Arrange
+    con = fresh()
+    mine = db.add_record(con, kind="lab", title="Mine", owner_id=1)
+    db.add_medication(con, mine, {"name": "Iron"})
+
+    # Act — someone else's id, holding the right record number
+    deleted = db.delete_record(con, mine, owner_id=2)
+
+    # Assert — nothing gone, medicines included
+    assert deleted is False
+    assert db.get_record(con, mine) is not None
+    assert len(db.list_medications(con, owner_id=1)) == 1
+
+
+def test_a_delete_must_say_whose_record_it_is():
+    con = fresh()
+    rid = db.add_record(con, kind="lab", title="Anyone's", owner_id=1)
+    try:
+        db.delete_record(con, rid, owner_id=None)
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("a delete with no owner deleted something, or tried to")
+    assert db.get_record(con, rid) is not None
+
+
+def test_a_record_says_how_many_medicines_came_off_it():
+    con = fresh()
+    rid = db.add_record(con, kind="prescription", title="Script", owner_id=1)
+    for name in ("Fluticasone", "Montelukast"):
+        db.add_medication(con, rid, {"name": name})
+    assert db.medicines_from(con, rid) == 2
+    assert db.medicines_from(con, rid + 1) == 0
 
 
 def test_profile_round_trips_and_overwrites():

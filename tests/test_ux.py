@@ -79,6 +79,72 @@ def test_removing_a_doctor_asks_first():
         assert any("Removed Dr Who" in t for t in _toasts(at))
 
 
+def test_deleting_a_record_asks_first_and_takes_only_that_record():
+    import db
+    with offline_vault() as (con, alice, bob):
+        rx = db.add_record(con, kind="prescription", title="Inhaler script",
+                           service_date="2026-10-12", owner_id=alice["id"])
+        db.add_medication(con, rx, {"name": "Fluticasone", "frequency": "twice daily"})
+        at = _app(alice)
+        delete = [b for b in at.button if b.label == "Delete"]
+        assert len(delete) == 2, "each of Alice's two records gets its own delete"
+        delete[0].click().run()
+        assert db.get_record(con, rx), "one tap deleted a record"
+        assert _shown(at, "Its 1 medicine comes off your card and reminders too")
+        _click(at, "Keep it")
+        assert db.get_record(con, rx)
+        at = _click(_click(at, "Delete"), "Yes, delete it")
+        assert db.get_record(con, rx) is None
+        assert db.list_medications(con, active_only=False, owner_id=alice["id"]) == []
+        assert any("Deleted “Inhaler script”" in t for t in _toasts(at))
+        assert len(db.list_records(con, owner_id=bob["id"])) == 1, "Bob's record went too"
+
+
+def test_a_clinician_is_never_offered_a_delete():
+    import accounts
+    import careteam
+    with offline_vault() as (con, alice, _):
+        doc, _ = accounts.create(con, email="dr@example.test", password="password1",
+                                 role="clinician", display_name="Dr Who",
+                                 npi_record={"npi": "0000000000", "name": "WHO",
+                                             "specialty": "GP", "license": "X",
+                                             "license_state": "MA"})
+        careteam.add(con, alice["id"], "dr@example.test")
+        at = _app(doc)
+        assert _shown(at, "chest X-ray"), "the clinician should see the record"
+        assert not [b for b in at.button if b.label == "Delete"]
+
+
+def test_the_patient_sees_when_their_doctor_last_saw_their_records():
+    import accounts
+    import careteam
+    with offline_vault() as (con, alice, _):
+        doc, _ = accounts.create(con, email="dr@example.test", password="password1",
+                                 role="clinician", display_name="Dr Who",
+                                 npi_record={"npi": "0000000000", "name": "WHO",
+                                             "specialty": "GP", "license": "X",
+                                             "license_state": "MA"})
+        careteam.add(con, alice["id"], "dr@example.test")
+        assert _shown(_app(alice), "Has not seen your records yet")
+        _app(doc)                                  # the doctor signs in
+        assert careteam.last_seen(con, alice["id"])[doc["id"]]["visits"] == 1
+        assert _shown(_app(alice), "Last saw your records")
+
+
+def test_an_overdue_follow_up_offers_the_number_on_the_card():
+    import db
+    with offline_vault() as (con, alice, _):
+        db.save_profile(con, alice["id"], {"gp_name": "Dr. Priya Nair",
+                                           "gp_phone": "+1 617 555 0190"})
+        db.add_record(con, kind="visit", title="Clinic visit", service_date="2026-10-12",
+                      provider="Dr. Priya Nair, Back Bay Family Practice",
+                      summary="Follow up in 1 week.", owner_id=alice["id"])
+        at = _app(alice)
+        html = " ".join(m.value for m in at.markdown)
+        assert "href='tel:+16175550190'" in html
+        assert "To ask about it" in html
+
+
 # ---- nothing in the way of the first visit -------------------------------------------
 
 def test_a_bill_can_be_checked_before_anything_is_filed():

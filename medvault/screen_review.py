@@ -31,7 +31,13 @@ def your_patients(account):
                         "Not a symptom check and not a referral — every item names the "
                         "record it came from, so it can be checked rather than trusted."),
                 unsafe_allow_html=True)
+    # Each patient can see when their doctors last had their records on screen. Noted
+    # once a session: the screen redraws on every click.
+    noted = st.session_state.setdefault("views_noted", set())
     for patient in mine:
+        if patient["id"] not in noted:
+            careteam.note_view(con, account["id"], patient["id"])
+            noted.add(patient["id"])
         items = liaison.update(con, patient["id"])
         worst = next((i["tone"] for i in items), "ok")
         name = patient.get("display_name") or patient["email"]

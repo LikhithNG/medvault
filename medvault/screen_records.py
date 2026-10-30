@@ -184,9 +184,44 @@ def screen_records():
             + ("" if r.get("file_size") else
                "<div class='nofile'>No original attached</div>")
             + "</div>", unsafe_allow_html=True)
+        if clinician_view():
+            if r.get("file_size"):
+                _open_original(con, r, st)
+            continue
+        if st.session_state.get("confirm_delete") == r["id"]:
+            _confirm_delete(con, r)
+            continue
+        left, right = st.columns([3, 1])
         if r.get("file_size"):
-            full = db.get_record(con, r["id"])
-            st.download_button("Open the original", data=full["file_bytes"],
-                               file_name=full["file_name"] or "record",
-                               mime=full["file_mime"] or "application/octet-stream",
-                               key=f"dl{r['id']}", use_container_width=True)
+            _open_original(con, r, left)
+        if right.button("Delete", key=f"del{r['id']}", use_container_width=True):
+            st.session_state["confirm_delete"] = r["id"]
+            st.rerun()
+
+
+def _open_original(con, r, where):
+    full = db.get_record(con, r["id"])
+    where.download_button("Open the original", data=full["file_bytes"],
+                          file_name=full["file_name"] or "record",
+                          mime=full["file_mime"] or "application/octet-stream",
+                          key=f"dl{r['id']}", use_container_width=True)
+
+
+def _confirm_delete(con, r):
+    """Deleting cannot be undone, so it asks first - the same two taps as removing a
+    doctor - and says what else goes with the record before anything does."""
+    meds = db.medicines_from(con, r["id"])
+    also = (f" Its {meds} medicine{' comes' if meds == 1 else 's come'} off your card and "
+            f"reminders too." if meds else "")
+    st.markdown(f"<div class='ask'>Delete “{ui.safe(r['title'])}” for good? This cannot be "
+                f"undone.{also}</div>", unsafe_allow_html=True)
+    yes, no = st.columns(2)
+    if yes.button("Yes, delete it", key=f"dly{r['id']}", use_container_width=True):
+        deleted = db.delete_record(con, r["id"], owner_id=me().get("id"))
+        st.session_state.pop("confirm_delete", None)
+        ui.flash(f"Deleted “{r['title']}”." if deleted
+                 else "That record could not be deleted - it is not in your vault.")
+        st.rerun()
+    if no.button("Keep it", key=f"dln{r['id']}", use_container_width=True):
+        st.session_state.pop("confirm_delete", None)
+        st.rerun()

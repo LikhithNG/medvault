@@ -71,3 +71,42 @@ def may_see(con, clinician_id, patient_id):
     """Whether this clinician is on this patient's team, right now."""
     return con.execute("SELECT 1 FROM care_team WHERE clinician_id = ? AND patient_id = ?",
                        (clinician_id, patient_id)).fetchone() is not None
+
+
+# Screens redraw on every click, so a clinician reading for ten minutes would otherwise
+# count as hundreds of visits. Anything within this long of the last one is the same visit.
+VISIT_GAP_S = 30 * 60
+
+
+def note_view(con, clinician_id, patient_id, now=None):
+    """Record that a clinician had this patient's records on screen. Returns whether it
+    counted as a new visit.
+
+    The patient can see who has looked, and when - the other half of choosing who may.
+    Only a clinician on the team right now is recorded: a row for anyone else would read
+    as if they had been given access.
+    """
+    if not may_see(con, clinician_id, patient_id):
+        return False
+    now = time.time() if now is None else now
+    row = con.execute("SELECT last_seen_at FROM care_views WHERE patient_id = ? "
+                      "AND clinician_id = ?", (patient_id, clinician_id)).fetchone()
+    if row and now - row["last_seen_at"] < VISIT_GAP_S:
+        return False
+    if row:
+        con.execute("UPDATE care_views SET last_seen_at = ?, visits = visits + 1 "
+                    "WHERE patient_id = ? AND clinician_id = ?",
+                    (now, patient_id, clinician_id))
+    else:
+        con.execute("INSERT INTO care_views (patient_id, clinician_id, last_seen_at, visits) "
+                    "VALUES (?,?,?,1)", (patient_id, clinician_id, now))
+    con.commit()
+    return True
+
+
+def last_seen(con, patient_id):
+    """When each clinician last saw this patient's records, and how many visits in all."""
+    rows = con.execute("SELECT clinician_id, last_seen_at, visits FROM care_views "
+                       "WHERE patient_id = ?", (patient_id,)).fetchall()
+    return {r["clinician_id"]: {"last_seen_at": r["last_seen_at"], "visits": r["visits"]}
+            for r in rows}

@@ -19,11 +19,22 @@ DEFAULT_PATH = pathlib.Path(os.environ.get(
 # ai_use is how many AI reads each account started on each day - see quota.py. An account,
 # a date and a count: never what was read, asked or answered. Days before today are
 # deleted as soon as a new one is counted.
+#
+# care_views is when each clinician on a care team last had that patient's records on
+# screen, and how many separate visits that was - see careteam.note_view. One row per
+# pair, so it never grows past the size of the care team.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS care_team (
     patient_id   INTEGER NOT NULL,
     clinician_id INTEGER NOT NULL,
     added_at     REAL    NOT NULL,
+    PRIMARY KEY (patient_id, clinician_id)
+);
+CREATE TABLE IF NOT EXISTS care_views (
+    patient_id   INTEGER NOT NULL,
+    clinician_id INTEGER NOT NULL,
+    last_seen_at REAL    NOT NULL,
+    visits       INTEGER NOT NULL DEFAULT 1,
     PRIMARY KEY (patient_id, clinician_id)
 );
 CREATE TABLE IF NOT EXISTS records (
@@ -217,9 +228,34 @@ def get_record(con, record_id):
     return dict(row) if row else None
 
 
-def delete_record(con, record_id):
-    con.execute("DELETE FROM records WHERE id = ?", (record_id,))
+def delete_record(con, record_id, owner_id):
+    """Delete one of this account's records, and the medicines that came off it.
+
+    owner_id is required for the same reason get_profile's account_id is: a delete that
+    does not know whose record it is would delete anybody's. Returns whether anything
+    was deleted - False for a record that is not this owner's, which is left untouched.
+
+    The medicines are deleted here rather than left to ON DELETE CASCADE. connect() turns
+    foreign keys on for a local file, but the hosted vault's HTTP connection (store.py)
+    never does, so there the cascade would silently not happen and the medicines would
+    stay on the card with no record behind them.
+    """
+    if owner_id is None:
+        raise ValueError("delete_record needs to know whose record it is deleting")
+    if not con.execute("SELECT 1 FROM records WHERE id = ? AND owner_id = ?",
+                       (record_id, owner_id)).fetchone():
+        return False
+    con.execute("DELETE FROM medications WHERE record_id = ?", (record_id,))
+    con.execute("DELETE FROM records WHERE id = ? AND owner_id = ?", (record_id, owner_id))
     con.commit()
+    return True
+
+
+def medicines_from(con, record_id):
+    """How many medicines came off this record - what deleting it takes off the card."""
+    row = con.execute("SELECT COUNT(*) AS n FROM medications WHERE record_id = ?",
+                      (record_id,)).fetchone()
+    return row["n"] if row else 0
 
 
 def counts_by_kind(con, owner_id=None, owner_ids=None):

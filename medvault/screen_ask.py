@@ -68,6 +68,16 @@ def _render_turn(turn):
                 f"{label}</span>{body}{srcs}{who}</div></div>", unsafe_allow_html=True)
 
 
+def _ask_about(contact):
+    """The number to ask on, from the patient's own card - see liaison.contact. A link a
+    phone can dial, and nothing more: the app does not call, book or send anything."""
+    if not contact:
+        return ""
+    return (f"<div class='b'>To ask about it: <a href='tel:{contact['dial']}'>"
+            f"{ui.esc(contact['name'])}, {ui.esc(contact['phone'])}</a> — the number on "
+            f"your card.</div>")
+
+
 def screen_ask():
     """A bot for the paperwork, with the checkable things checked before it is asked."""
     con = vault()
@@ -91,7 +101,8 @@ def screen_ask():
     for i, f in enumerate(findings):
         st.markdown(f"<div class='hit {f['tone']} ag-in {agentsui.arrive(i)}'>"
                     f"<div class='h'>{ui.safe(f['title'])}</div>"
-                    f"<div class='b'>{ui.safe(f['body'])}</div></div>", unsafe_allow_html=True)
+                    f"<div class='b'>{ui.safe(f['body'])}</div>"
+                    f"{_ask_about(f.get('contact'))}</div>", unsafe_allow_html=True)
 
     doctors = careteam.team(con, my_id())
     if findings:

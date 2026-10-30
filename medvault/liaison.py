@@ -68,6 +68,36 @@ def _date(value):
         return None
 
 
+# Titles and initials say nothing about which doctor a card names, so they never count
+# towards a match: "Dr. P. Nair" is matched on "Nair" alone.
+_TITLE = {"dr", "doctor", "prof", "professor", "mr", "mrs", "ms", "mx", "md", "do"}
+
+
+def _name_words(name):
+    return [w for w in re.findall(r"[a-z]+", (name or "").lower())
+            if len(w) > 1 and w not in _TITLE]
+
+
+def contact(profile, provider):
+    """Who to ask about a record, when the record is from the doctor on the patient's card.
+
+    The number is the one the patient wrote on their own card - nothing is looked up or
+    guessed. It is offered only when every word of that doctor's name appears in the
+    record's provider, because the card's doctor is not every record's doctor, and the
+    wrong number is worse than none.
+    """
+    name, phone = (profile.get("gp_name") or "").strip(), (profile.get("gp_phone") or "").strip()
+    words = _name_words(name)
+    if not (words and phone and provider):
+        return None
+    if not set(words) <= set(re.findall(r"[a-z]+", provider.lower())):
+        return None
+    dial = re.sub(r"[^\d+]", "", phone)
+    if len(re.sub(r"\D", "", dial)) < 7:
+        return None
+    return {"name": name, "phone": phone, "dial": dial}
+
+
 def follow_ups(con, owner_id, today=None):
     """Follow-ups a record asked for, whose date has passed with nothing filed since.
 
@@ -77,6 +107,7 @@ def follow_ups(con, owner_id, today=None):
     """
     today = today or datetime.date.today()
     records = db.list_records(con, owner_id=owner_id, limit=1000)
+    profile = db.get_profile(con, owner_id)
     dated = sorted(d for d in (_date(r.get("service_date")) for r in records) if d)
     out = []
     for r in records:
@@ -106,6 +137,7 @@ def follow_ups(con, owner_id, today=None):
                          "it happened."),
                 "source": r.get("title"),
                 "due": due,
+                "contact": contact(profile, r.get("provider")),
             })
             break                     # one item per record is enough to ask about
     return out
