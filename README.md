@@ -251,8 +251,8 @@ coding error.
 |---|---|
 | **Landing** | What a signed-out visitor sees: what the product does, how it works, the caveats, and the sign-in panel beside it rather than instead of it. |
 | **Card** | The emergency screen. Name, blood type, allergies in red, conditions, current medicines, who to call. |
-| **Add** | Photograph or upload a document. It is read once, you check what was read, then it is filed. |
-| **Records** | Everything in one timeline, searchable, filterable, with the original attached. |
+| **Add** | Photograph or upload a document. It is read once, you check what was read, then it is filed. A lab report's results are kept one by one, as the lab printed them. |
+| **Records** | Everything in one timeline, searchable, filterable, with the original attached. A patient can delete a record, after a second tap; its medicines and results go with it. |
 | **Medicines** | Pulled out of prescriptions automatically, with dose, frequency and what it is for. |
 | **Check a bill** | A hospital bill against your own records. |
 | **Ask** | What your records already show, checked by arithmetic — then a bot you can ask about your medicines and treatment. |
@@ -469,6 +469,29 @@ time — to the care team the patient chose. It does **not** decide anybody need
 whether a symptom warrants a hospital is a clinical judgement, and a test scans every
 sentence it can produce for triage language. The Liaison and the Advocate share
 Performance, honestly: both carry findings out to a third party.
+
+When an overdue follow-up came from the doctor named on the patient's own card, the item
+offers that number as a link a phone can dial: "To ask about it: Dr. Priya Nair, +1 617
+555 0190 — the number on your card." It is the patient's own number, offered only when
+every word of the doctor's name is in the record's provider; nothing is looked up, and
+the app never calls, books or sends anything. And under each doctor on the care team, the
+patient sees when that doctor last had their records on screen and how many visits that
+was (`careteam.note_view`; reloads within half an hour are the same visit, and a clinician
+off the team leaves no row).
+
+**The Reader keeps a lab report's numbers.** A panel used to be filed as a title and a
+sentence. Each result is now kept on its own: name, value, unit, the lab's reference range,
+and a flag only if the lab printed one (`schema.LAB_FIELDS`). Nothing decides whether a
+result is normal, and the screen says so under every table. The Companion reads each result
+under its report, so "what was my potassium?" cites the report. Checked on Groq with a
+synthetic panel: 8 of 8 results, units, ranges and the one printed flag, and a prescription
+still read its three medicines with no results invented. Not yet measured on Gemini, the
+Reader's usual model for a photo.
+
+**A charge on a long statement names its page.** For a PDF bill of more than one page,
+each line read is matched to the page it is printed on, by its code and amount on that
+page's own text layer (`extract.with_pages`), and the letter says "On page 2 of the
+statement." under each disputed line. A photo is one page and says nothing.
 
 **The fourth agent was not in the plan.** MedVault grew a records vault and a bot that
 answers questions about it. That is Madison's Experience role — the one role of the five
