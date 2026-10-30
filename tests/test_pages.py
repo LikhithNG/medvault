@@ -93,6 +93,34 @@ def test_a_code_inside_a_longer_number_is_not_a_match():
     assert paged[0].get("page") is None
 
 
+def test_an_amount_inside_a_bigger_amount_is_not_a_match():
+    """From the review: "50.00" is inside "150.00", so the $50 line was put on page 1."""
+    lines = paste.lines("2026-03-14 99232 HOSPITAL CARE 1 150.00\n"
+                        "2026-03-15 99232 HOSPITAL CARE 1 50.00")
+    paged = extract.with_pages(lines, ["2026-03-14 99232 HOSPITAL CARE 1 150.00",
+                                       "2026-03-15 99232 HOSPITAL CARE 1 50.00"])
+    assert [l["page"] for l in paged] == [1, 2]
+
+
+def test_a_summary_page_does_not_take_a_line_from_the_page_it_is_printed_on():
+    """From the review: a whole-dollar "$150" on page 1 and "150.00" on a summary page 3
+    sent the line to page 3, and the next line, on page 2, then had no page at all."""
+    lines = paste.lines("2026-03-14 99213 OFFICE VISIT 1 150.00\n"
+                        "2026-03-14 71046 XRAY CHEST 1 210.00")
+    pages = ["2026-03-14 99213 OFFICE VISIT 1 $150", "2026-03-14 71046 XRAY CHEST 1 210.00",
+             "SUMMARY 99213 150.00 71046 210.00"]
+    assert [l["page"] for l in extract.with_pages(lines, pages)] == [1, 2]
+
+
+def test_a_line_before_the_last_ones_page_is_still_found():
+    """Statement order is a preference, not a wall: a line printed on an earlier page
+    than the one before it is looked for there too, rather than given no page."""
+    lines = paste.lines("2026-03-14 71046 XRAY CHEST 1 210.00\n"
+                        "2026-03-14 70450 CT HEAD 1 3,076.10")
+    paged = extract.with_pages(lines, [PAGE_1, "2026-03-14 71046 XRAY CHEST 1 210.00"])
+    assert [l["page"] for l in paged] == [2, 1]
+
+
 def test_the_letter_names_the_page_of_each_disputed_line():
     lines = extract.with_pages(
         paste.lines("2026-03-14 70450 CT HEAD/BRAIN W/O CONTRAST 1 3,076.10\n"

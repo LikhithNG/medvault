@@ -48,7 +48,11 @@ def add(con, patient_id, clinician_email):
 
 
 def remove(con, patient_id, clinician_id):
+    """Take a clinician off the team, and forget when they signed in: that history was
+    about access the patient has now withdrawn."""
     con.execute("DELETE FROM care_team WHERE patient_id = ? AND clinician_id = ?",
+                (patient_id, clinician_id))
+    con.execute("DELETE FROM care_views WHERE patient_id = ? AND clinician_id = ?",
                 (patient_id, clinician_id))
     con.commit()
 
@@ -79,29 +83,26 @@ VISIT_GAP_S = 30 * 60
 
 
 def note_view(con, clinician_id, patient_id, now=None):
-    """Record that a clinician had this patient's records on screen. Returns whether it
-    counted as a new visit.
+    """Record that a clinician signed in with access to this patient's records. Returns
+    whether it counted as a new sign-in.
 
-    The patient can see who has looked, and when - the other half of choosing who may.
-    Only a clinician on the team right now is recorded: a row for anyone else would read
-    as if they had been given access.
+    What it records is exactly that: the clinician's screens load their care team's
+    records on sign-in, so this is when they had them, not proof of which they read. The
+    patient can see it - the other half of choosing who may. Only a clinician on the team
+    right now is recorded: a row for anyone else would read as if they had been given
+    access. One statement, so two of their tabs opening at once cannot collide.
     """
     if not may_see(con, clinician_id, patient_id):
         return False
     now = time.time() if now is None else now
-    row = con.execute("SELECT last_seen_at FROM care_views WHERE patient_id = ? "
-                      "AND clinician_id = ?", (patient_id, clinician_id)).fetchone()
-    if row and now - row["last_seen_at"] < VISIT_GAP_S:
-        return False
-    if row:
-        con.execute("UPDATE care_views SET last_seen_at = ?, visits = visits + 1 "
-                    "WHERE patient_id = ? AND clinician_id = ?",
-                    (now, patient_id, clinician_id))
-    else:
-        con.execute("INSERT INTO care_views (patient_id, clinician_id, last_seen_at, visits) "
-                    "VALUES (?,?,?,1)", (patient_id, clinician_id, now))
+    cur = con.execute(
+        "INSERT INTO care_views (patient_id, clinician_id, last_seen_at, visits) "
+        "VALUES (?,?,?,1) ON CONFLICT(patient_id, clinician_id) DO UPDATE SET "
+        "last_seen_at = excluded.last_seen_at, visits = care_views.visits + 1 "
+        "WHERE excluded.last_seen_at - care_views.last_seen_at >= ?",
+        (patient_id, clinician_id, now, VISIT_GAP_S))
     con.commit()
-    return True
+    return (cur.rowcount or 0) > 0
 
 
 def last_seen(con, patient_id):

@@ -699,18 +699,20 @@ def esc(value):
 
 
 def lab_rows(results):
-    """A report's results as the lab printed them: name, then value, unit, the lab's range
-    and the lab's flag. Every field is data off a scan, so every field is escaped."""
+    """A report's results as read off it: name, then value, unit, the range and the flag
+    printed on it. Read by an AI, and said so. Every field is data off a scan, so every
+    field is escaped."""
     if not results:
         return ""
     cells = "".join(
         f"<b>{esc(t['name'])}</b><span>{esc(t['value'])}"
         + (f" {esc(t['unit'])}" if t.get("unit") else "")
         + (f" · range {esc(t['reference_range'])}" if t.get("reference_range") else "")
-        + (f" · lab flag {esc(t['flag'])}" if t.get("flag") else "") + "</span>"
+        + (f" · flagged {esc(t['flag'])}" if t.get("flag") else "") + "</span>"
         for t in results)
-    return (f"<div class='labs'>{cells}</div><div class='labsby'>As printed by the lab. "
-            f"MedVault does not judge whether a result is normal.</div>")
+    return (f"<div class='labs'>{cells}</div><div class='labsby'>Read off the report by an "
+            f"AI reader; check it against the original. MedVault does not judge whether a "
+            f"result is normal.</div>")
 
 
 def safe(text):

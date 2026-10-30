@@ -380,6 +380,31 @@ def test_an_initial_on_the_card_is_not_matched_against_anyone():
     assert item["contact"]["dial"] == "6175550190"
 
 
+def test_a_lone_surname_on_the_card_matches_nobody():
+    """From the review: "Dr. Patel" matched "Patel Family Hospital"."""
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. Patel", "gp_phone": "617 555 0190"})
+    [item] = _overdue(con, pat, "Patel Family Hospital")
+    assert item["contact"] is None
+
+
+def test_a_different_initial_is_a_different_doctor():
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. P. Nair", "gp_phone": "617 555 0190"})
+    [item] = _overdue(con, pat, "Dr. R. Nair, Lahey Clinic")
+    assert item["contact"] is None
+
+
+def test_a_number_with_words_in_it_is_shown_but_never_dialled():
+    """"ext 5" stripped to digits dials a number nobody wrote down."""
+    con, pat, _, _, _ = world()
+    db.save_profile(con, pat["id"], {"gp_name": "Dr. Priya Nair",
+                                     "gp_phone": "+1 (617) 555-0190 ext 5"})
+    [item] = _overdue(con, pat, "Dr. Priya Nair")
+    assert item["contact"]["phone"] == "+1 (617) 555-0190 ext 5"
+    assert item["contact"]["dial"] is None
+
+
 # ---- when a doctor on the team last saw the records --------------------------------------
 
 def test_a_clinicians_visit_is_recorded_for_the_patient():
@@ -405,6 +430,14 @@ def test_a_clinician_off_the_team_leaves_no_trace_of_access():
     if access was granted."""
     con, pat, _, _, stranger = world()
     assert careteam.note_view(con, stranger["id"], pat["id"]) is False
+    assert careteam.last_seen(con, pat["id"]) == {}
+
+
+def test_removing_a_clinician_forgets_their_sign_ins():
+    con, pat, _, doc, _ = world()
+    careteam.add(con, pat["id"], "dr.osei@example.com")
+    careteam.note_view(con, doc["id"], pat["id"])
+    careteam.remove(con, pat["id"], doc["id"])
     assert careteam.last_seen(con, pat["id"]) == {}
 
 

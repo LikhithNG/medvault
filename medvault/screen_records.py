@@ -121,7 +121,9 @@ def check_and_file(con):
     labs = draft.get("lab_results") or []
     if labs:
         st.markdown(ui.section(f"Results found · {len(labs)}"), unsafe_allow_html=True)
-        st.markdown(f"<div class='rec'>{ui.lab_rows(labs)}</div>", unsafe_allow_html=True)
+        st.caption("Read by an AI. Fix any value that does not match the page, and delete a "
+                   "row that is not a result.")
+        labs = _edited_results(labs)
 
     meds = draft.get("medications") or []
     if meds:
@@ -146,8 +148,7 @@ def check_and_file(con):
                             verified_by=filer.get("id") if clinical else None)
         for m in meds:
             db.add_medication(con, rid, m)
-        for t in labs:
-            db.add_lab_result(con, rid, t)
+        db.add_lab_results(con, rid, labs)
         for k in ("draft", "draft_file", "draft_model", "draft_took"):
             st.session_state.pop(k, None)
         st.session_state["filed_count"] = st.session_state.get("filed_count", 0) + 1
@@ -155,6 +156,23 @@ def check_and_file(con):
                  + (f" and added {len(meds)} medicine(s)" if meds else "")
                  + (f" with {len(labs)} result(s)" if labs else "") + ".")
         st.rerun()
+
+
+def _edited_results(labs):
+    """The Reader's results as a table the patient can correct before filing. A misread
+    value could otherwise only be fixed by deleting the whole record."""
+    from schema import LAB_FIELDS
+    edited = st.data_editor([{k: t.get(k) for k in LAB_FIELDS} for t in labs],
+                            num_rows="dynamic", use_container_width=True, hide_index=True,
+                            key=f"labs_{st.session_state.get('filed_count', 0)}")
+    if hasattr(edited, "to_dict"):
+        edited = edited.to_dict("records")
+
+    def text(v):
+        v = "" if v is None or v != v else str(v).strip()     # v != v: a NaN cell
+        return v or None
+    rows = [{k: text(row.get(k)) for k in LAB_FIELDS} for row in (edited or [])]
+    return [row for row in rows if row["name"] and row["value"]]
 
 
 def screen_records():

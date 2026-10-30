@@ -120,6 +120,8 @@ def test_a_record_says_how_many_medicines_came_off_it():
     rid = db.add_record(con, kind="prescription", title="Script", owner_id=1)
     for name in ("Fluticasone", "Montelukast"):
         db.add_medication(con, rid, {"name": name})
+    db.add_medication(con, rid, {"name": "Prednisone", "active": False})
+    # Only current ones: a finished course is not on the card to come off it.
     assert db.medicines_from(con, rid) == 2
     assert db.medicines_from(con, rid + 1) == 0
 

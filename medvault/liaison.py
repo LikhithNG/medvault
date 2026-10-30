@@ -68,34 +68,51 @@ def _date(value):
         return None
 
 
-# Titles and initials say nothing about which doctor a card names, so they never count
-# towards a match: "Dr. P. Nair" is matched on "Nair" alone.
+# Titles say nothing about which doctor a card names. An initial says something - "Dr. P.
+# Nair" is not "Dr. R. Nair" - so it has to fit a word in the provider, and a surname on its
+# own matches nobody: "Dr. Patel" matched "Patel Family Hospital".
 _TITLE = {"dr", "doctor", "prof", "professor", "mr", "mrs", "ms", "mx", "md", "do"}
 
 
 def _name_words(name):
-    return [w for w in re.findall(r"[a-z]+", (name or "").lower())
-            if len(w) > 1 and w not in _TITLE]
+    return [w for w in re.findall(r"[a-z]+", (name or "").lower()) if w not in _TITLE]
+
+
+def _same_doctor(name, provider):
+    words = _name_words(name)
+    have = re.findall(r"[a-z]+", (provider or "").lower())
+    if len(words) < 2:
+        return False
+    return all(any(h.startswith(w) for h in have) if len(w) == 1 else w in have
+               for w in words)
+
+
+def _dialable(phone):
+    """The number a phone should dial, or None. Only a plain number: "ext 5" stripped to
+    digits, or two numbers run together, would dial one nobody wrote down."""
+    if re.search(r"[A-Za-z]", phone):
+        return None
+    digits = re.sub(r"\D", "", phone)
+    if not 7 <= len(digits) <= 15:
+        return None
+    return ("+" if phone.lstrip().startswith("+") else "") + digits
 
 
 def contact(profile, provider):
     """Who to ask about a record, when the record is from the doctor on the patient's card.
 
     The number is the one the patient wrote on their own card - nothing is looked up or
-    guessed. It is offered only when every word of that doctor's name appears in the
-    record's provider, because the card's doctor is not every record's doctor, and the
-    wrong number is worse than none.
+    guessed. It is offered only when that doctor's name - two words at least, initials
+    fitting - appears in the record's provider, because the card's doctor is not every
+    record's doctor, and the wrong number is worse than none. "dial" is None when the
+    number is not one a phone can safely dial as written; it is then shown, not linked.
     """
     name, phone = (profile.get("gp_name") or "").strip(), (profile.get("gp_phone") or "").strip()
-    words = _name_words(name)
-    if not (words and phone and provider):
+    if not (phone and provider and _same_doctor(name, provider)):
         return None
-    if not set(words) <= set(re.findall(r"[a-z]+", provider.lower())):
+    if not re.search(r"\d{3}", phone):
         return None
-    dial = re.sub(r"[^\d+]", "", phone)
-    if len(re.sub(r"\D", "", dial)) < 7:
-        return None
-    return {"name": name, "phone": phone, "dial": dial}
+    return {"name": name, "phone": phone, "dial": _dialable(phone)}
 
 
 def follow_ups(con, owner_id, today=None):

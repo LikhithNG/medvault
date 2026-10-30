@@ -254,6 +254,11 @@ def _shape(raw):
         if not isinstance(t, dict):
             continue
         result = {k: _clean(t.get(k)) for k in LAB_FIELDS}
+        # "Casts: None" is a result. _clean reads "None" as the model saying nothing,
+        # which for a value field it is not; "null" still is.
+        printed = str(t.get("value") or "").strip()
+        if printed.lower() in ("none", "n/a"):
+            result["value"] = printed
         if result["name"] and result["value"]:   # a value with no test, or no value: neither
             labs.append(result)
         if len(labs) >= MAX_LAB_RESULTS:
@@ -310,7 +315,35 @@ def read_document(*, text=None, image=None, deadline=None):
             return None, {"ok": False, "error": "the reader did not return a record",
                           "model": r.get("model")}
 
-    return _shape(raw), {"ok": True, "model": r.get("model"), "attempts": r.get("attempts")}
+    rec = _shape(raw)
+    rec = {**rec, "lab_results": keep_printed_flags(rec["lab_results"], text)}
+    return rec, {"ok": True, "model": r.get("model"), "attempts": r.get("attempts")}
+
+
+def keep_printed_flags(results, text):
+    """The results again, without any flag the document's own text does not print.
+
+    The prompt asks for a flag only where the lab printed one, but a prompt is a request.
+    When there is a text layer to check against, a flag that appears nowhere in it is
+    dropped. A photo has no text to check, so its flags stand as read - and the screen
+    says every result was read by an AI.
+    """
+    if not text:
+        return results
+    return [dict(t) if _flag_printed(t, text) else dict(t, flag=None) for t in results]
+
+
+def _flag_printed(result, text):
+    """Whether the flag stands on its own on the result's line - "H", not the "L" of
+    "mmol/L". The whole text when the name is not found on any one line, since a layout
+    can split a row across lines; it then only has to appear somewhere."""
+    flag = result.get("flag")
+    if not flag:
+        return True
+    token = re.compile(rf"(?<![\w/]){re.escape(flag)}(?![\w/])", re.I)
+    name = re.compile(rf"(?<!\w){re.escape(result.get('name') or '')}(?!\w)", re.I)
+    rows = [line for line in text.splitlines() if name.search(line)]
+    return any(token.search(name.sub(" ", row)) for row in (rows or [text]))
 
 
 def _pdf_pages(upload):
@@ -343,12 +376,21 @@ def pdf_pages(upload):
 
 
 def _amounts(value):
-    """The ways a statement prints an amount: 9,374.04 and 9374.04."""
+    """The ways a statement prints an amount: 9,374.04 and 9374.04, and a whole-dollar
+    one without its cents too - "$150" is 150.00."""
     try:
         v = float(value)
     except (TypeError, ValueError):
         return ()
-    return (f"{v:,.2f}", f"{v:.2f}")
+    forms = {f"{v:,.2f}", f"{v:.2f}"}
+    if v == int(v):
+        forms |= {f"{int(v):,}", f"{int(v)}"}
+    return tuple(forms)
+
+
+def _printed(text, token):
+    """`token` on the page as a whole number: "50.00" is not found inside "150.00"."""
+    return re.search(rf"(?<![\d,.]){re.escape(token)}(?!\d|[.,]\d)", text) is not None
 
 
 def _on_page(line, page):
@@ -356,7 +398,23 @@ def _on_page(line, page):
     code = (line.get("code") or "").strip()
     if len(code) < 4 or not re.search(rf"(?<![\w.]){re.escape(code)}(?![\w])", page, re.I):
         return 0
-    return 2 if any(a in page for a in _amounts(line.get("charged"))) else 1
+    return 2 if any(_printed(page, a) for a in _amounts(line.get("charged"))) else 1
+
+
+def _page_for(line, pages, start, taken):
+    """The first page from `start` that prints this line's code - or a later one that
+    prints its amount too when that first page does not. A page an identical line was
+    already given is passed over while there is another."""
+    found = [(n, score) for n in range(start, len(pages))
+             if (score := _on_page(line, pages[n]))]
+    same = (line.get("code"), line.get("charged"))
+    free = [(n, score) for n, score in found if (same, n) not in taken] or found
+    if not free:
+        return None
+    first, score = free[0]
+    if score == 2:
+        return first
+    return next((n for n, score in free if score == 2), first)
 
 
 def with_pages(lines, pages):
@@ -364,24 +422,22 @@ def with_pages(lines, pages):
 
     Found by matching the line's code - and its amount, when the page has it - on each
     page's own text layer; nothing a model said about pages is used. Lines follow the
-    statement's order, so each is looked for from the page the last one was on, and a
-    charge printed twice goes to the next page it appears on rather than the same one
-    twice. A line found on no page gets no page rather than a guess. One page, or none,
-    and the lines come back unchanged.
+    statement's order, so each is looked for from the page the last one was on first,
+    then from the start; a charge printed twice goes to the next page it appears on
+    rather than the same one twice. A line found on no page gets no page rather than a
+    guess. One page, or none, and the lines come back unchanged.
     """
     if not pages or len(pages) < 2:
         return lines
     out, start, taken = [], 0, set()
     for line in lines:
-        scores = [(_on_page(line, pages[n]), n) for n in range(start, len(pages))]
-        best = max((score for score, _ in scores), default=0)
-        if not best:
+        page = _page_for(line, pages, start, taken)
+        if page is None:
+            page = _page_for(line, pages, 0, taken)
+        if page is None:
             out.append(dict(line))
             continue
-        candidates = [n for score, n in scores if score == best]
-        same = (line.get("code"), line.get("charged"))
-        page = next((n for n in candidates if (same, n) not in taken), candidates[0])
-        taken.add((same, page))
+        taken.add(((line.get("code"), line.get("charged")), page))
         out.append({**line, "page": page + 1})
         start = page
     return out

@@ -125,10 +125,21 @@ def test_the_patient_sees_when_their_doctor_last_saw_their_records():
                                              "specialty": "GP", "license": "X",
                                              "license_state": "MA"})
         careteam.add(con, alice["id"], "dr@example.test")
-        assert _shown(_app(alice), "Has not seen your records yet")
+        assert _shown(_app(alice), "No sign-in recorded yet")
         _app(doc)                                  # the doctor signs in
         assert careteam.last_seen(con, alice["id"])[doc["id"]]["visits"] == 1
-        assert _shown(_app(alice), "Last saw your records")
+        assert _shown(_app(alice), "Last signed in with access to your records")
+
+
+def test_the_sign_in_date_is_the_viewers_day_not_the_servers():
+    """From the review: 9:30 pm in Boston is already the next day in UTC."""
+    import datetime
+    import zoneinfo
+    import screen_card
+    at = datetime.datetime(2026, 10, 31, 1, 30, tzinfo=datetime.timezone.utc).timestamp()
+    line = screen_card._last_saw({"last_seen_at": at, "visits": 2},
+                                 zoneinfo.ZoneInfo("America/New_York"))
+    assert "30 October 2026" in line and "2 sign-ins" in line
 
 
 def test_an_overdue_follow_up_offers_the_number_on_the_card():
@@ -183,7 +194,8 @@ def test_a_lab_reports_results_are_checked_before_filing_and_kept_after():
                  if r["title"] == "Basic metabolic panel"]
         assert len(db.lab_results_by_record(con, [alice["id"]])[rid]) == 2
         html = " ".join(m.value for m in _app(alice).markdown)
-        assert "<b>Potassium</b><span>5.4 mmol/L · range 3.5-5.1 · lab flag H</span>" in html
+        assert "<b>Potassium</b><span>5.4 mmol/L · range 3.5-5.1 · flagged H</span>" in html
+        assert "Read off the report by an AI reader" in html
 
 
 # ---- nothing in the way of the first visit -------------------------------------------

@@ -274,12 +274,19 @@ MAX_CONTEXT = 14000
 CARD_ID = 0
 
 
+RESULTS_PER_RECORD = 30    # a panel's results, before "and N more"; older records need room
+
+
 def lab_line(t):
-    """One result as the lab printed it. The range and the flag are said to be the lab's,
-    so neither reads as MedVault's own judgement."""
-    return (f"{t['name']}: {t['value']}" + (f" {t['unit']}" if t.get("unit") else "")
-            + (f" (the lab's range {t['reference_range']})" if t.get("reference_range") else "")
-            + (f" · flagged by the lab: {t['flag']}" if t.get("flag") else ""))
+    """One result as read off the report. The range and the flag are said to be the
+    report's, so neither reads as MedVault's own judgement. Whitespace is collapsed: a line
+    break inside a field read off a page must not start a line of its own here."""
+    def one(v):
+        return " ".join(str(v).split())
+    return (f"{one(t['name'])}: {one(t['value'])}" + (f" {one(t['unit'])}" if t.get("unit") else "")
+            + (f" (range on the report {one(t['reference_range'])})"
+               if t.get("reference_range") else "")
+            + (f" · flag on the report: {one(t['flag'])}" if t.get("flag") else ""))
 
 
 def context_pack(con, owner_id):
@@ -340,8 +347,11 @@ def context_pack(con, owner_id):
         parts.append(head)
         if r.get("summary"):
             parts.append(f"    summary: {r['summary']}")
-        for t in results.get(r["id"], []):
+        mine = results.get(r["id"], [])
+        for t in mine[:RESULTS_PER_RECORD]:
             parts.append(f"    result: {lab_line(t)}")
+        if len(mine) > RESULTS_PER_RECORD:
+            parts.append(f"    and {len(mine) - RESULTS_PER_RECORD} more results on the report")
         if i < RECORDS_WITH_TEXT:
             full = db.get_record(con, r["id"]) or {}
             text = (full.get("raw_text") or "").strip()

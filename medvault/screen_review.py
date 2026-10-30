@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 """The clinician's screen: their patients, and the records waiting on them."""
+import time
+
 import streamlit as st
 
 import agentsui
@@ -31,13 +33,15 @@ def your_patients(account):
                         "Not a symptom check and not a referral — every item names the "
                         "record it came from, so it can be checked rather than trusted."),
                 unsafe_allow_html=True)
-    # Each patient can see when their doctors last had their records on screen. Noted
-    # once a session: the screen redraws on every click.
-    noted = st.session_state.setdefault("views_noted", set())
+    # Each patient can see when their doctors last signed in with their records. The
+    # screen redraws on every click, so this asks the vault at most once per visit gap -
+    # and again after one, so a tab left open over a weekend is not Friday's sign-in.
+    noted = st.session_state.setdefault("views_noted", {})
+    now = time.time()
     for patient in mine:
-        if patient["id"] not in noted:
-            careteam.note_view(con, account["id"], patient["id"])
-            noted.add(patient["id"])
+        if now - noted.get(patient["id"], 0) >= careteam.VISIT_GAP_S:
+            careteam.note_view(con, account["id"], patient["id"], now=now)
+            noted[patient["id"]] = now
         items = liaison.update(con, patient["id"])
         worst = next((i["tone"] for i in items), "ok")
         name = patient.get("display_name") or patient["email"]

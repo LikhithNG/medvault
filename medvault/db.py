@@ -20,9 +20,9 @@ DEFAULT_PATH = pathlib.Path(os.environ.get(
 # a date and a count: never what was read, asked or answered. Days before today are
 # deleted as soon as a new one is counted.
 #
-# care_views is when each clinician on a care team last had that patient's records on
-# screen, and how many separate visits that was - see careteam.note_view. One row per
-# pair, so it never grows past the size of the care team.
+# care_views is when each clinician on a care team last signed in with that patient's
+# records, and how many separate sign-ins that was - see careteam.note_view. One row per
+# pair, removed with the clinician, so it never grows past the size of the care team.
 SCHEMA = """
 CREATE TABLE IF NOT EXISTS care_team (
     patient_id   INTEGER NOT NULL,
@@ -255,17 +255,20 @@ def delete_record(con, record_id, owner_id):
     if not con.execute("SELECT 1 FROM records WHERE id = ? AND owner_id = ?",
                        (record_id, owner_id)).fetchone():
         return False
+    # The record first: if the connection drops after it, what is left are rows nothing
+    # shows, rather than a record still on screen with its medicines stripped off it.
+    con.execute("DELETE FROM records WHERE id = ? AND owner_id = ?", (record_id, owner_id))
     con.execute("DELETE FROM medications WHERE record_id = ?", (record_id,))
     con.execute("DELETE FROM lab_results WHERE record_id = ?", (record_id,))
-    con.execute("DELETE FROM records WHERE id = ? AND owner_id = ?", (record_id, owner_id))
     con.commit()
     return True
 
 
 def medicines_from(con, record_id):
-    """How many medicines came off this record - what deleting it takes off the card."""
-    row = con.execute("SELECT COUNT(*) AS n FROM medications WHERE record_id = ?",
-                      (record_id,)).fetchone()
+    """How many current medicines came off this record - what deleting it takes off the
+    card. A finished course is not on the card, so it is not counted."""
+    row = con.execute("SELECT COUNT(*) AS n FROM medications WHERE record_id = ? "
+                      "AND active = 1", (record_id,)).fetchone()
     return row["n"] if row else 0
 
 
@@ -322,10 +325,20 @@ LAB_COLUMNS = ("name", "value", "unit", "reference_range", "flag")
 
 
 def add_lab_result(con, record_id, result):
-    """Store one result, as printed. See schema.LAB_FIELDS."""
+    """Store one result, as read. See schema.LAB_FIELDS."""
+    add_lab_results(con, record_id, [result])
+
+
+def add_lab_results(con, record_id, results):
+    """Store a report's results in one statement. On the hosted vault every statement is
+    a round trip, and a panel of sixty results was sixty of them - a failure part way
+    through left half a report filed."""
+    results = list(results)
+    if not results:
+        return
     con.execute("INSERT INTO lab_results (record_id, name, value, unit, reference_range, flag)"
-                " VALUES (?,?,?,?,?,?)",
-                (record_id, *(result.get(k) for k in LAB_COLUMNS)))
+                " VALUES " + ",".join(["(?,?,?,?,?,?)"] * len(results)),
+                [v for t in results for v in (record_id, *(t.get(k) for k in LAB_COLUMNS))])
     con.commit()
 
 
@@ -403,7 +416,7 @@ RESTORABLE = ("kind", "service_date", "provider", "title", "summary", "read_by",
 # not one, and on the hosted copy every record is a round trip to the database.
 IMPORT_MAX_RECORDS = 2000
 IMPORT_MAX_MEDICATIONS = 5000
-IMPORT_MAX_LAB_RESULTS = 20000
+IMPORT_MAX_LAB_RESULTS = 5000
 _HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 
@@ -475,8 +488,8 @@ def _vetted(data):
 
     clean_labs = [{
         "record_id": whole(t.get("record_id")),
-        "name": word(t.get("name"), 200), "value": word(t.get("value"), 200),
-        "unit": word(t.get("unit"), 50), "reference_range": word(t.get("reference_range"), 100),
+        "name": word(t.get("name"), 300), "value": word(t.get("value"), 500),
+        "unit": word(t.get("unit"), 100), "reference_range": word(t.get("reference_range"), 300),
         "flag": word(t.get("flag"), 50),
     } for t in labs]
     clean_labs = [t for t in clean_labs if t["name"] and t["value"]]
@@ -541,12 +554,14 @@ def import_vault(con, account_id, payload):
         add_medication(con, target, med)
         meds_added += 1
 
+    by_record = {}
     for result in labs:
         target = id_map.get(result["record_id"])
-        if target is None:
-            continue
-        add_lab_result(con, target, result)
-        labs_added += 1
+        if target is not None:
+            by_record.setdefault(target, []).append(result)
+    for target, results in by_record.items():       # one statement per report
+        add_lab_results(con, target, results)
+        labs_added += len(results)
 
     if profile:
         save_profile(con, account_id, profile)
