@@ -73,7 +73,7 @@ def _ask_about(contact):
     phone can dial, and nothing more: the app does not call, book or send anything."""
     if not contact:
         return ""
-    return (f"<div class='b'>To ask about it: <a href='tel:{contact['dial']}'>"
+    return (f"<div class='b askon'>To ask about it: <a href='tel:{contact['dial']}'>"
             f"{ui.esc(contact['name'])}, {ui.esc(contact['phone'])}</a> — the number on "
             f"your card.</div>")
 

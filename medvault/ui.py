@@ -269,6 +269,7 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 .hit .h{font-size:14.5px;font-weight:700;margin-bottom:.2rem;letter-spacing:-.015em}
 .hit.bad .h{color:#7A1710} .hit.warn .h{color:#7A4A06} .hit.ok .h{color:#05502F}
 .hit .b{font-size:13.5px;color:#333B45;line-height:1.5}
+.hit .b.askon{margin-top:.45rem;font-weight:600}
 .hit .amt{float:right;font-weight:800;font-size:16px;margin-left:.75rem;
   padding-left:.15rem}
 
