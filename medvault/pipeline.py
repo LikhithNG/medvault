@@ -23,6 +23,18 @@ def _emit(on_step, agent, state, **detail):
         on_step({"agent": agent, "state": state, **detail})
 
 
+def _with_pages(priced, lines):
+    """The Checker's lines, each given back the page its bill line was printed on.
+
+    The Checker returns one line per line it was given, in order, and builds each from a
+    fixed set of fields - checker.py is kept byte-identical to the module the Assignment 4
+    figures came from - so the page is carried across here rather than through it.
+    """
+    return {**priced, "lines": [{**checked, "page": line["page"]} if line.get("page")
+                                else checked
+                                for checked, line in zip(priced["lines"], lines)]}
+
+
 def check_lines(lines, *, hospital, ctx, records, patient_name, price_table,
                 on_step=None, trace=None):
     """Price, check and, if warranted, write about these bill lines.
@@ -61,6 +73,7 @@ def check_lines(lines, *, hospital, ctx, records, patient_name, price_table,
                                  "service_date": l.get("service_date")}
                                 for l in lines]},
                 price_table)
+            priced = _with_pages(priced, lines)
     flagged = (priced.get("flagged_count") or 0) if priced else 0
     _emit(on_step, "Checker", "done", seconds=runs["Checker"].seconds, flagged=flagged,
           priced=priced is not None)

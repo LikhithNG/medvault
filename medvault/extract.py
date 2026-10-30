@@ -313,21 +313,78 @@ def read_document(*, text=None, image=None, deadline=None):
     return _shape(raw), {"ok": True, "model": r.get("model"), "attempts": r.get("attempts")}
 
 
-def pdf_text(upload):
-    """Text out of a PDF's text layer. (text, note) or (None, reason)."""
+def _pdf_pages(upload):
+    """(each page's text, None) or (None, reason)."""
     try:
         from pypdf import PdfReader
     except ImportError:
         return None, "pdf support is not installed on this server"
     try:
-        reader = PdfReader(upload)
-        pages = [(pg.extract_text() or "") for pg in reader.pages]
+        return [(pg.extract_text() or "") for pg in PdfReader(upload).pages], None
     except Exception as e:
         return None, f"this file could not be opened as a PDF ({str(e)[:80]})"
+
+
+def pdf_text(upload):
+    """Text out of a PDF's text layer. (text, note) or (None, reason)."""
+    pages, problem = _pdf_pages(upload)
+    if pages is None:
+        return None, problem
     text = "\n".join(pages).strip()
     if len(text) < 40:
         return None, "scanned"           # no text layer: it is a photograph in a PDF wrapper
-    return text, f"{len(reader.pages)} page(s)"
+    return text, f"{len(pages)} page(s)"
+
+
+def pdf_pages(upload):
+    """Each page's own text, or None when there is no text layer to read."""
+    pages, _ = _pdf_pages(upload)
+    return pages if pages and "".join(pages).strip() else None
+
+
+def _amounts(value):
+    """The ways a statement prints an amount: 9,374.04 and 9374.04."""
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return ()
+    return (f"{v:,.2f}", f"{v:.2f}")
+
+
+def _on_page(line, page):
+    """2 when the line's code and amount are both on this page, 1 for the code alone."""
+    code = (line.get("code") or "").strip()
+    if len(code) < 4 or not re.search(rf"(?<![\w.]){re.escape(code)}(?![\w])", page, re.I):
+        return 0
+    return 2 if any(a in page for a in _amounts(line.get("charged"))) else 1
+
+
+def with_pages(lines, pages):
+    """The lines again, each with the page of the statement it is printed on.
+
+    Found by matching the line's code - and its amount, when the page has it - on each
+    page's own text layer; nothing a model said about pages is used. Lines follow the
+    statement's order, so each is looked for from the page the last one was on, and a
+    charge printed twice goes to the next page it appears on rather than the same one
+    twice. A line found on no page gets no page rather than a guess. One page, or none,
+    and the lines come back unchanged.
+    """
+    if not pages or len(pages) < 2:
+        return lines
+    out, start, taken = [], 0, set()
+    for line in lines:
+        scores = [(_on_page(line, pages[n]), n) for n in range(start, len(pages))]
+        best = max((score for score, _ in scores), default=0)
+        if not best:
+            out.append(dict(line))
+            continue
+        candidates = [n for score, n in scores if score == best]
+        same = (line.get("code"), line.get("charged"))
+        page = next((n for n in candidates if (same, n) not in taken), candidates[0])
+        taken.add((same, page))
+        out.append({**line, "page": page + 1})
+        start = page
+    return out
 
 
 # ---- reading a bill ---------------------------------------------------------

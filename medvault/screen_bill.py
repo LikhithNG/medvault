@@ -173,16 +173,18 @@ def read_bill_upload(upload, steps, show):
                             f"{why} Paste the lines instead — that never uses AI.", None), \
             agentsui.advance(steps, "Reader", "fail", "Daily limit")
 
-    from extract import read_bill_verified, pdf_text
+    from extract import pdf_pages, pdf_text, read_bill_verified, with_pages
     is_pdf = (upload.type or "").endswith("pdf") or upload.name.lower().endswith(".pdf")
     steps = agentsui.advance(steps, "Reader", "work", "Reading…")
     show(steps, "Reader · opening it…")
     started = time.perf_counter()
     text = None
+    pages = None
     if is_pdf:
         import io as _io
         text, note = pdf_text(_io.BytesIO(data))
         if text:
+            pages = pdf_pages(_io.BytesIO(data))
             show(steps, f"Reader · read the text layer · {note}")
     if not text:
         show(steps, "Reader · looking at the page, then checking the lines add up to its "
@@ -210,6 +212,7 @@ def read_bill_upload(upload, steps, show):
                             "version.", None), \
             agentsui.advance(steps, "Reader", "fail", "No charges found")
 
+    lines = with_pages(lines, pages)
     read = {"took": spent, "attempts": meta.get("attempts", 1),
             "reconciled": meta.get("reconciled"), "provider": meta.get("provider"),
             "hospital": meta.get("hospital")}

@@ -86,6 +86,9 @@ def letter(reviewed, patient_name=None, rights_findings=None, account=None,
             charged=money(l.get("charged")), posted=money(l.get("posted_price")),
             over=money(l.get("amount_over")), units=l.get("units", 1),
             expected=money(l.get("expected_for_units"))))
+        # Only from a PDF statement of more than one page - see extract.with_pages.
+        if l.get("page"):
+            out.append(f"    On page {l['page']} of the statement.")
         if l.get("source_url"):
             out.append(f"    Source: your {l['basis']} for this code, published at")
             out.append(f"    {l['source_url']} (collected {l['collected_date']}).")

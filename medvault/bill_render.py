@@ -79,7 +79,9 @@ def render_bill_read(read, lines):
                         f"<span class='when'>{ui.safe(l['service_date'] or 'no date')}"
                         f"</span></div><div class='title'>${l['charged']:,.2f}</div>"
                         f"<div class='who'>{ui.safe(l['description'])} · qty "
-                        f"{ui.safe(l['units'])}</div>"
+                        f"{ui.safe(l['units'])}"
+                        + (f" · page {ui.safe(l['page'])}" if l.get("page") else "")
+                        + "</div>"
                         f"</div>", unsafe_allow_html=True)
 
 
