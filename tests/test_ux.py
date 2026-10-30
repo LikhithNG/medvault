@@ -145,6 +145,47 @@ def test_an_overdue_follow_up_offers_the_number_on_the_card():
         assert "To ask about it" in html
 
 
+def test_a_lab_reports_results_are_checked_before_filing_and_kept_after():
+    import db
+    draft = {"kind": "lab", "service_date": "2026-03-14", "provider": "Doylestown Hospital",
+             "title": "Basic metabolic panel", "summary": "Blood chemistry results.",
+             "medications": [],
+             "lab_results": [{"name": "Sodium", "value": "140", "unit": "mmol/L",
+                              "reference_range": "135-145", "flag": None},
+                             {"name": "Potassium", "value": "5.4", "unit": "mmol/L",
+                              "reference_range": "3.5-5.1", "flag": "H"}]}
+    def filing(medvault):
+        # The Add screen draws this half only while a file sits in its uploader, which
+        # the test runner cannot fill - so the half is run on its own.
+        import sys
+        sys.path.insert(0, medvault)
+        import screen_records
+        import session
+        import ui
+        ui.show_flash()                     # app.py's job, on the run after a filing
+        screen_records.check_and_file(session.vault())
+
+    with offline_vault() as (con, alice, _):
+        import streamlit as st
+        from streamlit.testing.v1 import AppTest
+        st.cache_resource.clear()
+        at = AppTest.from_function(filing, default_timeout=60,
+                                   args=(str(ROOT / "medvault"),))
+        at.session_state["account"] = alice
+        at.session_state["draft"] = draft
+        at.session_state["draft_file"] = ("panel.pdf", "application/pdf", b"%PDF-1.4")
+        at.run()
+        assert not at.exception, [e.value for e in at.exception]
+        assert _shown(at, "Results found · 2")
+        _click(at, "File this record")
+        assert any("with 2 result(s)" in t for t in _toasts(at))
+        [rid] = [r["id"] for r in db.list_records(con, owner_id=alice["id"])
+                 if r["title"] == "Basic metabolic panel"]
+        assert len(db.lab_results_by_record(con, [alice["id"]])[rid]) == 2
+        html = " ".join(m.value for m in _app(alice).markdown)
+        assert "<b>Potassium</b><span>5.4 mmol/L · range 3.5-5.1 · lab flag H</span>" in html
+
+
 # ---- nothing in the way of the first visit -------------------------------------------
 
 def test_a_bill_can_be_checked_before_anything_is_filed():

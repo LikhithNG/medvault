@@ -51,6 +51,20 @@ MED_FIELDS = {
     "reason":    "What it is for, if the document says. Null otherwise.",
 }
 
+# A lab report carries results, and they were lost: a panel used to be filed as a title
+# and a sentence. Every field is copied off the page. The range and the flag are the lab's
+# own - nothing here decides whether a result is normal, and a flag the lab did not print
+# stays empty.
+LAB_FIELDS = {
+    "name":            "Test name as printed, e.g. 'Sodium' or 'Haemoglobin'.",
+    "value":           "The result as printed, e.g. '140' or 'Negative'.",
+    "unit":            "Unit as printed, e.g. 'mmol/L'. Null if not printed.",
+    "reference_range": "The lab's reference range as printed, e.g. '135-145'. Null if not "
+                       "printed.",
+    "flag":            "A flag the lab printed beside the result, e.g. 'H' or 'Low'. Null if "
+                       "none is printed.",
+}
+
 # The emergency card: the screen you hold up at a hospital desk when you cannot talk.
 PROFILE_FIELDS = (
     "full_name", "date_of_birth", "blood_type", "allergies", "conditions",

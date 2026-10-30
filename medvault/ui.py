@@ -234,6 +234,9 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 .rec .patient b{color:var(--ink);font-weight:700}
 .rec .sum{font-size:13.5px;color:var(--soft);margin-top:.42rem;line-height:1.45}
 .rec .nofile{font-size:12px;color:var(--faint);margin-top:.4rem}
+.rec .labs{margin-top:.5rem;display:grid;grid-template-columns:auto 1fr;gap:.15rem .8rem;font-size:13px;color:var(--soft)}
+.rec .labs b{color:var(--ink);font-weight:600}
+.rec .labsby{font-size:11.5px;color:var(--faint);margin-top:.3rem}
 
 /* ---- where a record came from -------------------------------------------- */
 /* The badge is the product's whole answer to "how do I know this is real". It is drawn on
@@ -692,6 +695,21 @@ def esc(value):
     a medicine name off a scanned page went into it as markup.
     """
     return html.escape(str(value if value is not None else "")).replace("\n", "<br>")
+
+
+def lab_rows(results):
+    """A report's results as the lab printed them: name, then value, unit, the lab's range
+    and the lab's flag. Every field is data off a scan, so every field is escaped."""
+    if not results:
+        return ""
+    cells = "".join(
+        f"<b>{esc(t['name'])}</b><span>{esc(t['value'])}"
+        + (f" {esc(t['unit'])}" if t.get("unit") else "")
+        + (f" · range {esc(t['reference_range'])}" if t.get("reference_range") else "")
+        + (f" · lab flag {esc(t['flag'])}" if t.get("flag") else "") + "</span>"
+        for t in results)
+    return (f"<div class='labs'>{cells}</div><div class='labsby'>As printed by the lab. "
+            f"MedVault does not judge whether a result is normal.</div>")
 
 
 def safe(text):

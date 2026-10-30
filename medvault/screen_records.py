@@ -94,6 +94,11 @@ def screen_add():
         # button to press, include the read just taken.
         st.rerun()
 
+    check_and_file(con)
+
+
+def check_and_file(con):
+    """What the Reader read, laid out to be corrected, and the button that files it."""
     draft = st.session_state.get("draft")
     if not draft:
         return
@@ -112,6 +117,11 @@ def screen_add():
     title = st.text_input("Title", draft.get("title") or "")
     provider = st.text_input("Hospital or doctor", draft.get("provider") or "")
     summary = st.text_area("Summary", draft.get("summary") or "", height=90)
+
+    labs = draft.get("lab_results") or []
+    if labs:
+        st.markdown(ui.section(f"Results found · {len(labs)}"), unsafe_allow_html=True)
+        st.markdown(f"<div class='rec'>{ui.lab_rows(labs)}</div>", unsafe_allow_html=True)
 
     meds = draft.get("medications") or []
     if meds:
@@ -136,11 +146,14 @@ def screen_add():
                             verified_by=filer.get("id") if clinical else None)
         for m in meds:
             db.add_medication(con, rid, m)
+        for t in labs:
+            db.add_lab_result(con, rid, t)
         for k in ("draft", "draft_file", "draft_model", "draft_took"):
             st.session_state.pop(k, None)
         st.session_state["filed_count"] = st.session_state.get("filed_count", 0) + 1
         ui.flash(f"Filed “{title or 'Untitled record'}”"
-                 + (f" and added {len(meds)} medicine(s)." if meds else "."))
+                 + (f" and added {len(meds)} medicine(s)" if meds else "")
+                 + (f" with {len(labs)} result(s)" if labs else "") + ".")
         st.rerun()
 
 
@@ -156,6 +169,7 @@ def screen_records():
                                                else f"{kind_label(k)} ({counts.get(k,0)})"))
     rows = db.list_records(con, kind=None if kind == "all" else kind, query=q or None,
                            owner_ids=visible_owners())
+    results = db.lab_results_by_record(con, visible_owners())
 
     if not rows:
         # An empty list should say what to do next, not only that it is empty.
@@ -180,6 +194,7 @@ def screen_records():
             f"<div class='title'>{ui.safe(r['title'])}</div>"
             + (f"<div class='who'>{ui.safe(r['provider'])}</div>" if r.get("provider") else "")
             + (f"<div class='sum'>{ui.safe(r['summary'])}</div>" if r.get("summary") else "")
+            + ui.lab_rows(results.get(r["id"]))
             + f"<div class='provwhy'>{accounts.PROVENANCE.get(r.get('provenance') or 'SELF', accounts.PROVENANCE['SELF'])[1]}</div>"
             + ("" if r.get("file_size") else
                "<div class='nofile'>No original attached</div>")

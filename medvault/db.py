@@ -61,6 +61,15 @@ CREATE TABLE IF NOT EXISTS medications (
     reason     TEXT,
     active     INTEGER NOT NULL DEFAULT 1
 );
+CREATE TABLE IF NOT EXISTS lab_results (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    record_id       INTEGER REFERENCES records(id) ON DELETE CASCADE,
+    name            TEXT NOT NULL,
+    value           TEXT NOT NULL,
+    unit            TEXT,
+    reference_range TEXT,
+    flag            TEXT
+);
 CREATE TABLE IF NOT EXISTS profile (
     account_id INTEGER NOT NULL DEFAULT 0,
     key        TEXT    NOT NULL,
@@ -87,6 +96,7 @@ CREATE TABLE IF NOT EXISTS ai_use (
 CREATE INDEX IF NOT EXISTS idx_runs_agent ON agent_runs(agent, started_at);
 CREATE INDEX IF NOT EXISTS idx_records_date ON records(service_date);
 CREATE INDEX IF NOT EXISTS idx_meds_record  ON medications(record_id);
+CREATE INDEX IF NOT EXISTS idx_labs_record  ON lab_results(record_id);
 """
 
 
@@ -229,7 +239,7 @@ def get_record(con, record_id):
 
 
 def delete_record(con, record_id, owner_id):
-    """Delete one of this account's records, and the medicines that came off it.
+    """Delete one of this account's records, and the medicines and results that came off it.
 
     owner_id is required for the same reason get_profile's account_id is: a delete that
     does not know whose record it is would delete anybody's. Returns whether anything
@@ -246,6 +256,7 @@ def delete_record(con, record_id, owner_id):
                        (record_id, owner_id)).fetchone():
         return False
     con.execute("DELETE FROM medications WHERE record_id = ?", (record_id,))
+    con.execute("DELETE FROM lab_results WHERE record_id = ?", (record_id,))
     con.execute("DELETE FROM records WHERE id = ? AND owner_id = ?", (record_id, owner_id))
     con.commit()
     return True
@@ -305,6 +316,36 @@ def set_medication_active(con, med_id, active):
     con.commit()
 
 
+# ---- lab results -----------------------------------------------------------
+
+LAB_COLUMNS = ("name", "value", "unit", "reference_range", "flag")
+
+
+def add_lab_result(con, record_id, result):
+    """Store one result, as printed. See schema.LAB_FIELDS."""
+    con.execute("INSERT INTO lab_results (record_id, name, value, unit, reference_range, flag)"
+                " VALUES (?,?,?,?,?,?)",
+                (record_id, *(result.get(k) for k in LAB_COLUMNS)))
+    con.commit()
+
+
+def lab_results_by_record(con, owner_ids):
+    """{record_id: [results, in the order printed]} for these owners' records.
+
+    Scoped like list_records: an EMPTY list of owners means no results, never all of them.
+    """
+    if not owner_ids:
+        return {}
+    rows = _rows(con.execute(
+        "SELECT l.* FROM lab_results l JOIN records r ON r.id = l.record_id"
+        f" WHERE r.owner_id IN ({','.join('?' * len(owner_ids))}) ORDER BY l.id",
+        list(owner_ids)))
+    out = {}
+    for row in rows:
+        out.setdefault(row["record_id"], []).append(row)
+    return out
+
+
 # ---- profile ---------------------------------------------------------------
 
 def get_profile(con, account_id):
@@ -350,6 +391,8 @@ def export_vault(con, account_id):
         "profile": get_profile(con, account_id),
         "records": list_records(con, limit=10_000, owner_id=account_id),
         "medications": list_medications(con, active_only=False, owner_id=account_id),
+        "lab_results": [row for rows in lab_results_by_record(con, [account_id]).values()
+                        for row in rows],
     }, indent=2, default=str)
 
 
@@ -360,6 +403,7 @@ RESTORABLE = ("kind", "service_date", "provider", "title", "summary", "read_by",
 # not one, and on the hosted copy every record is a round trip to the database.
 IMPORT_MAX_RECORDS = 2000
 IMPORT_MAX_MEDICATIONS = 5000
+IMPORT_MAX_LAB_RESULTS = 20000
 _HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 
@@ -384,7 +428,8 @@ def _iso_date(value):
 
 
 def _vetted(data):
-    """An export, checked before anything is written: (records, medications, profile).
+    """An export, checked before anything is written: (records, medications, results,
+    profile).
 
     A file of the wrong shape raises ValueError and writes nothing. Values inside a
     well-shaped file are cleaned rather than trusted - including card values a screen would
@@ -395,11 +440,14 @@ def _vetted(data):
     if not isinstance(data, dict) or not isinstance(data.get("records"), list):
         raise ValueError("that file is not a MedVault export")
     records, meds = data["records"], data.get("medications") or []
+    labs = data.get("lab_results") or []         # exports from before results have none
     profile = data.get("profile") or {}
-    if not isinstance(meds, list) or not isinstance(profile, dict) \
-            or not all(isinstance(r, dict) for r in records + meds):
+    if not isinstance(meds, list) or not isinstance(labs, list) \
+            or not isinstance(profile, dict) \
+            or not all(isinstance(r, dict) for r in records + meds + labs):
         raise ValueError("that file is not a MedVault export")
-    if len(records) > IMPORT_MAX_RECORDS or len(meds) > IMPORT_MAX_MEDICATIONS:
+    if len(records) > IMPORT_MAX_RECORDS or len(meds) > IMPORT_MAX_MEDICATIONS \
+            or len(labs) > IMPORT_MAX_LAB_RESULTS:
         raise ValueError(f"that file holds more than {IMPORT_MAX_RECORDS} records, so it "
                          "is not an export of one vault")
 
@@ -421,6 +469,17 @@ def _vetted(data):
         **{k: _text(m.get(k), 500) for k in ("dose", "frequency", "duration", "reason")},
         "active": m.get("active") not in (0, False, "0"),
     } for m in meds if _text(m.get("name"))]
+
+    def word(v, limit):
+        return _text(v, limit) if isinstance(v, (str, int, float)) else None
+
+    clean_labs = [{
+        "record_id": whole(t.get("record_id")),
+        "name": word(t.get("name"), 200), "value": word(t.get("value"), 200),
+        "unit": word(t.get("unit"), 50), "reference_range": word(t.get("reference_range"), 100),
+        "flag": word(t.get("flag"), 50),
+    } for t in labs]
+    clean_labs = [t for t in clean_labs if t["name"] and t["value"]]
     valid = {"organ_donor": DONOR_CHOICES, "blood_type": BLOOD_TYPES}
     clean_profile = {}
     for key, value in profile.items():
@@ -432,7 +491,7 @@ def _vetted(data):
         if key == "day_start" and not _HHMM.fullmatch(value):
             continue
         clean_profile[key] = value
-    return clean_records, clean_meds, clean_profile
+    return clean_records, clean_meds, clean_labs, clean_profile
 
 
 def import_vault(con, account_id, payload):
@@ -454,12 +513,12 @@ def import_vault(con, account_id, payload):
     if account_id is None:
         raise ValueError("import_vault needs to know whose vault it is importing into")
     data = json.loads(payload) if isinstance(payload, (str, bytes)) else payload
-    records, meds, profile = _vetted(data)
+    records, meds, labs, profile = _vetted(data)
 
     existing = {(r["kind"], r["title"], r.get("service_date"))
                 for r in list_records(con, limit=10_000, owner_id=account_id)}
 
-    added, skipped, meds_added = 0, 0, 0
+    added, skipped, meds_added, labs_added = 0, 0, 0, 0
     id_map = {}
     for row in records:
         key = (row["kind"], row["title"], row["service_date"])
@@ -482,11 +541,19 @@ def import_vault(con, account_id, payload):
         add_medication(con, target, med)
         meds_added += 1
 
+    for result in labs:
+        target = id_map.get(result["record_id"])
+        if target is None:
+            continue
+        add_lab_result(con, target, result)
+        labs_added += 1
+
     if profile:
         save_profile(con, account_id, profile)
 
     return {"records_added": added, "records_skipped": skipped,
-            "medications_added": meds_added, "profile_restored": bool(profile)}
+            "medications_added": meds_added, "lab_results_added": labs_added,
+            "profile_restored": bool(profile)}
 
 
 # ---- verification ----------------------------------------------------------

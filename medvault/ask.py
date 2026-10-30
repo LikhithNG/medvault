@@ -274,6 +274,14 @@ MAX_CONTEXT = 14000
 CARD_ID = 0
 
 
+def lab_line(t):
+    """One result as the lab printed it. The range and the flag are said to be the lab's,
+    so neither reads as MedVault's own judgement."""
+    return (f"{t['name']}: {t['value']}" + (f" {t['unit']}" if t.get("unit") else "")
+            + (f" (the lab's range {t['reference_range']})" if t.get("reference_range") else "")
+            + (f" · flagged by the lab: {t['flag']}" if t.get("flag") else ""))
+
+
 def context_pack(con, owner_id):
     """Their records, flattened into the text the model answers from.
 
@@ -297,6 +305,7 @@ def context_pack(con, owner_id):
             parts.append(f"- {label}: {profile[key]}")
 
     listed = {r["id"] for r in records}
+    results = db.lab_results_by_record(con, [owner_id])
 
     def med_line(m):
         bits = [m.get("name") or "?"]
@@ -331,6 +340,8 @@ def context_pack(con, owner_id):
         parts.append(head)
         if r.get("summary"):
             parts.append(f"    summary: {r['summary']}")
+        for t in results.get(r["id"], []):
+            parts.append(f"    result: {lab_line(t)}")
         if i < RECORDS_WITH_TEXT:
             full = db.get_record(con, r["id"]) or {}
             text = (full.get("raw_text") or "").strip()
