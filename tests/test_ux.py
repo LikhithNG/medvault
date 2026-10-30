@@ -342,6 +342,65 @@ def test_the_emergency_card_lists_every_current_medicine():
         assert not missing, missing
 
 
+
+def test_the_911_answer_puts_the_call_first_and_the_card_contact_one_tap_away():
+    """The emergency answer said "call 911" and stopped there. 911 is a tap away now, and
+    under it the person on the patient's own card - after 911, never instead of it."""
+    import db
+    from test_quota import READY, _env, _no_network
+    with offline_vault() as (con, alice, _), _env(**READY), _no_network():
+        db.save_profile(con, alice["id"], {"full_name": "Alice Anderson",
+                                           "emergency_name": "Bob <i>Builder</i>",
+                                           "emergency_relation": "brother",
+                                           "emergency_phone": "+1 617 555 0148"})
+        at = _app(alice)
+        at.text_input(key="ask_box").input("my chest is tight and I can't breathe")
+        next(b for b in at.button if b.label == "Ask").click().run()
+        assert not at.exception, [e.value for e in at.exception]
+        reply = next(m.value for m in at.markdown if "href='tel:911'" in m.value)
+        assert "href='tel:+16175550148'" in reply
+        assert reply.index("href='tel:911'") < reply.index("href='tel:+16175550148'")
+        assert "Bob &lt;i&gt;Builder&lt;/i&gt;" in reply
+
+
+def test_the_card_number_for_the_emergency_contact_is_tap_to_call():
+    """It was plain text: on the screen you hand to somebody when you cannot speak, the
+    number had to be read off and typed in. A number with words in it stays unlinked."""
+    import db
+    with offline_vault() as (con, alice, _):
+        db.save_profile(con, alice["id"], {"full_name": "Alice Anderson", "blood_type": "O+",
+                                           "allergies": "none", "emergency_name": "Bob",
+                                           "emergency_phone": "+1 617 555 0148"})
+        at = _app(alice)
+        card = at.tabs[[t.label for t in at.tabs].index("Card")]
+        assert "<a href='tel:+16175550148'>+1 617 555 0148</a>" in " ".join(
+            m.value for m in card.markdown)
+        db.save_profile(con, alice["id"], {"emergency_phone": "617 555 0148 ext 5"})
+        at = _app(alice)
+        card = at.tabs[[t.label for t in at.tabs].index("Card")]
+        block = next(m.value for m in card.markdown if "617 555 0148 ext 5" in m.value)
+        assert "tel:" not in block
+
+
+def test_every_reply_that_says_call_911_puts_the_card_contact_after_it():
+    """The "AI unavailable" and "Could not answer" replies carry the 911 line too, and a
+    dose question's fixed reply ends with one - deleting the contact from either of the
+    first two failed nothing."""
+    from unittest import mock
+    import screen_ask
+    person = {"name": "Bob", "relation": "", "phone": "+1 617 555 0148", "dial": "+16175550148"}
+    replies = ({"kind": "capped"}, {"kind": "error", "error": "timed out"},
+               {"kind": "for_prescriber", "answer": "Ask your prescriber; if you feel unwell "
+                "right now, call 911.", "records_used": []})
+    for reply in replies:
+        drawn = []
+        with mock.patch.object(screen_ask.st, "markdown", lambda body, **_: drawn.append(body)), \
+             mock.patch.object(screen_ask.st, "caption", lambda *a, **k: None):
+            screen_ask._render_turn({"q": "is this bad?", "a": reply}, person)
+        html = " ".join(drawn)
+        assert "href='tel:+16175550148'" in html, reply["kind"]
+        assert html.index("href='tel:911'") < html.index("href='tel:+16175550148'"), reply["kind"]
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

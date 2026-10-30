@@ -448,6 +448,31 @@ def test_one_patients_visits_are_not_shown_to_another():
     careteam.note_view(con, doc["id"], pat["id"])
     assert careteam.last_seen(con, other["id"]) == {}
 
+def test_the_emergency_contact_is_the_one_on_the_card_and_dials_only_a_plain_number():
+    """The person to call after 911 is whoever the patient wrote on their card - nothing is
+    looked up - and the number is linked only when a phone would dial what was written."""
+    person = liaison.emergency_contact({"emergency_name": " Daniel Thompson ",
+                                        "emergency_relation": "brother",
+                                        "emergency_phone": "+1 617 555 0148"})
+    assert person == {"name": "Daniel Thompson", "relation": "brother",
+                      "phone": "+1 617 555 0148", "dial": "+16175550148"}
+    assert liaison.emergency_contact({"emergency_phone": "617 555 0148"}) is None
+    assert liaison.emergency_contact({"emergency_name": "Bob",
+                                      "emergency_phone": "617 555 0148 ext 5"})["dial"] is None
+    assert liaison.emergency_contact({"emergency_name": "Bob"})["dial"] is None
+
+
+def test_a_number_is_linked_only_when_it_is_written_as_one_number():
+    """Only Latin letters were refused, so "#5", ";5", a Cyrillic "ext" or two numbers
+    joined by "/" were stripped to digits and linked: a tap dialled a number nobody wrote,
+    under the one they did - on the emergency card, of all places."""
+    for written in ("617 555 0148 #5", "617-555-0148,,5", "6175550148;5", "617 555 0148 доб 5",
+                    "555-0148/555-0149", "٦١٧٥٥٥٠١٤٨", "６１７５５５０１４８", "617 555 0148 ext 5"):
+        assert liaison.dialable(written) is None, written
+    assert liaison.dialable("(617) 555-0148") == "6175550148"
+    assert liaison.dialable(" +1 617.555.0148 ") == "+16175550148"
+    assert liaison.dialable("555 01") is None
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

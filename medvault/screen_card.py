@@ -9,6 +9,7 @@ import streamlit as st
 
 import careteam
 import db
+import liaison
 import store
 import ui
 from schema import BLOOD_TYPES, DONOR_CHOICES, missing_essentials
@@ -125,12 +126,16 @@ def screen_card():
         f"{e(allergies) or 'None recorded — add them, this is the line staff look for first.'}"
         f"</div></div>", unsafe_allow_html=True)
 
-    if p.get("emergency_name"):
+    person = liaison.emergency_contact(p)
+    if person:
         st.markdown(ui.section("In an emergency, call"), unsafe_allow_html=True)
-        rel = f" · {e(p['emergency_relation'])}" if p.get("emergency_relation") else ""
-        st.markdown(f"<div class='med'><div class='n'>{e(p['emergency_name'])}{rel}</div>"
-                    f"<div class='d'>{e(p.get('emergency_phone') or 'no number on file')}</div>"
-                    f"</div>", unsafe_allow_html=True)
+        rel = f" · {e(person['relation'])}" if person["relation"] else ""
+        # A link a phone can dial, so whoever holds the card does not have to type it in.
+        number = e(person["phone"]) or "no number on file"
+        if person["dial"]:
+            number = f"<a href='tel:{person['dial']}'>{number}</a>"
+        st.markdown(f"<div class='med'><div class='n'>{e(person['name'])}{rel}</div>"
+                    f"<div class='d'>{number}</div></div>", unsafe_allow_html=True)
 
     if p.get("insurer") or p.get("member_id"):
         st.markdown(ui.section("Insurance"), unsafe_allow_html=True)

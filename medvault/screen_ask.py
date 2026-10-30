@@ -7,6 +7,7 @@ import streamlit as st
 import agentsui
 import ask
 import careteam
+import db
 import liaison
 import providers
 import quota
@@ -22,8 +23,25 @@ EXAMPLE_QUESTIONS = [
 ]
 
 
-def _render_turn(turn):
-    """One question and its answer, with the badge that says where the answer came from."""
+def _after_911(person):
+    """Under every reply that says to call 911: the call itself one tap away, then the
+    patient's own emergency contact. 911 comes first on purpose - the contact is who to
+    tell, not who to call."""
+    lines = "<div class='sos'><a href='tel:911'>Tap to call 911</a></div>"
+    if not person:
+        return lines
+    who = ui.esc(person["name"]) + (f" ({ui.esc(person['relation'])})" if person["relation"] else "")
+    number = ui.esc(person["phone"]) or "no number on your card"
+    if person["dial"]:
+        number = f"<a href='tel:{person['dial']}'>{number}</a>"
+    return lines + (f"<div class='sos'>After you call 911: {who}, {number} — the emergency "
+                    f"contact on your card.</div>")
+
+
+def _render_turn(turn, sos=None):
+    """One question and its answer, with the badge that says where the answer came from.
+
+    `sos` is liaison.emergency_contact for the signed-in patient, shown under each 911 line."""
     st.markdown(f"<div class='qa'><div class='bubble q ag-in'>{ui.safe(turn['q'])}</div>",
                 unsafe_allow_html=True)
     a = turn.get("a") or {"kind": "error", "error": "no answer was given"}
@@ -33,18 +51,18 @@ def _render_turn(turn):
         # "AI unavailable" and an assurance that emergencies were still answered.
         st.markdown("<div class='bubble a'><span class='badge warn'>AI unavailable"
                     "</span><div><b>If this is an emergency, call 911</b> or your local "
-                    "emergency number.</div><div>This question needs the AI reader, and "
-                    "AI reads are not available right now — the note above says why. For "
-                    "anything about a dose, ask whoever prescribed it or a pharmacist."
-                    "</div></div></div>", unsafe_allow_html=True)
+                    f"emergency number.</div>{_after_911(sos)}<div>This question needs the "
+                    "AI reader, and AI reads are not available right now — the note above "
+                    "says why. For anything about a dose, ask whoever prescribed it or a "
+                    "pharmacist.</div></div></div>", unsafe_allow_html=True)
         return
     if a.get("kind") == "error":
         # The 911 line first, as on the "AI unavailable" reply: the model is the second net
         # for emergencies the patterns miss, so when it does not answer, nothing caught it.
         st.markdown("<div class='bubble a'><span class='badge bad'>Could not answer</span>"
                     "<div><b>If this is an emergency, call 911</b> or your local emergency "
-                    "number.</div><div>The reader did not respond. Nothing was made up to "
-                    "fill the gap.</div></div></div>", unsafe_allow_html=True)
+                    f"number.</div>{_after_911(sos)}<div>The reader did not respond. Nothing "
+                    "was made up to fill the gap.</div></div></div>", unsafe_allow_html=True)
         st.caption(f"Reader said: {a.get('error')}")
         return
 
@@ -52,6 +70,10 @@ def _render_turn(turn):
         if a["kind"] != "emergency" else ("Call for help now", "bad")
     body = "".join(f"<p>{ui.safe(para)}</p>" for para in a["answer"].split("\n")
                    if para.strip())
+    # the emergency answer, and any other reply that says to call 911 - a dose question's
+    # fixed answer ends with one
+    if a["kind"] == "emergency" or "911" in a["answer"]:
+        body += _after_911(sos)
     srcs = ""
     if a.get("sources"):
         items = " · ".join(
@@ -142,8 +164,9 @@ def screen_ask():
     ai_allowance()
 
     log = st.session_state.setdefault("ask_log", [])
+    sos = liaison.emergency_contact(db.get_profile(con, my_id()))
     for turn in log:
-        _render_turn(turn)
+        _render_turn(turn, sos)
 
     def run(question):
         slot = st.empty()

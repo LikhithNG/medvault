@@ -87,15 +87,18 @@ def _same_doctor(name, provider):
                for w in words)
 
 
-def _dialable(phone):
-    """The number a phone should dial, or None. Only a plain number: "ext 5" stripped to
-    digits, or two numbers run together, would dial one nobody wrote down."""
-    if re.search(r"[A-Za-z]", phone):
+def dialable(phone):
+    """The number a phone should dial, or None. Only a number written as one plain number:
+    ASCII digits, spaces, brackets, dots and dashes, with one leading "+". Refusing letters
+    alone was not enough - "#5", ";5", a Cyrillic "ext" or two numbers joined by "/" were
+    stripped to digits and dialled a number nobody wrote, under the one they did."""
+    phone = phone.strip()
+    if not re.fullmatch(r"\+?[0-9 ().\-]+", phone):
         return None
-    digits = re.sub(r"\D", "", phone)
+    digits = re.sub(r"[^0-9]", "", phone)
     if not 7 <= len(digits) <= 15:
         return None
-    return ("+" if phone.lstrip().startswith("+") else "") + digits
+    return ("+" if phone.startswith("+") else "") + digits
 
 
 def contact(profile, provider):
@@ -112,7 +115,23 @@ def contact(profile, provider):
         return None
     if not re.search(r"\d{3}", phone):
         return None
-    return {"name": name, "phone": phone, "dial": _dialable(phone)}
+    return {"name": name, "phone": phone, "dial": dialable(phone)}
+
+
+def emergency_contact(profile):
+    """The person the patient put on their card for an emergency, or None without a name.
+
+    Shown after 911, never instead of it: this is who to tell, not who to call for help.
+    Only what the patient wrote is used, and "dial" follows the same rule as contact()'s -
+    None when the number is not one a phone can safely dial as written, so it is shown
+    rather than linked.
+    """
+    name = (profile.get("emergency_name") or "").strip()
+    if not name:
+        return None
+    phone = (profile.get("emergency_phone") or "").strip()
+    return {"name": name, "relation": (profile.get("emergency_relation") or "").strip(),
+            "phone": phone, "dial": dialable(phone) if phone else None}
 
 
 def follow_ups(con, owner_id, today=None):

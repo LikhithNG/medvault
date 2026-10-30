@@ -284,6 +284,9 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
   border-bottom-left-radius:5px;box-shadow:var(--sh-sm);margin-top:.5rem}
 .bubble.a p{margin:0 0 .6rem}
 .bubble.a p:last-child{margin:0}
+/* under every 911 line: the call, then the patient's emergency contact */
+.bubble .sos{margin:.5rem 0 .2rem;font-weight:600}
+.bubble .sos a{color:var(--danger);font-weight:700}
 /* The badge is the whole point of the answer: a reader has to be able to tell at a glance
    whether what follows came out of their own records or out of a model's general
    knowledge, and those two things look identical once they are prose. */
