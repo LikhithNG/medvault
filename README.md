@@ -1,3 +1,20 @@
+<!-- themed-header:start -->
+<a href="https://likhith-ng-portfolio.vercel.app/#proj-medvault"><img src="docs/readme/hero.svg" width="100%" alt="MedVault — Medical Records and Bill Checker: Built a phone-first vault for prescriptions, reports and hospital bills: Gemini and open models on Groq read each page, and every record is badged with its source."></a>
+
+<p align="center">
+  <a href="https://likhith-ng-portfolio.vercel.app/#proj-medvault"><img alt="See it on my portfolio" src="https://img.shields.io/badge/see%20it%20on-my%20portfolio-a5a1f0?style=for-the-badge&labelColor=1d1e23"></a>
+  <a href="https://medvault-wpcblvckvi6rzg9sk345eq.streamlit.app/"><img alt="Try the live app" src="https://img.shields.io/badge/live%20app-try%20it-fb7185?style=for-the-badge&labelColor=1d1e23"></a>
+  <a href="https://github.com/LikhithNG"><img alt="More of my work" src="https://img.shields.io/badge/more%20of%20my%20work-github.com%2FLikhithNG-5eead4?style=for-the-badge&labelColor=1d1e23"></a>
+</p>
+
+**At a glance**
+
+- Built a phone-first vault for prescriptions, reports and hospital bills: Gemini and open models on Groq read each page, and every record is badged with its source.
+- Checks every bill line against that hospital's CMS price file and Medicare's rates in plain Python, with a receipt on each flag: 100% precision on 126 labelled test flags.
+
+---
+<!-- themed-header:end -->
+
 # MedVault
 
 Every piece of your medical paperwork, on the phone in your pocket.
