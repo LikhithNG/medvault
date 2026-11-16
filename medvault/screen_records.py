@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
 """Adding a document, and the list of everything filed."""
+import re
 import time
 
 import streamlit as st
 
 import accounts
 import agentsui
+import ccda
 import db
+import lay_terms
 import providers
 import quota
 import runtime
+import screen_trends
 import ui
-from schema import KIND_ORDER, kind_label
+from schema import KIND_ORDER, LAB_FIELDS, kind_label
 from session import (ai_allowance, clinician_view, me, reader_ready, vault,
                      visible_owners, when)
 
@@ -23,6 +27,8 @@ def screen_add():
     st.markdown(ui.section("Add a document"), unsafe_allow_html=True)
     st.caption("A photo of a prescription, a lab report PDF, a discharge summary — "
                "whatever you were handed. It is read once to pull out the details.")
+    st.caption("Or the record file your patient portal lets you download (XML, sometimes "
+               "called a C-CDA or a CCD): that is read here, with no AI.")
     st.markdown(ui.hint(*providers.notice("What you upload is sent to an AI reader."),
                         label="Where it goes"), unsafe_allow_html=True)
     standing = ai_allowance()
@@ -30,7 +36,7 @@ def screen_add():
     # Keyed by how many documents this session has filed: filing moves the key on, and a
     # new key is a new, empty box. The filed photo used to stay in it under a live "Read
     # this document" - one click from a second read and a second copy of the record.
-    up = st.file_uploader("Photo or PDF", type=["jpg", "jpeg", "png", "webp", "pdf"],
+    up = st.file_uploader("Photo, PDF or record file", type=["jpg", "jpeg", "png", "webp", "pdf", "xml"],
                           label_visibility="collapsed",
                           key=f"doc_upload_{st.session_state.get('filed_count', 0)}")
     if not up:
@@ -39,6 +45,10 @@ def screen_add():
         return
 
     data = up.getvalue()
+    if up.name.lower().endswith(".xml") or "xml" in (up.type or ""):
+        _read_portal_file(up, data)
+        check_and_file(con)
+        return
     is_pdf = (up.type or "").endswith("pdf") or up.name.lower().endswith(".pdf")
     st.caption(f"{up.name} · {len(data)/1024:,.0f} KB")
 
@@ -97,6 +107,84 @@ def screen_add():
     check_and_file(con)
 
 
+def _read_portal_file(up, data):
+    """A patient portal's own record file: read here, with no AI and no read used up."""
+    st.caption(f"{up.name} · {len(data)/1024:,.0f} KB · a record file from a patient portal")
+    if not st.button("Read this record file", type="primary", use_container_width=True):
+        return
+    try:
+        draft = ccda.read(data)
+    except ValueError as problem:
+        st.error(f"**That file could not be read**\n\n{problem}. Nothing was stored.")
+        return
+    st.session_state.update(draft=draft, draft_file=(up.name, up.type or "text/xml", data),
+                            draft_model=ccda.READER, draft_took=None)
+    st.rerun()
+
+
+# A first word that names a family, not a medicine: Vitamin D is not Vitamin B12, and
+# insulin glargine is not insulin lispro, so for these the second word counts too.
+_FAMILY_WORDS = {"vitamin", "insulin", "iron", "calcium", "magnesium", "potassium", "sodium",
+                 "zinc", "omega", "fish", "folic", "ferrous", "aspirin"}
+
+
+def _drug(name):
+    """Which medicine a name is, for the purpose of a reminder: its first word, letters
+    only, so "Fluticasone propionate 110 MCG" and "Fluticasone inhaler" are one. "" for a
+    name with no letters, which matches nothing."""
+    words = [w for w in (re.sub(r"[^a-z]", "", w.casefold()) for w in (name or "").split()) if w]
+    if not words:
+        return ""
+    return " ".join(words[:2]) if words[0] in _FAMILY_WORDS and len(words) > 1 else words[0]
+
+
+def _already_listed(con, owner_id, meds):
+    """A portal file lists every current medicine, including ones already filed from a
+    prescription, and a second copy rings a second reminder for the same tablet. Those
+    are held back unless the patient ticks one as a different medicine."""
+    current = {_drug(m["name"]): m["name"] for m in db.list_medications(con, active_only=True, owner_id=owner_id)}
+    current.pop("", None)
+    # By position, not by value: a file listing one medicine twice has two equal entries,
+    # and ticking one used to file both.
+    repeats = [i for i, m in enumerate(meds) if m.get("active") is not False and _drug(m["name"]) in current]
+    if not repeats:
+        return meds
+    st.markdown(ui.section("Already on your list"), unsafe_allow_html=True)
+    st.caption("Not filed again, so you are not reminded twice. Tick one only if it is a different medicine.")
+    kept = set()
+    for n, i in enumerate(repeats):
+        m = meds[i]
+        st.markdown(f"<div class='med stopped'><div class='n'>{ui.esc(m['name'])}</div><div class='d'>"
+                    f"on your list as {ui.esc(current[_drug(m['name'])])}</div></div>", unsafe_allow_html=True)
+        if st.checkbox("File this one too", value=False, key=f"repeat_{n}"):
+            kept.add(i)
+    return [m for i, m in enumerate(meds) if i not in repeats or i in kept]
+
+
+def _card_choices(draft):
+    """The allergies and problems a portal file lists, and whether to add each to the card."""
+    chosen = {}
+    if draft.get("allergies") or draft.get("problems"):
+        st.markdown(ui.section("For your card"), unsafe_allow_html=True)
+    for field, key, items, what in (("allergies", "portal_allergies", draft.get("allergies"), "allergies"),
+                                    ("conditions", "portal_problems", draft.get("problems"), "conditions")):
+        if not items:
+            continue
+        st.markdown(f"<div class='med'><div class='n'>{what.capitalize()} in this file</div>"
+                    f"<div class='d'>{ui.esc(', '.join(items))}</div></div>", unsafe_allow_html=True)
+        if st.checkbox(f"Add these {what} to my card", value=True, key=key):
+            chosen[field] = items
+    return chosen
+
+
+def _add_to_card(con, owner_id, chosen):
+    """Each chosen item added to the card's own list, once; nothing typed there is removed."""
+    if not chosen:
+        return
+    card = db.get_profile(con, owner_id)
+    db.save_profile(con, owner_id, {field: ccda.merged(card.get(field), items) for field, items in chosen.items()})
+
+
 def check_and_file(con):
     """What the Reader read, laid out to be corrected, and the button that files it."""
     draft = st.session_state.get("draft")
@@ -107,8 +195,13 @@ def check_and_file(con):
     st.markdown(agentsui.heading(ui.section("Check this before filing"), "Reader",
                                  f"read in {took}" if took else ""),
                 unsafe_allow_html=True)
-    st.caption("Read off the page by a model. Correct anything it got wrong — it is your "
-               "record, and a wrong dose is worse than no dose.")
+    portal = st.session_state.get("draft_model") == ccda.READER
+    if portal:
+        st.caption("Copied from your patient portal's own file, not read by an AI. Check it "
+                   "anyway — it is your record.")
+    else:
+        st.caption("Read off the page by a model. Correct anything it got wrong — it is your "
+                   "record, and a wrong dose is worse than no dose.")
     c1, c2 = st.columns(2)
     kind = c1.selectbox("Type", KIND_ORDER, index=KIND_ORDER.index(draft["kind"]),
                         format_func=kind_label)
@@ -121,9 +214,13 @@ def check_and_file(con):
     labs = draft.get("lab_results") or []
     if labs:
         st.markdown(ui.section(f"Results found · {len(labs)}"), unsafe_allow_html=True)
-        st.caption("Read by an AI. Fix any value that does not match the page, and delete a "
-                   "row that is not a result.")
-        labs = _edited_results(labs)
+        if portal:
+            st.caption("Copied from the file, not read by an AI. Delete a row that should not "
+                       "be filed.")
+        else:
+            st.caption("Read by an AI. Fix any value that does not match the page, and delete "
+                       "a row that is not a result.")
+        labs = _edited_results(labs, extra=("taken_on", "code") if portal else ())
 
     meds = draft.get("medications") or []
     if meds:
@@ -131,9 +228,14 @@ def check_and_file(con):
         for m in meds:
             bits = " · ".join(ui.esc(x) for x in (m.get("dose"), m.get("frequency"),
                                                    m.get("duration")) if x)
-            st.markdown(f"<div class='med'><div class='n'>{ui.esc(m['name'])}</div>"
-                        f"<div class='d'>{bits or 'no dose printed'}</div></div>",
+            done = m.get("active") is False
+            st.markdown(f"<div class='med{' stopped' if done else ''}'><div class='n'>{ui.esc(m['name'])}"
+                        + ("<span class='pill off'>Finished</span>" if done else "")
+                        + f"</div><div class='d'>{bits or 'no dose printed'}</div></div>",
                         unsafe_allow_html=True)
+    if portal:
+        meds = _already_listed(con, me().get("id"), meds)
+    chosen = _card_choices(draft) if portal else {}
 
     if st.button("File this record", type="primary", use_container_width=True):
         fname, fmime, fbytes = st.session_state["draft_file"]
@@ -149,20 +251,23 @@ def check_and_file(con):
         for m in meds:
             db.add_medication(con, rid, m)
         db.add_lab_results(con, rid, labs)
+        _add_to_card(con, filer.get("id"), chosen)
         for k in ("draft", "draft_file", "draft_model", "draft_took"):
             st.session_state.pop(k, None)
         st.session_state["filed_count"] = st.session_state.get("filed_count", 0) + 1
         ui.flash(f"Filed “{title or 'Untitled record'}”"
                  + (f" and added {len(meds)} medicine(s)" if meds else "")
-                 + (f" with {len(labs)} result(s)" if labs else "") + ".")
+                 + (f" with {len(labs)} result(s)" if labs else "")
+                 + (", and updated your card" if chosen else "") + ".")
         st.rerun()
 
 
-def _edited_results(labs):
+def _edited_results(labs, extra=()):
     """The Reader's results as a table the patient can correct before filing. A misread
-    value could otherwise only be fixed by deleting the whole record."""
-    from schema import LAB_FIELDS
-    edited = st.data_editor([{k: t.get(k) for k in LAB_FIELDS} for t in labs],
+    value could otherwise only be fixed by deleting the whole record. `extra` carries the
+    columns only a portal file has - each result's own date and code - through the edit."""
+    columns = (*LAB_FIELDS, *extra)
+    edited = st.data_editor([{k: t.get(k) for k in columns} for t in labs],
                             num_rows="dynamic", use_container_width=True, hide_index=True,
                             key=f"labs_{st.session_state.get('filed_count', 0)}")
     if hasattr(edited, "to_dict"):
@@ -171,7 +276,7 @@ def _edited_results(labs):
     def text(v):
         v = "" if v is None or v != v else str(v).strip()     # v != v: a NaN cell
         return v or None
-    rows = [{k: text(row.get(k)) for k in LAB_FIELDS} for row in (edited or [])]
+    rows = [{k: text(row.get(k)) for k in columns} for row in (edited or [])]
     return [row for row in rows if row["name"] and row["value"]]
 
 
@@ -187,6 +292,11 @@ def screen_records():
                                                else f"{kind_label(k)} ({counts.get(k,0)})"))
     rows = db.list_records(con, kind=None if kind == "all" else kind, query=q or None,
                            owner_ids=visible_owners())
+    also = lay_terms.expand(q)[1:] if q else []
+    if also:
+        st.caption("Also searched for: " + ", ".join(also))
+    if not q:
+        screen_trends.results_over_time(con)
     results = db.lab_results_by_record(con, visible_owners())
 
     if not rows:
@@ -212,7 +322,7 @@ def screen_records():
             f"<div class='title'>{ui.safe(r['title'])}</div>"
             + (f"<div class='who'>{ui.safe(r['provider'])}</div>" if r.get("provider") else "")
             + (f"<div class='sum'>{ui.safe(r['summary'])}</div>" if r.get("summary") else "")
-            + ui.lab_rows(results.get(r["id"]))
+            + ui.lab_rows(results.get(r["id"]), r.get("read_by"))
             + f"<div class='provwhy'>{accounts.PROVENANCE.get(r.get('provenance') or 'SELF', accounts.PROVENANCE['SELF'])[1]}</div>"
             + ("" if r.get("file_size") else
                "<div class='nofile'>No original attached</div>")

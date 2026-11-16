@@ -165,9 +165,21 @@ _DURATION = re.compile(r"(\d+)\s*(day|week|month)", re.I)
 _PER_UNIT = {"day": 1, "week": 7, "month": 30}
 
 
+# "until 2026-11-10" ends the course; a date said any other way ("started 2026-10-01 for
+# 30 days") is not an end, and read as one it finished the course on its first day.
+_UNTIL = re.compile(r"\buntil\s+(\d{4}-\d{2}-\d{2})\b", re.I)
+
+
 def course_end(med):
-    """The last day of a course, when the prescription gives both a start and a length."""
+    """The last day of a course: a stated end date ("until 2026-11-10", as a portal file
+    gives it) if there is one, else the start plus the length."""
     started, duration = med.get("service_date"), med.get("duration")
+    stated = _UNTIL.search(duration or "")
+    if stated:
+        try:
+            return datetime.date.fromisoformat(stated.group(1))
+        except ValueError:
+            pass            # not a real date: fall back to counting, like any other duration
     match = _DURATION.search(duration or "")
     if not started or not match:
         return None

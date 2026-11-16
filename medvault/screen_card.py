@@ -13,7 +13,7 @@ import liaison
 import store
 import ui
 from schema import BLOOD_TYPES, DONOR_CHOICES, missing_essentials
-from session import long_date, my_id, vault
+from session import long_date, my_id, vault, viewer_zone
 
 log = logging.getLogger(__name__)
 
@@ -237,22 +237,13 @@ def care_team_panel():
                 st.rerun()
 
 
-def _viewer_zone():
-    """The viewer's own time zone where the browser says it (newer Streamlit), else UTC."""
-    import zoneinfo
-    try:
-        return zoneinfo.ZoneInfo(getattr(st.context, "timezone", None) or "UTC")
-    except (zoneinfo.ZoneInfoNotFoundError, ValueError, TypeError):
-        return datetime.timezone.utc
-
-
 def _last_saw(view, zone=None):
     """What careteam.note_view records, said as what it is: a sign-in with access to the
     records, not proof of which were read. The date only, in the viewer's zone - an
     evening in Boston is the next day in UTC."""
     if not view:
         return "No sign-in recorded yet"
-    when = datetime.datetime.fromtimestamp(view["last_seen_at"], zone or _viewer_zone())
+    when = datetime.datetime.fromtimestamp(view["last_seen_at"], zone or viewer_zone())
     n = view["visits"]
     return (f"Last signed in with access to your records: {long_date(when.date())} · "
             f"{n} sign-in{'' if n == 1 else 's'}")

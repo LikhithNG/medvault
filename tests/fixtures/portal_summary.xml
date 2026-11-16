@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- A synthetic Continuity of Care Document (HL7 C-CDA R2.1) for tests: the shape a patient
+     portal's "download my record" produces. Every name and value here is made up. -->
+<ClinicalDocument xmlns="urn:hl7-org:v3" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+                  xmlns:sdtc="urn:hl7-org:sdtc">
+  <templateId root="2.16.840.1.113883.10.20.22.1.1" extension="2015-08-01"/>
+  <templateId root="2.16.840.1.113883.10.20.22.1.2" extension="2015-08-01"/>
+  <code code="34133-9" codeSystem="2.16.840.1.113883.6.1" displayName="Summarization of Episode Note"/>
+  <title>Continuity of Care Document</title>
+  <effectiveTime value="20261014103000-0500"/>
+  <recordTarget><patientRole><patient><name><given>Maya</given><family>Thompson</family></name></patient></patientRole></recordTarget>
+  <custodian><assignedCustodian><representedCustodianOrganization>
+    <name>Back Bay Family Practice</name>
+  </representedCustodianOrganization></assignedCustodian></custodian>
+  <component><structuredBody>
+
+    <component><section>
+      <templateId root="2.16.840.1.113883.10.20.22.2.6.1" extension="2015-08-01"/>
+      <code code="48765-2" codeSystem="2.16.840.1.113883.6.1"/>
+      <title>Allergies</title>
+      <text><table><tbody><tr><td ID="allergy1">Penicillin G</td><td>Hives</td></tr></tbody></table></text>
+      <entry><act classCode="ACT" moodCode="EVN">
+        <templateId root="2.16.840.1.113883.10.20.22.4.30"/>
+        <statusCode code="active"/>
+        <entryRelationship typeCode="SUBJ"><observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.7"/>
+          <value xsi:type="CD" code="416098002" displayName="Drug allergy"/>
+          <participant typeCode="CSM"><participantRole classCode="MANU"><playingEntity classCode="MMAT">
+            <code code="7980" codeSystem="2.16.840.1.113883.6.88"><originalText><reference value="#allergy1"/></originalText></code>
+          </playingEntity></participantRole></participant>
+          <entryRelationship typeCode="MFST" inversionInd="true"><observation classCode="OBS" moodCode="EVN">
+            <templateId root="2.16.840.1.113883.10.20.22.4.9"/>
+            <value xsi:type="CD" code="247472004" displayName="Hives"/>
+          </observation></entryRelationship>
+        </observation></entryRelationship>
+      </act></entry>
+    </section></component>
+
+    <component><section>
+      <templateId root="2.16.840.1.113883.10.20.22.2.1.1" extension="2014-06-09"/>
+      <code code="10160-0" codeSystem="2.16.840.1.113883.6.1"/>
+      <title>Medications</title>
+      <text><list><item ID="med1">Fluticasone 110 mcg inhaler, 2 puffs twice daily</item></list></text>
+      <entry><substanceAdministration classCode="SBADM" moodCode="INT">
+        <templateId root="2.16.840.1.113883.10.20.22.4.16"/>
+        <statusCode code="active"/>
+        <effectiveTime xsi:type="IVL_TS"><low value="20261012"/></effectiveTime>
+        <effectiveTime xsi:type="PIVL_TS" institutionSpecified="true" operator="A"><period value="12" unit="h"/></effectiveTime>
+        <doseQuantity value="2" unit="{puff}"/>
+        <consumable><manufacturedProduct><manufacturedMaterial>
+          <code code="896188" codeSystem="2.16.840.1.113883.6.88" displayName="Fluticasone propionate 110 MCG/ACTUAT Metered Dose Inhaler">
+            <originalText><reference value="#med1"/></originalText>
+          </code>
+        </manufacturedMaterial></manufacturedProduct></consumable>
+        <entryRelationship typeCode="RSON"><observation classCode="OBS" moodCode="EVN">
+          <value xsi:type="CD" code="195967001" displayName="Asthma"/>
+        </observation></entryRelationship>
+      </substanceAdministration></entry>
+      <entry><substanceAdministration classCode="SBADM" moodCode="INT">
+        <statusCode code="active"/>
+        <effectiveTime xsi:type="IVL_TS"><low value="20261012"/><high value="20261110"/></effectiveTime>
+        <effectiveTime xsi:type="PIVL_TS" operator="A"><period value="1" unit="d"/></effectiveTime>
+        <doseQuantity value="1"/>
+        <consumable><manufacturedProduct><manufacturedMaterial>
+          <code code="997501" codeSystem="2.16.840.1.113883.6.88" displayName="Montelukast 10 MG Oral Tablet"/>
+        </manufacturedMaterial></manufacturedProduct></consumable>
+      </substanceAdministration></entry>
+      <entry><substanceAdministration classCode="SBADM" moodCode="INT">
+        <statusCode code="active"/>
+        <effectiveTime xsi:type="PIVL_TS" operator="A"><period value="4" unit="h"/></effectiveTime>
+        <doseQuantity value="2" unit="{puff}"/>
+        <precondition typeCode="PRCN"><criterion><value xsi:type="CD" displayName="Wheezing"/></criterion></precondition>
+        <consumable><manufacturedProduct><manufacturedMaterial>
+          <code code="745679" codeSystem="2.16.840.1.113883.6.88" displayName="Albuterol 90 MCG/ACTUAT Metered Dose Inhaler"/>
+        </manufacturedMaterial></manufacturedProduct></consumable>
+      </substanceAdministration></entry>
+      <entry><substanceAdministration classCode="SBADM" moodCode="INT">
+        <statusCode code="completed"/>
+        <effectiveTime xsi:type="IVL_TS"><low value="20261012"/><high value="20261016"/></effectiveTime>
+        <effectiveTime xsi:type="PIVL_TS" operator="A"><period value="24" unit="h"/></effectiveTime>
+        <doseQuantity value="40" unit="mg"/>
+        <consumable><manufacturedProduct><manufacturedMaterial>
+          <code code="312615" codeSystem="2.16.840.1.113883.6.88" displayName="Prednisone 20 MG Oral Tablet"/>
+        </manufacturedMaterial></manufacturedProduct></consumable>
+      </substanceAdministration></entry>
+    </section></component>
+
+    <component><section>
+      <templateId root="2.16.840.1.113883.10.20.22.2.5.1" extension="2015-08-01"/>
+      <code code="11450-4" codeSystem="2.16.840.1.113883.6.1"/>
+      <title>Problems</title>
+      <entry><act classCode="ACT" moodCode="EVN">
+        <templateId root="2.16.840.1.113883.10.20.22.4.3"/>
+        <statusCode code="active"/>
+        <entryRelationship typeCode="SUBJ"><observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.4"/>
+          <value xsi:type="CD" code="195967001" codeSystem="2.16.840.1.113883.6.96" displayName="Asthma"/>
+        </observation></entryRelationship>
+      </act></entry>
+    </section></component>
+
+    <component><section>
+      <templateId root="2.16.840.1.113883.10.20.22.2.3.1" extension="2015-08-01"/>
+      <code code="30954-2" codeSystem="2.16.840.1.113883.6.1"/>
+      <title>Results</title>
+      <entry><organizer classCode="BATTERY" moodCode="EVN">
+        <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+        <effectiveTime value="20260412"/>
+        <component><observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+          <code code="4548-4" codeSystem="2.16.840.1.113883.6.1" displayName="Hemoglobin A1c/Hemoglobin.total in Blood"/>
+          <effectiveTime value="20260412"/>
+          <value xsi:type="PQ" value="5.9" unit="%"/>
+          <interpretationCode code="H" codeSystem="2.16.840.1.113883.5.83"/>
+          <referenceRange><observationRange><text>4.0-5.6</text></observationRange></referenceRange>
+        </observation></component>
+      </organizer></entry>
+      <entry><organizer classCode="BATTERY" moodCode="EVN">
+        <templateId root="2.16.840.1.113883.10.20.22.4.1"/>
+        <effectiveTime value="20261012"/>
+        <component><observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+          <code code="4548-4" codeSystem="2.16.840.1.113883.6.1" displayName="Hemoglobin A1c/Hemoglobin.total in Blood"/>
+          <effectiveTime value="20261012"/>
+          <value xsi:type="PQ" value="6.1" unit="%"/>
+          <interpretationCode code="H" codeSystem="2.16.840.1.113883.5.83"/>
+          <referenceRange><observationRange><text>4.0-5.6</text></observationRange></referenceRange>
+        </observation></component>
+        <component><observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+          <code code="2345-7" codeSystem="2.16.840.1.113883.6.1" displayName="Glucose [Mass/volume] in Serum or Plasma"/>
+          <effectiveTime value="20261012"/>
+          <value xsi:type="PQ" value="110" unit="mg/dL"/>
+          <interpretationCode code="H" codeSystem="2.16.840.1.113883.5.83"/>
+          <referenceRange><observationRange><value xsi:type="IVL_PQ"><low value="70" unit="mg/dL"/><high value="99" unit="mg/dL"/></value></observationRange></referenceRange>
+        </observation></component>
+        <component><observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.2"/>
+          <code code="5804-0" codeSystem="2.16.840.1.113883.6.1" displayName="Protein [Mass/volume] in Urine by Test strip"/>
+          <effectiveTime value="20261012"/>
+          <value xsi:type="ST">Negative</value>
+          <interpretationCode code="N" codeSystem="2.16.840.1.113883.5.83"/>
+        </observation></component>
+      </organizer></entry>
+    </section></component>
+
+    <component><section>
+      <templateId root="2.16.840.1.113883.10.20.22.2.2.1" extension="2015-08-01"/>
+      <code code="11369-6" codeSystem="2.16.840.1.113883.6.1"/>
+      <title>Immunizations</title>
+      <entry><substanceAdministration classCode="SBADM" moodCode="EVN" negationInd="false">
+        <templateId root="2.16.840.1.113883.10.20.22.4.52"/>
+        <statusCode code="completed"/>
+        <effectiveTime value="20251001"/>
+        <consumable><manufacturedProduct><manufacturedMaterial>
+          <code code="140" codeSystem="2.16.840.1.113883.12.292" displayName="Influenza, seasonal, injectable, preservative free"/>
+        </manufacturedMaterial></manufacturedProduct></consumable>
+      </substanceAdministration></entry>
+    </section></component>
+
+    <component><section>
+      <templateId root="2.16.840.1.113883.10.20.22.2.4.1" extension="2015-08-01"/>
+      <code code="8716-3" codeSystem="2.16.840.1.113883.6.1"/>
+      <title>Vital Signs</title>
+      <entry><organizer classCode="CLUSTER" moodCode="EVN">
+        <templateId root="2.16.840.1.113883.10.20.22.4.26"/>
+        <effectiveTime value="20261012"/>
+        <component><observation classCode="OBS" moodCode="EVN">
+          <templateId root="2.16.840.1.113883.10.20.22.4.27"/>
+          <code code="8480-6" codeSystem="2.16.840.1.113883.6.1" displayName="Systolic blood pressure"/>
+          <effectiveTime value="20261012"/>
+          <value xsi:type="PQ" value="128" unit="mm[Hg]"/>
+        </observation></component>
+      </organizer></entry>
+    </section></component>
+
+  </structuredBody></component>
+</ClinicalDocument>

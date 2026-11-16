@@ -258,6 +258,20 @@ def test_common_shorthand_is_timed():
     assert _rung("every eight hours")[0] == ["00:00", "08:00", "16:00"]
 
 
+
+def test_a_stated_end_date_wins_over_a_count_of_days():
+    """"30 days, until 2026-11-10" on a record dated 14 Oct: the count alone would end it on
+    12 Nov, two days after the prescriber did."""
+    course = {"service_date": "2026-10-14", "duration": "30 days, until 2026-11-10"}
+    assert schedule.course_end(course) == datetime.date(2026, 11, 10)
+    assert schedule.course_end({"service_date": "2026-10-14", "duration": "until 9999-99-99"}) is None
+
+
+def test_a_date_in_a_duration_is_an_end_only_when_it_says_until():
+    """"started 2026-10-01 for 30 days" read as ending on 1 October: finished on day one."""
+    course = {"service_date": "2026-10-01", "duration": "started 2026-10-01 for 30 days"}
+    assert schedule.course_end(course) == datetime.date(2026, 10, 30)
+
 if __name__ == "__main__":
     n = 0
     for name, fn in sorted(globals().items()):

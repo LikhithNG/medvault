@@ -6,3 +6,5 @@
 streamlit==1.66.1
 pypdf>=5.0,<6
 pillow>=10.0,<12
+# Reads a patient portal's C-CDA file with entity expansion and DTDs refused (ccda.py).
+defusedxml>=0.7.1,<0.8

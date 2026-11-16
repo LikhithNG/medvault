@@ -20,6 +20,10 @@ DEFAULT_PATH = pathlib.Path(os.environ.get(
 # a date and a count: never what was read, asked or answered. Days before today are
 # deleted as soon as a new one is counted.
 #
+# dose_log is what happened to each scheduled dose: taken or skipped, and how much stock a
+# taken one used, so that undoing it puts back exactly that - see doses.py. One row per
+# medicine, day and time, so marking a dose twice replaces the first mark.
+#
 # care_views is when each clinician on a care team last signed in with that patient's
 # records, and how many separate sign-ins that was - see careteam.note_view. One row per
 # pair, removed with the clinician, so it never grows past the size of the care team.
@@ -60,6 +64,15 @@ CREATE TABLE IF NOT EXISTS medications (
     duration   TEXT,
     reason     TEXT,
     active     INTEGER NOT NULL DEFAULT 1
+);
+CREATE TABLE IF NOT EXISTS dose_log (
+    med_id      INTEGER NOT NULL REFERENCES medications(id) ON DELETE CASCADE,
+    day         TEXT    NOT NULL,
+    at          TEXT    NOT NULL,
+    status      TEXT    NOT NULL,
+    used        REAL,
+    recorded_at REAL    NOT NULL,
+    PRIMARY KEY (med_id, day, at)
 );
 CREATE TABLE IF NOT EXISTS lab_results (
     id              INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -110,7 +123,33 @@ ADDITIONS = [
     ("records", "verified_by", "INTEGER"),
     ("records", "verified_at", "REAL"),
     ("records", "verifier_note", "TEXT"),
+    # The stock count (see doses.py). NULL stock means nobody is counting, which is
+    # different from an empty box.
+    ("medications", "stock",       "REAL"),
+    ("medications", "per_dose",    "REAL"),
+    ("medications", "refill_size", "REAL"),
+    ("medications", "expires",     "TEXT"),
+    # A result's own LOINC code and date, when its source states them - a patient portal's
+    # file does (ccda.py); a photographed report does not, and leaves both empty.
+    ("lab_results", "code",        "TEXT"),
+    ("lab_results", "taken_on",    "TEXT"),
 ]
+
+
+# The stock moves with the log, inside the same statement: a dose's row going in takes
+# what it used out of the box, and the row coming out puts it back. On the hosted vault
+# every statement is its own transaction, so a stock change and a log change made as two
+# statements could be split by a dropped connection - a tablet taken off with no dose to
+# show for it, or put back while the dose stayed logged. Created with execute(), not in
+# SCHEMA, because executescript() splits on semicolons and a trigger body has one.
+TRIGGERS = (
+    "CREATE TRIGGER IF NOT EXISTS dose_takes_stock AFTER INSERT ON dose_log WHEN NEW.used IS NOT NULL"
+    " BEGIN UPDATE medications SET stock = MAX(0, stock - NEW.used)"
+    " WHERE id = NEW.med_id AND stock IS NOT NULL; END",
+    "CREATE TRIGGER IF NOT EXISTS undo_returns_stock AFTER DELETE ON dose_log WHEN OLD.used IS NOT NULL"
+    " BEGIN UPDATE medications SET stock = MIN(stock + OLD.used, 100000)"
+    " WHERE id = OLD.med_id AND stock IS NOT NULL; END",
+)
 
 
 def _migrate(con):
@@ -133,6 +172,8 @@ def _migrate(con):
         have = {r["name"] for r in con.execute(f"PRAGMA table_info({table})")}
         if column not in have:
             con.execute(f"ALTER TABLE {table} ADD COLUMN {column} {decl}")
+    for trigger in TRIGGERS:
+        con.execute(trigger)
     con.commit()
 
 
@@ -223,8 +264,15 @@ def list_records(con, kind=None, query=None, limit=500, owner_id=None, owner_ids
     if kind:
         where.append("kind = ?"); args.append(kind)
     if query:
-        where.append("(title LIKE ? OR summary LIKE ? OR provider LIKE ? OR raw_text LIKE ?)")
-        args += [f"%{query}%"] * 4
+        # Plain words find clinical ones ("high blood sugar" finds diabetes), and a record
+        # is found by a result or a medicine on it, not only by its own text.
+        import lay_terms
+        one = ("(title LIKE ? OR summary LIKE ? OR provider LIKE ? OR raw_text LIKE ?"
+               " OR id IN (SELECT record_id FROM lab_results WHERE name LIKE ?)"
+               " OR id IN (SELECT record_id FROM medications WHERE name LIKE ?))")
+        terms = lay_terms.expand(query)
+        where.append("(" + " OR ".join([one] * len(terms)) + ")")
+        args += [f"%{term}%" for term in terms for _ in range(6)]
     if where:
         sql += " WHERE " + " AND ".join(where)
     sql += " ORDER BY COALESCE(service_date, date(added_at,'unixepoch')) DESC, id DESC LIMIT ?"
@@ -258,6 +306,8 @@ def delete_record(con, record_id, owner_id):
     # The record first: if the connection drops after it, what is left are rows nothing
     # shows, rather than a record still on screen with its medicines stripped off it.
     con.execute("DELETE FROM records WHERE id = ? AND owner_id = ?", (record_id, owner_id))
+    con.execute("DELETE FROM dose_log WHERE med_id IN (SELECT id FROM medications WHERE record_id = ?)",
+                (record_id,))
     con.execute("DELETE FROM medications WHERE record_id = ?", (record_id,))
     con.execute("DELETE FROM lab_results WHERE record_id = ?", (record_id,))
     con.commit()
@@ -288,15 +338,23 @@ def counts_by_kind(con, owner_id=None, owner_ids=None):
 # ---- medications -----------------------------------------------------------
 
 def add_medication(con, record_id, med):
-    """Store one medicine. `active` False keeps a finished one finished - an export then an
-    import used to bring every finished course back onto the emergency card."""
-    con.execute(
-        "INSERT INTO medications (record_id, name, dose, frequency, duration, reason, active)"
-        " VALUES (?,?,?,?,?,?,?)",
+    """Store one medicine; returns its id. `active` False keeps a finished one finished - an
+    export then an import used to bring every finished course back onto the emergency card.
+
+    The stock fields arrive only from an import, and are cleaned here too: a reading off a
+    photograph that carried a "stock" of "lots" must not reach the arithmetic as text.
+    """
+    from doselog import _quantity
+    cur = con.execute(
+        "INSERT INTO medications (record_id, name, dose, frequency, duration, reason, active,"
+        " stock, per_dose, refill_size, expires) VALUES (?,?,?,?,?,?,?,?,?,?,?)",
         (record_id, med.get("name"), med.get("dose"), med.get("frequency"),
          med.get("duration"), med.get("reason"),
-         0 if med.get("active") in (0, False, "0") else 1))
+         0 if med.get("active") in (0, False, "0") else 1,
+         _quantity(med.get("stock")), _quantity(med.get("per_dose"), positive=True),
+         _quantity(med.get("refill_size"), positive=True), _iso_date(med.get("expires"))))
     con.commit()
+    return cur.lastrowid
 
 
 def list_medications(con, active_only=True, owner_id=None):
@@ -321,7 +379,8 @@ def set_medication_active(con, med_id, active):
 
 # ---- lab results -----------------------------------------------------------
 
-LAB_COLUMNS = ("name", "value", "unit", "reference_range", "flag")
+LAB_COLUMNS = ("name", "value", "unit", "reference_range", "flag", "code", "taken_on")
+LAB_CHUNK = 500         # rows per statement: a portal file can hold thousands of results
 
 
 def add_lab_result(con, record_id, result):
@@ -334,11 +393,15 @@ def add_lab_results(con, record_id, results):
     a round trip, and a panel of sixty results was sixty of them - a failure part way
     through left half a report filed."""
     results = list(results)
-    if not results:
-        return
-    con.execute("INSERT INTO lab_results (record_id, name, value, unit, reference_range, flag)"
-                " VALUES " + ",".join(["(?,?,?,?,?,?)"] * len(results)),
-                [v for t in results for v in (record_id, *(t.get(k) for k in LAB_COLUMNS))])
+    row = "(" + ",".join("?" * (len(LAB_COLUMNS) + 1)) + ")"
+    for start in range(0, len(results), LAB_CHUNK):
+        chunk = results[start:start + LAB_CHUNK]
+        # A result's date is a real date or nothing: the review screen lets it be typed,
+        # and "2026-13-45" reached the chart, which raised on every Records load.
+        chunk = [{**t, "taken_on": _iso_date(t.get("taken_on"))} for t in chunk]
+        con.execute(f"INSERT INTO lab_results (record_id, {', '.join(LAB_COLUMNS)})"
+                    " VALUES " + ",".join([row] * len(chunk)),
+                    [v for t in chunk for v in (record_id, *(t.get(k) for k in LAB_COLUMNS))])
     con.commit()
 
 
@@ -398,6 +461,7 @@ def export_vault(con, account_id):
     """
     if account_id is None:
         raise ValueError("export_vault needs to know whose vault it is exporting")
+    from doselog import dose_log
     return json.dumps({
         "medvault_export": 1,
         "exported_at": time.strftime("%Y-%m-%d %H:%M"),
@@ -406,6 +470,7 @@ def export_vault(con, account_id):
         "medications": list_medications(con, active_only=False, owner_id=account_id),
         "lab_results": [row for rows in lab_results_by_record(con, [account_id]).values()
                         for row in rows],
+        "dose_log": dose_log(con, account_id),
     }, indent=2, default=str)
 
 
@@ -417,6 +482,7 @@ RESTORABLE = ("kind", "service_date", "provider", "title", "summary", "read_by",
 IMPORT_MAX_RECORDS = 2000
 IMPORT_MAX_MEDICATIONS = 5000
 IMPORT_MAX_LAB_RESULTS = 5000
+IMPORT_MAX_DOSES = 50_000           # four doses a day for thirty years
 _HHMM = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 
@@ -442,25 +508,27 @@ def _iso_date(value):
 
 def _vetted(data):
     """An export, checked before anything is written: (records, medications, results,
-    profile).
+    profile, dose log).
 
     A file of the wrong shape raises ValueError and writes nothing. Values inside a
     well-shaped file are cleaned rather than trusted - including card values a screen would
     fail on, such as organ_donor "maybe", which made the Card screen raise on every load
     with the restore control on that same screen.
     """
+    from doselog import DOSE_STATUSES, _quantity
     from schema import BLOOD_TYPES, DONOR_CHOICES, KIND_ORDER, PROFILE_FIELDS
     if not isinstance(data, dict) or not isinstance(data.get("records"), list):
         raise ValueError("that file is not a MedVault export")
     records, meds = data["records"], data.get("medications") or []
     labs = data.get("lab_results") or []         # exports from before results have none
+    log = data.get("dose_log") or []             # nor, before the dose log, any doses
     profile = data.get("profile") or {}
-    if not isinstance(meds, list) or not isinstance(labs, list) \
+    if not isinstance(meds, list) or not isinstance(labs, list) or not isinstance(log, list) \
             or not isinstance(profile, dict) \
-            or not all(isinstance(r, dict) for r in records + meds + labs):
+            or not all(isinstance(r, dict) for r in records + meds + labs + log):
         raise ValueError("that file is not a MedVault export")
     if len(records) > IMPORT_MAX_RECORDS or len(meds) > IMPORT_MAX_MEDICATIONS \
-            or len(labs) > IMPORT_MAX_LAB_RESULTS:
+            or len(labs) > IMPORT_MAX_LAB_RESULTS or len(log) > IMPORT_MAX_DOSES:
         raise ValueError(f"that file holds more than {IMPORT_MAX_RECORDS} records, so it "
                          "is not an export of one vault")
 
@@ -477,11 +545,24 @@ def _vetted(data):
         "read_by": _text(r.get("read_by"), 100),
     } for r in records]
     clean_meds = [{
+        "id": whole(m.get("id")),
         "record_id": whole(m.get("record_id")),
         "name": _text(m.get("name"), 200),
         **{k: _text(m.get(k), 500) for k in ("dose", "frequency", "duration", "reason")},
         "active": m.get("active") not in (0, False, "0"),
+        "stock": _quantity(m.get("stock")), "per_dose": _quantity(m.get("per_dose"), positive=True),
+        "refill_size": _quantity(m.get("refill_size"), positive=True),
+        "expires": _iso_date(m.get("expires")),
     } for m in meds if _text(m.get("name"))]
+    clean_log = [{
+        "med_id": whole(e.get("med_id")), "day": _iso_date(e.get("day")),
+        "at": e.get("at") if isinstance(e.get("at"), str) and _HHMM.fullmatch(e["at"]) else None,
+        "status": e.get("status") if e.get("status") in DOSE_STATUSES else None,
+        "used": _quantity(e.get("used")),
+        "recorded_at": e.get("recorded_at") if isinstance(e.get("recorded_at"), (int, float))
+        and not isinstance(e.get("recorded_at"), bool) else time.time(),
+    } for e in log]
+    clean_log = [e for e in clean_log if e["med_id"] is not None and e["day"] and e["at"] and e["status"]]
 
     def word(v, limit):
         return _text(v, limit) if isinstance(v, (str, int, float)) else None
@@ -490,7 +571,8 @@ def _vetted(data):
         "record_id": whole(t.get("record_id")),
         "name": word(t.get("name"), 300), "value": word(t.get("value"), 500),
         "unit": word(t.get("unit"), 100), "reference_range": word(t.get("reference_range"), 300),
-        "flag": word(t.get("flag"), 50),
+        "flag": word(t.get("flag"), 50), "code": word(t.get("code"), 40),
+        "taken_on": _iso_date(t.get("taken_on")),
     } for t in labs]
     clean_labs = [t for t in clean_labs if t["name"] and t["value"]]
     valid = {"organ_donor": DONOR_CHOICES, "blood_type": BLOOD_TYPES}
@@ -504,7 +586,7 @@ def _vetted(data):
         if key == "day_start" and not _HHMM.fullmatch(value):
             continue
         clean_profile[key] = value
-    return clean_records, clean_meds, clean_labs, clean_profile
+    return clean_records, clean_meds, clean_labs, clean_profile, clean_log
 
 
 def import_vault(con, account_id, payload):
@@ -526,7 +608,7 @@ def import_vault(con, account_id, payload):
     if account_id is None:
         raise ValueError("import_vault needs to know whose vault it is importing into")
     data = json.loads(payload) if isinstance(payload, (str, bytes)) else payload
-    records, meds, labs, profile = _vetted(data)
+    records, meds, labs, profile, log = _vetted(data)
 
     existing = {(r["kind"], r["title"], r.get("service_date"))
                 for r in list_records(con, limit=10_000, owner_id=account_id)}
@@ -547,12 +629,40 @@ def import_vault(con, account_id, payload):
         existing.add(key)
         added += 1
 
+    med_map, exported_stock = {}, {}
     for med in meds:
         target = id_map.get(med["record_id"])
         if target is None:
             continue            # its record was a duplicate, or carried no id to match
-        add_medication(con, target, med)
+        new_med = add_medication(con, target, med)
+        # The first medicine with an id keeps it: a file listing one medicine twice must not
+        # hand its doses to the second copy and leave the first copy's stock unexplained.
+        if med["id"] is not None and med["id"] not in med_map:
+            med_map[med["id"]] = new_med
+            exported_stock[new_med] = med["stock"]
         meds_added += 1
+
+    # The log goes back as it was, one entry per dose; a dose for a medicine that was not
+    # restored has nothing to belong to and is dropped. Each row goes in through
+    # db.TRIGGERS, which take its dose off the stock again - and the exported stock is
+    # already net of it - so afterwards each medicine's stock is set back to what was
+    # exported. In that order, an import cut off part way leaves a stock too low, a
+    # prompt to refill early, never too high.
+    doses_added, logged = 0, set()
+    for entry in {(e["med_id"], e["day"], e["at"]): e for e in log}.values():
+        target = med_map.get(entry["med_id"])
+        if target is None:
+            continue
+        con.execute("INSERT OR IGNORE INTO dose_log (med_id, day, at, status, used, recorded_at)"
+                    " VALUES (?,?,?,?,?,?)", (target, entry["day"], entry["at"], entry["status"],
+                                             entry["used"], entry["recorded_at"]))
+        doses_added += 1
+        logged.add(target)
+    for target in logged:
+        if exported_stock.get(target) is not None:
+            con.execute("UPDATE medications SET stock = ? WHERE id = ?", (exported_stock[target], target))
+    if doses_added:
+        con.commit()
 
     by_record = {}
     for result in labs:
@@ -567,7 +677,7 @@ def import_vault(con, account_id, payload):
         save_profile(con, account_id, profile)
 
     return {"records_added": added, "records_skipped": skipped,
-            "medications_added": meds_added, "lab_results_added": labs_added,
+            "medications_added": meds_added, "lab_results_added": labs_added, "doses_added": doses_added,
             "profile_restored": bool(profile)}
 
 
