@@ -465,7 +465,7 @@ def test_a_filed_document_leaves_the_upload_box_empty():
         _click(at, "File this record")
         # What the app drew, not at.button: AppTest on 1.37 keeps the elements of the run
         # that st.rerun() cut short, so "Read this document" lingers there either way.
-        boxes = [held for label, held in drawn if label == "Photo or PDF"]
+        boxes = [held for label, held in drawn if label == "Photo, PDF or record file"]
         assert boxes[0] and not boxes[-1], "the filed document is still in the box"
         assert quota.allowance(con, alice).used == 1
 

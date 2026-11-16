@@ -552,6 +552,37 @@ works while a tab is open is not a reminder. It never schedules an *as-needed* m
 the vault's own sample has ibuprofen "every 8 hours as needed", and a naive reminder turns
 that into an NSAID three times a day.
 
+Each of today's doses can be marked **taken** or **skipped** (`doses.py`, stored by
+`doselog.py`). One unmarked two hours after its time shows as *not marked*: often the
+dose was taken and nobody tapped, so it is a prompt rather than an alarm, and it is the
+fact the Guardian will pass to the family. A taken dose comes out of the medicine's
+stock, if the patient counts it. The screen then says when the box runs out, when the
+medicine expires, and whether the course ends first, and the dose history downloads as
+CSV for a doctor. The model is [MedTimer](https://github.com/Futsch1/medTimer)'s (MIT):
+a skipped dose uses no stock, and stock is counted in the dose's own unit with no
+conversion. Only the first number counts, and only when it counts something: "1 capsule
+(25 mg)" is one capsule, and "500 mg" is a strength, so it is never read as 500 of
+anything.
+
+**Notifications** (`notify.py`, `static/sw.js`). After one tap on "Turn on
+notifications", the browser notifies you:
+- at each dose time;
+- when a dose is still unmarked two hours later (the moment the screen calls it *not
+  marked*);
+- once a day, when a box is running low or a medicine is about to expire. These come from
+  MedTimer's dose, repeat, out-of-stock and expiry reminders.
+
+The plan is worked out in Python and tested; the browser only shows it. Each notification
+carries a tag naming its medicine, day and time, so a rerun never shows one twice. A
+minimal service worker is there because Android Chrome shows notifications only through
+one; it caches nothing. A web page cannot wake a phone, so these work while MedVault is
+open or installed in the background, and the calendar file still rings with it closed.
+"Hide medicine names in notifications" keeps every name off the lock screen.
+
+A portal file lists every current medicine, including ones already filed from a
+prescription. Those are held back unless the patient ticks one as different, so a
+medicine is never reminded twice.
+
 **The Liaison** reports what a patient's records say is outstanding — a follow-up the
 discharge summary asked for whose date has passed, an allergy collision, a dose nobody can
 time — to the care team the patient chose. It does **not** decide anybody needs care:
@@ -582,6 +613,29 @@ under its report, so "what was my potassium?" cites the report. Checked on Groq 
 synthetic panel: 8 of 8 results, units, ranges and the one printed flag, and a prescription
 still read its three medicines with no results invented. Not yet measured on Gemini, the
 Reader's usual model for a photo.
+
+**A patient portal's own record file is read with no AI** (`ccda.py`). Most portals,
+MyChart among them, let a patient download their record as a C-CDA (XML) file. The Add
+screen takes it and reads each section by its HL7 template id: medicines, results, vital
+signs, allergies, problems and vaccinations. That is Mere Medical's approach
+([cfu288/mere-medical](https://github.com/cfu288/mere-medical), MIT). Nothing is guessed
+off a photograph, so the names, codes and dates are the hospital's own, and no AI read is
+used up. The draft goes through the same check-before-filing screen, labelled "copied
+from your portal's file, not read by an AI". The file's allergies and problems can be
+added to the card; an allergy already there is not written twice. An as-needed medicine
+keeps "as needed", so the Scheduler never rings it. A finished course arrives finished.
+A course's stated end date ("until 2026-11-10") wins over a count of days. The parser is
+`defusedxml` with DTDs forbidden, so an entity bomb or an external entity is refused,
+not expanded.
+
+**Results over time** (`trends.py`). Every test measured more than once is listed with
+its values oldest first, and charted when they are numbers in one unit. Results are one
+test when they share a LOINC code, and the same result filed twice (a discharge summary
+and the lab's own report) is shown once. Without a code, names must match exactly:
+haemoglobin and haemoglobin A1c stay apart. **Search understands plain words**
+(`lay_terms.py`): "high blood sugar" also searches diabetes, glucose and A1c, and a record
+is found by a result or a medicine on it. Mere answered the same need with AI embeddings
+sent to OpenAI; this is a short local list, so a search sends nothing anywhere.
 
 **A charge on a long statement names its page.** For a PDF bill of more than one page,
 each line read is matched to the page it is printed on, by its code and amount on that
@@ -710,7 +764,7 @@ document, and the question box on the Ask screen. Everything else — the price 
 record cross-check and the findings above the Ask box — runs without a key.
 
 ```bash
-python3 -m pytest tests -q        # all 536
+python3 -m pytest tests -q        # all 656
 python3 tests/test_receipts.py    # no receipt, no flag
 python3 tests/test_isolation.py   # one patient cannot see another's vault
 python3 tests/test_crosscheck.py  # the cross-check never accuses

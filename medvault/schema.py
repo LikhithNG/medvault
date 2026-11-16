@@ -65,6 +65,10 @@ LAB_FIELDS = {
                        "none is printed.",
 }
 
+# What a record read from a patient portal's own file says read it: no model, so no model
+# name. ui.lab_rows says "copied from your portal's file" for these instead of "read by AI".
+PORTAL_READER = "patient portal file (C-CDA), no AI"
+
 # The emergency card: the screen you hold up at a hospital desk when you cannot talk.
 PROFILE_FIELDS = (
     "full_name", "date_of_birth", "blood_type", "allergies", "conditions",

@@ -26,6 +26,21 @@ def vault():
     return db.connect()
 
 
+def viewer_zone():
+    """The viewer's own time zone where the browser says it, else UTC. The hosted server's
+    clock is UTC, and a dose due at 08:00 in Boston is due at 08:00 in Boston."""
+    import zoneinfo
+    try:
+        return zoneinfo.ZoneInfo(getattr(st.context, "timezone", None) or "UTC")
+    except (zoneinfo.ZoneInfoNotFoundError, ValueError, TypeError):
+        return datetime.timezone.utc
+
+
+def local_now():
+    """Now, on the viewer's wall clock, without a zone attached: what the Scheduler's times mean."""
+    return datetime.datetime.now(viewer_zone()).replace(tzinfo=None)
+
+
 def money(v):
     return f"${v:,.2f}" if isinstance(v, (int, float)) else "—"
 

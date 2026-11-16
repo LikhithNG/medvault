@@ -257,6 +257,14 @@ div[data-testid="stVerticalBlock"]:not([data-testid="stVerticalBlockBorderWrappe
 .med .d{font-size:13.5px;color:var(--soft);margin-top:.25rem;line-height:1.45}
 .med .why{font-size:12.5px;color:var(--faint);margin-top:.3rem;font-style:italic}
 .med.stopped{opacity:.7;border-left-color:var(--line)}
+.med.missed{border-left-color:var(--warn)}
+.med .pill.dose{display:inline-block;margin-left:.5rem;vertical-align:2px;font-size:11px;font-weight:700;
+  letter-spacing:.04em;text-transform:uppercase;padding:.12rem .45rem;border-radius:999px;border:1px solid}
+.med .pill.dose.taken{background:var(--ok-soft);color:var(--ok);border-color:#BCE5CF}
+.med .pill.dose.skipped{background:#F2F4F8;color:var(--soft);border-color:#DFE4EC}
+.med .pill.dose.due,.med .pill.dose.missed{background:var(--warn-soft);color:#7A4A06;border-color:#F7E0B5}
+.med .stock{font-size:12.5px;color:var(--soft);margin-top:.3rem}
+.med .stock.low{color:#7A4A06;font-weight:600}.med .stock.out{color:#7A1710;font-weight:600}
 .med .pill.off{display:inline-block;margin-left:.5rem;vertical-align:2px;font-size:11px;
   font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:.12rem .45rem;
   border-radius:999px;background:#F2F4F8;color:var(--soft);border:1px solid #DFE4EC}
@@ -701,21 +709,25 @@ def esc(value):
     return html.escape(str(value if value is not None else "")).replace("\n", "<br>")
 
 
-def lab_rows(results):
+def lab_rows(results, read_by=None):
     """A report's results as read off it: name, then value, unit, the range and the flag
-    printed on it. Read by an AI, and said so. Every field is data off a scan, so every
+    printed on it. Read by an AI, and said so - or, for a patient portal's own file,
+    copied with no AI, and said so. Every field is data off a scan or a file, so every
     field is escaped."""
+    from schema import PORTAL_READER
     if not results:
         return ""
     cells = "".join(
         f"<b>{esc(t['name'])}</b><span>{esc(t['value'])}"
         + (f" {esc(t['unit'])}" if t.get("unit") else "")
         + (f" · range {esc(t['reference_range'])}" if t.get("reference_range") else "")
-        + (f" · flagged {esc(t['flag'])}" if t.get("flag") else "") + "</span>"
+        + (f" · flagged {esc(t['flag'])}" if t.get("flag") else "")
+        + (f" · {esc(t['taken_on'])}" if t.get("taken_on") else "") + "</span>"
         for t in results)
-    return (f"<div class='labs'>{cells}</div><div class='labsby'>Read off the report by an "
-            f"AI reader; check it against the original. MedVault does not judge whether a "
-            f"result is normal.</div>")
+    source = ("Copied from your patient portal's record file, not read by an AI"
+              if read_by == PORTAL_READER else "Read off the report by an AI reader")
+    return (f"<div class='labs'>{cells}</div><div class='labsby'>{source}; check it against the "
+            f"original. MedVault does not judge whether a result is normal.</div>")
 
 
 def safe(text):
